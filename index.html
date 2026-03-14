@@ -526,6 +526,35 @@
     @keyframes capFlash { 0%,100% { color:var(--muted); } 40% { color:var(--gold-light); } }
     .vibe-cap-flash { animation: capFlash 0.75s ease; }
 
+    /* ── SOCIAL INTERACTIONS ── */
+    .card-indicator { position:absolute; top:0.5rem; right:0.5rem; z-index:4; font-size:0.9rem; line-height:1; pointer-events:none; }
+    .ci-fire  { filter:drop-shadow(0 0 5px rgba(224,80,80,0.9)); }
+    .ci-saved { filter:drop-shadow(0 0 4px rgba(200,168,75,0.8)); }
+    .roster-card.mutual-fire-card { box-shadow:0 0 0 1px rgba(224,80,80,0.3), 0 0 28px rgba(224,80,80,0.1); }
+
+    .modal-interact { border-top:1px solid var(--border-dim); padding:1.5rem; }
+    .mutual-reveal { font-family:'Cormorant',serif; font-size:1.05rem; font-style:italic; color:#e05050; text-align:center; letter-spacing:0.06em; padding-bottom:1rem; animation:fadeUp 0.4s ease; }
+    .modal-interact-btns { display:flex; gap:0.7rem; align-items:stretch; }
+    .modal-fire-btn { display:flex; align-items:center; justify-content:center; gap:0.6rem; flex:1; padding:0.9rem 1.5rem; font-family:'Cinzel',serif; font-size:0.72rem; letter-spacing:0.22em; text-transform:uppercase; background:transparent; border:1px solid rgba(224,80,80,0.2); color:rgba(224,80,80,0.5); cursor:pointer; transition:all 0.3s; }
+    .modal-fire-btn:hover { border-color:rgba(224,80,80,0.5); color:#e05050; background:rgba(224,80,80,0.05); }
+    .modal-fire-btn.fired  { border-color:rgba(224,80,80,0.45); color:#e05050; background:rgba(224,80,80,0.05); }
+    .modal-fire-btn.mutual { border-color:#e05050; color:#e05050; background:rgba(224,80,80,0.08); box-shadow:0 0 28px rgba(224,80,80,0.18), inset 0 0 20px rgba(224,80,80,0.04); }
+    .fire-icon { font-size:1.1rem; line-height:1; }
+    .modal-save-btn { width:3rem; display:flex; align-items:center; justify-content:center; background:transparent; border:1px solid var(--border-dim); color:var(--muted); cursor:pointer; font-size:1.1rem; line-height:1; transition:all 0.2s; flex-shrink:0; padding:0; }
+    .modal-save-btn.saved { color:var(--gold); border-color:rgba(200,168,75,0.35); background:rgba(200,168,75,0.05); }
+    .modal-save-btn:hover:not(.saved) { border-color:var(--gold-dim); color:var(--gold-dim); }
+    #modalBox.mutual-glow { border-color:rgba(224,80,80,0.35); box-shadow:0 0 0 1px rgba(224,80,80,0.18), 0 0 60px rgba(224,80,80,0.1); }
+
+    .connections-section { margin-top:3rem; padding-top:2.5rem; border-top:1px solid var(--border-dim); }
+    .connections-subsection { margin-bottom:2.2rem; }
+    .connections-label { font-family:'Cinzel',serif; font-size:0.72rem; letter-spacing:0.24em; text-transform:uppercase; color:var(--gold-dim); margin-bottom:1.2rem; }
+    .connections-mini-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(78px,1fr)); gap:6px; }
+    .connections-card { position:relative; aspect-ratio:1; cursor:pointer; overflow:hidden; background:var(--black-raise); border:1px solid var(--border-dim); transition:border-color 0.2s; }
+    .connections-card:hover { border-color:var(--gold-dim); }
+    .connections-card img { width:100%; height:100%; object-fit:cover; display:block; }
+    .connections-card-initial { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-family:'Cormorant',serif; font-size:1.8rem; font-style:italic; color:var(--gold-dim); }
+    .connections-card-name { position:absolute; bottom:0; left:0; right:0; background:linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%); font-family:'Cinzel',serif; font-size:0.52rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--cream); padding:0.35rem 0.3rem; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
     /* ── DOOR CHECK-IN ── */
     .door-stats { display:flex; border:1px solid var(--border); margin-bottom:2rem; }
     .door-stat-cell { flex:1; padding:1.4rem 1.8rem; background:var(--black-card); border-right:1px solid var(--border-dim); text-align:center; }
@@ -674,6 +703,121 @@ let allGuests       = [];
 let activeVibeFilter = null;
 let adminData       = { notes: {}, flagged: {} };
 let doorCheckins    = {};
+let socialData      = { fires: {}, saved: {} };
+
+// ══ SOCIAL ═════════════════════════════════════════════════════════
+async function loadSocialData() {
+  const { data } = await sb.from('config').select('value').eq('key','social').single();
+  if (data?.value) {
+    try {
+      const p = JSON.parse(data.value);
+      socialData.fires = p.fires || {};
+      socialData.saved = p.saved || {};
+    } catch(e) {}
+  }
+}
+
+async function saveSocialData() {
+  await sb.from('config').upsert({ key:'social', value:JSON.stringify(socialData) }, { onConflict:'key' });
+}
+
+function isFired(id)      { return !!currentGuest && (socialData.fires[currentGuest.id]||[]).includes(id); }
+function isMutualFire(id) { return isFired(id) && (socialData.fires[id]||[]).includes(currentGuest.id); }
+function isSaved(id)      { return !!currentGuest && (socialData.saved[currentGuest.id]||[]).includes(id); }
+
+async function toggleFire(id) {
+  if (!currentGuest || isPreview) return;
+  const list = socialData.fires[currentGuest.id] || [];
+  socialData.fires[currentGuest.id] = list.includes(id) ? list.filter(x=>x!==id) : [...list, id];
+  await saveSocialData();
+  refreshModalInteract(id);
+  applyRosterIndicators();
+}
+
+async function toggleSave(id) {
+  if (!currentGuest || isPreview) return;
+  const list = socialData.saved[currentGuest.id] || [];
+  socialData.saved[currentGuest.id] = list.includes(id) ? list.filter(x=>x!==id) : [...list, id];
+  await saveSocialData();
+  refreshModalInteract(id);
+  applyRosterIndicators();
+}
+
+function refreshModalInteract(id) {
+  const interact = document.getElementById('modalInteract');
+  if (!interact) return;
+  const mutual = isMutualFire(id);
+  interact.innerHTML = modalInteractHTML(id);
+  document.getElementById('modalBox')?.classList.toggle('mutual-glow', mutual);
+}
+
+function modalInteractHTML(id) {
+  const fired  = isFired(id);
+  const mutual = isMutualFire(id);
+  const saved  = isSaved(id);
+  return `
+    ${mutual ? `<div class="mutual-reveal">🔥 Mutual — you're both in</div>` : ''}
+    <div class="modal-interact-btns">
+      <button class="modal-fire-btn${fired?' fired':''}${mutual?' mutual':''}" onclick="toggleFire('${id}')">
+        <span class="fire-icon">🔥</span>
+        <span>${mutual ? 'Matched' : fired ? 'Fired' : 'Fire'}</span>
+      </button>
+      <button class="modal-save-btn${saved?' saved':''}" onclick="toggleSave('${id}')" title="${saved?'Remove from saved':'Save'}">
+        ${saved ? '★' : '☆'}
+      </button>
+    </div>`;
+}
+
+function applyRosterIndicators() {
+  if (!currentGuest || isPreview) return;
+  document.querySelectorAll('.roster-card[data-guest-id]').forEach(card => {
+    const gid    = card.dataset.guestId;
+    const mutual = isMutualFire(gid);
+    const saved  = isSaved(gid);
+    card.classList.toggle('mutual-fire-card', mutual);
+    card.querySelector('.card-indicator')?.remove();
+    if (mutual || saved) {
+      const ind = document.createElement('div');
+      ind.className = 'card-indicator ' + (mutual ? 'ci-fire' : 'ci-saved');
+      ind.textContent = mutual ? '🔥' : '★';
+      card.appendChild(ind);
+    }
+  });
+}
+
+async function renderConnections(container) {
+  if (!currentGuest) return;
+  const myFires  = socialData.fires[currentGuest.id] || [];
+  const mySaved  = socialData.saved[currentGuest.id] || [];
+  const mutualIds = myFires.filter(id => (socialData.fires[id]||[]).includes(currentGuest.id));
+  if (!mutualIds.length && !mySaved.length) return;
+
+  const allIds = [...new Set([...mutualIds, ...mySaved])];
+  const { data: guests } = await sb.from('guests').select('id,name,photos').in('id', allIds);
+  const gMap = {};
+  (guests||[]).forEach(g => { gMap[g.id] = g; });
+
+  function miniCard(g) {
+    if (!g) return '';
+    const thumb = g.photos&&g.photos[0] ? g.photos[0] : null;
+    return `<div class="connections-card" onclick="openModal('${g.id}')">
+      ${thumb ? `<img src="${thumb}" alt="" loading="lazy" />` : `<div class="connections-card-initial">${esc(g.name.charAt(0).toUpperCase())}</div>`}
+      <div class="connections-card-name">${esc(g.name)}</div>
+    </div>`;
+  }
+
+  let html = `<div class="connections-section">`;
+  if (mutualIds.length) {
+    html += `<div class="connections-subsection"><div class="connections-label">🔥 Mutual</div>
+      <div class="connections-mini-grid">${mutualIds.map(id=>miniCard(gMap[id])).join('')}</div></div>`;
+  }
+  if (mySaved.length) {
+    html += `<div class="connections-subsection"><div class="connections-label">★ Saved</div>
+      <div class="connections-mini-grid">${mySaved.map(id=>miniCard(gMap[id])).join('')}</div></div>`;
+  }
+  html += `</div>`;
+  container.insertAdjacentHTML('beforeend', html);
+}
 
 // ══ DOOR CHECK-IN ══════════════════════════════════════════════════
 async function loadCheckins() {
@@ -835,7 +979,7 @@ function rosterCardsHTML(list) {
     const primary = photos[0] || null;
     const vibes = g.vibes || [];
     return `
-    <div class="roster-card" onclick="openModal('${g.id}')" style="animation-delay:${i*0.05}s">
+    <div class="roster-card" data-guest-id="${g.id}" onclick="openModal('${g.id}')" style="animation-delay:${i*0.05}s">
       ${primary ? `<img src="${primary}" alt="" loading="lazy" />` : `<div class="no-photo"><div class="no-photo-initial">${esc(g.name.charAt(0).toUpperCase())}</div></div>`}
       <div class="roster-overlay">
         <div class="roster-name">${esc(g.name)}</div>
@@ -859,6 +1003,7 @@ function setVibeFilter(vibe) {
   if (bar) bar.outerHTML = vibeFilterBarHTML();
   const wrap = document.getElementById('rosterGridWrap');
   if (wrap) wrap.innerHTML = rosterCardsHTML(getFilteredGuests());
+  applyRosterIndicators();
 }
 
 // ══ INIT ═══════════════════════════════════════════════════════════
@@ -914,6 +1059,7 @@ async function init() {
           currentGuest = { id: g.id, name: g.name, pin: g.pin };
           localStorage.setItem('elysium_session', JSON.stringify(currentGuest));
           showSessionBar(g.name);
+          await loadSocialData();
         } else {
           localStorage.removeItem('elysium_session');
         }
@@ -1287,6 +1433,7 @@ async function renderRoster() {
   document.getElementById('guestGrid').innerHTML =
     vibeFilterBarHTML() +
     `<div id="rosterGridWrap">${rosterCardsHTML(getFilteredGuests())}</div>`;
+  applyRosterIndicators();
 }
 
 // ══ MODAL ══════════════════════════════════════════════════════════
@@ -1324,17 +1471,24 @@ async function openModal(id) {
         ${g.prep ? `<div><div class="modal-bio-label">PrEP</div><div style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--cream);opacity:.8">${g.prep==='yes'?'Yes':'No'}</div></div>` : ''}
       </div>` : ''}
       ${g.bio ? `<hr class="modal-divider" /><div class="modal-bio-label">About</div><div class="modal-bio">${esc(g.bio).replace(/\n/g,'<br>')}</div>` : ''}
+      ${(currentGuest && !isPreview && currentGuest.id !== id) ? `<div class="modal-interact" id="modalInteract">${modalInteractHTML(id)}</div>` : ''}
     </div>
     <div class="modal-return-row">
       <button class="modal-return-btn" onclick="closeModalDirect()">← Return to Roster</button>
     </div>`;
 
+  const mutual = currentGuest && !isPreview && currentGuest.id !== id && isMutualFire(id);
+  document.getElementById('modalBox').classList.toggle('mutual-glow', !!mutual);
   document.getElementById('modalBackdrop').classList.add('open');
   lockScroll();
 }
 
 function closeModal(e) { if (e.target === document.getElementById('modalBackdrop')) closeModalDirect(); }
-function closeModalDirect() { document.getElementById('modalBackdrop').classList.remove('open'); unlockScroll(); }
+function closeModalDirect() {
+  document.getElementById('modalBackdrop').classList.remove('open');
+  document.getElementById('modalBox').classList.remove('mutual-glow');
+  unlockScroll();
+}
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModalDirect(); closeLightbox(); } });
 
 let _scrollY = 0;
@@ -1411,6 +1565,7 @@ async function submitPin(target) {
   currentGuest = data; isPreview = false;
   localStorage.setItem('elysium_session', JSON.stringify({id:data.id, name:data.name, pin}));
   showSessionBar(data.name);
+  await loadSocialData();
 
   if (target === 'roster') renderRoster();
   else if (target === 'account') renderAccount();
@@ -1620,6 +1775,7 @@ async function submitRsvp() {
   photoSlots = [null,null,null]; selectedVibes = []; selectedPrep = null;
   localStorage.setItem('elysium_session', JSON.stringify({id:data.id, name:data.name, pin}));
   showSessionBar(data.name);
+  await loadSocialData();
 
   document.getElementById('rsvpContent').innerHTML = `
     <h2 class="form-title" style="margin-bottom:1rem;">Thank you, ${name}.</h2>
@@ -1757,6 +1913,8 @@ async function renderAccount() {
     slot.addEventListener('dragleave', ()=>slot.classList.remove('drag-over'));
     slot.addEventListener('drop', e=>{e.preventDefault();slot.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))processSlot(i,f);});
   });
+
+  renderConnections(el);
 }
 
 function toggleVibeEdit(v, btn) {
