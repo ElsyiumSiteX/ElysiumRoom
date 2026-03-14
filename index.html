@@ -192,6 +192,27 @@
     .modal-photo-secondary .sec-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .modal-photo-secondary .sec-thumb.empty { background: var(--black-raise); display: flex; align-items: center; justify-content: center; }
     .modal-photo-secondary .sec-empty-icon { font-family: 'Cormorant', serif; font-size: 1.5rem; font-style: italic; color: var(--gold-dim); opacity: 0.2; }
+    .modal-photo-secondary .sec-thumb img { cursor: zoom-in; }
+
+    /* LIGHTBOX */
+    .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.94); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 1rem; }
+    .lightbox.open { display: flex; }
+    .lightbox img { max-width: 100%; max-height: 90vh; object-fit: contain; display: block; }
+    .lightbox-close { position: absolute; top: 1rem; right: 1rem; font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: .18em; text-transform: uppercase; background: rgba(6,5,4,0.85); border: 1px solid var(--border-dim); color: var(--muted); padding: .4rem .9rem; cursor: pointer; transition: color .2s, border-color .2s; }
+    .lightbox-close:hover { color: var(--gold); border-color: var(--gold-dim); }
+
+    /* ANNOUNCEMENT BANNER */
+    .announce-banner { margin-bottom: 2.5rem; border: 1px solid var(--border); background: var(--black-card); overflow: hidden; }
+    .announce-header { font-family: 'Cinzel', serif; font-size: 0.58rem; font-weight: 400; letter-spacing: .3em; text-transform: uppercase; color: var(--gold-dim); padding: .9rem 1.8rem .6rem; border-bottom: 1px solid var(--border-dim); }
+    .announce-body { padding: 1.4rem 1.8rem; }
+    .announce-text { font-family: 'Cormorant', serif; font-size: 1.15rem; font-weight: 300; font-style: italic; line-height: 1.85; color: var(--cream); opacity: .88; white-space: pre-wrap; }
+    .announce-img { width: 100%; display: block; margin-top: 1.2rem; }
+    /* Admin announcement upload slot */
+    .ann-img-slot { width: 100%; aspect-ratio: 16/9; background: var(--black-card); border: 1px dashed var(--border); position: relative; cursor: pointer; overflow: hidden; transition: border-color .3s; margin-top: .5rem; }
+    .ann-img-slot:hover { border-color: var(--gold-dim); }
+    .ann-img-slot input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .ann-img-slot-inner { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .4rem; }
+    .ann-img-preview { width: 100%; height: 100%; object-fit: cover; display: block; }
     .modal-no-photo { grid-column: 1/-1; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; background: linear-gradient(145deg, var(--black-card), var(--black-raise)); }
     .modal-info { padding: 1.5rem 2rem 2.5rem; }
     .modal-name { font-family: 'Cormorant', serif; font-size: 2.2rem; font-weight: 300; font-style: italic; color: var(--cream); line-height: 1; margin-bottom: 0.3rem; }
@@ -395,9 +416,11 @@
     eventDate:       "",
     eventLocation:   "",
     capacity:        30,
-    adminPassword:   "elysium2024",
-    guestPreviewPin: "000000",
-    requireApproval: true,
+    adminPassword:      "elysium2024",
+    guestPreviewPin:    "000000",
+    requireApproval:    true,
+    announcementText:   "",
+    announcementImage:  "",
   };
 </script>
 <!-- ════════════════════════════════════════════════════════════════ -->
@@ -427,6 +450,12 @@
   <div id="view-account" class="view"><div class="form-wrap" id="accountContent"></div></div>
   <div id="view-admin"  class="view"><div id="adminContent"></div></div>
 </main>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">Close</button>
+  <img id="lightboxImg" src="" alt="" />
+</div>
 
 <!-- MODAL -->
 <div class="modal-backdrop" id="modalBackdrop" onclick="closeModal(event)">
@@ -536,7 +565,15 @@ async function renderRoster() {
     return;
   }
 
+  const hasAnn = CONFIG.announcementText || CONFIG.announcementImage;
   el.innerHTML = `
+    ${hasAnn ? `<div class="announce-banner">
+      <div class="announce-header">From the Host</div>
+      <div class="announce-body">
+        ${CONFIG.announcementText ? `<div class="announce-text">${CONFIG.announcementText.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>` : ''}
+        ${CONFIG.announcementImage ? `<img class="announce-img" src="${CONFIG.announcementImage}" alt="" />` : ''}
+      </div>
+    </div>` : ''}
     <div class="stats-row">
       <div class="stat"><div class="stat-num" id="statA">—</div><div class="stat-label">Confirmed</div></div>
       <div class="stat"><div class="stat-num blue" id="statP">—</div><div class="stat-label">Pending</div></div>
@@ -606,8 +643,8 @@ async function openModal(id) {
     <div class="modal-photos">
       <div class="modal-photo-primary"><img src="${p0}" alt="" /></div>
       <div class="modal-photo-secondary">
-        <div class="sec-thumb ${p1?'':'empty'}">${p1?`<img src="${p1}" alt="" />`:`<div class="sec-empty-icon">✦</div>`}</div>
-        <div class="sec-thumb ${p2?'':'empty'}">${p2?`<img src="${p2}" alt="" />`:`<div class="sec-empty-icon">✦</div>`}</div>
+        <div class="sec-thumb ${p1?'':'empty'}">${p1?`<img src="${p1}" alt="" onclick="openLightbox('${p1}')" />`:`<div class="sec-empty-icon">✦</div>`}</div>
+        <div class="sec-thumb ${p2?'':'empty'}">${p2?`<img src="${p2}" alt="" onclick="openLightbox('${p2}')" />`:`<div class="sec-empty-icon">✦</div>`}</div>
       </div>
     </div>` : `<div class="modal-photos"><div class="modal-no-photo"><div class="no-photo-initial">${g.name.charAt(0).toUpperCase()}</div></div></div>`;
 
@@ -1030,6 +1067,28 @@ async function renderAdmin() {
 
     <hr class="div" />
 
+    <div class="section-label">Announcement</div>
+    <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">Shown to all guests above the roster. Leave blank to hide.</p>
+    <div class="form-group">
+      <label>Message</label>
+      <textarea id="annText" rows="4" placeholder="Write something for your guests…">${CONFIG.announcementText}</textarea>
+    </div>
+    <div class="form-group">
+      <label>Image (optional)</label>
+      <div class="ann-img-slot" id="annImgSlot" onclick="document.getElementById('annImgFile').click()">
+        <input type="file" id="annImgFile" accept="image/*" style="display:none" onchange="loadAnnImage(event)" />
+        ${CONFIG.announcementImage
+          ? `<img class="ann-img-preview" id="annImgPreview" src="${CONFIG.announcementImage}" alt="" />`
+          : `<div class="ann-img-slot-inner"><div class="slot-icon">✦</div><div class="slot-label">Click to upload</div></div>`}
+      </div>
+      ${CONFIG.announcementImage ? `<button class="btn btn-danger btn-sm" style="margin-top:.5rem" onclick="clearAnnImage()">Remove Image</button>` : ''}
+    </div>
+    <div style="display:flex;gap:1rem;margin-bottom:3rem;">
+      <button class="btn btn-solid" id="annSaveBtn" onclick="saveAnnouncement()">Save Announcement</button>
+    </div>
+
+    <hr class="div" />
+
     <div class="section-label">Pending Approval — ${pendList.length}</div>
     <div class="pending-list">
       ${!pendList.length ? `<div class="empty-state">No pending submissions.</div>` :
@@ -1109,6 +1168,77 @@ document.addEventListener('click', function(e) {
   if (action==='reject')  rejectGuest(id);
   if (action==='remove')  removeGuest(id);
 });
+
+// ══ LIGHTBOX ════════════════════════════════════════════════════════
+function openLightbox(src) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+// ══ ANNOUNCEMENT ════════════════════════════════════════════════════
+let annImageData = null;
+
+function loadAnnImage(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 1200; let w = img.width, h = img.height;
+      if (w > max || h > max) { if (w > h) { h = Math.round(h * max / w); w = max; } else { w = Math.round(w * max / h); h = max; } }
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      annImageData = c.toDataURL('image/jpeg', 0.82);
+      const slot = document.getElementById('annImgSlot');
+      slot.innerHTML = `<img class="ann-img-preview" id="annImgPreview" src="${annImageData}" alt="" /><input type="file" id="annImgFile" accept="image/*" style="display:none" onchange="loadAnnImage(event)" />`;
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearAnnImage() {
+  annImageData = '';
+  const slot = document.getElementById('annImgSlot');
+  slot.innerHTML = `<input type="file" id="annImgFile" accept="image/*" style="display:none" onchange="loadAnnImage(event)" /><div class="ann-img-slot-inner"><div class="slot-icon">✦</div><div class="slot-label">Click to upload</div></div>`;
+  slot.onclick = () => document.getElementById('annImgFile').click();
+  const removeBtn = slot.nextElementSibling;
+  if (removeBtn && removeBtn.classList.contains('btn-danger')) removeBtn.remove();
+}
+
+async function saveAnnouncement() {
+  const text = document.getElementById('annText').value.trim();
+  const image = annImageData !== null ? annImageData : CONFIG.announcementImage;
+  CONFIG.announcementText  = text;
+  CONFIG.announcementImage = image;
+
+  const btn = document.getElementById('annSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const { error } = await sb.from('config').upsert([
+    { key: 'announcementText',  value: text },
+    { key: 'announcementImage', value: image },
+  ], { onConflict: 'key' });
+
+  btn.disabled = false; btn.textContent = 'Save Announcement';
+  annImageData = null;
+
+  if (error) { alert('Save failed: ' + error.message); return; }
+
+  const flash = document.createElement('div');
+  flash.className = 'msg msg-success';
+  flash.style.cssText = 'margin-bottom:1rem;';
+  flash.textContent = 'Announcement saved.';
+  btn.parentNode.insertBefore(flash, btn);
+  setTimeout(() => flash.remove(), 3000);
+}
 
 async function saveSettings() {
   const n  = document.getElementById('sName').value.trim();
