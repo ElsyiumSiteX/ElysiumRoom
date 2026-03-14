@@ -994,7 +994,7 @@ async function openModal(id) {
 
   let photosHtml = p0 ? `
     <div class="modal-photos">
-      <div class="modal-photo-primary"><img src="${p0}" alt="" /></div>
+      <div class="modal-photo-primary"><img src="${p0}" alt="" onclick="openLightbox('${p0}')" style="cursor:zoom-in" /></div>
       <div class="modal-photo-secondary">
         <div class="sec-thumb ${p1?'':'empty'}">${p1?`<img src="${p1}" alt="" onclick="openLightbox('${p1}')" />`:`<div class="sec-empty-icon">✦</div>`}</div>
         <div class="sec-thumb ${p2?'':'empty'}">${p2?`<img src="${p2}" alt="" onclick="openLightbox('${p2}')" />`:`<div class="sec-empty-icon">✦</div>`}</div>
@@ -1021,12 +1021,28 @@ async function openModal(id) {
     </div>`;
 
   document.getElementById('modalBackdrop').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  lockScroll();
 }
 
 function closeModal(e) { if (e.target === document.getElementById('modalBackdrop')) closeModalDirect(); }
-function closeModalDirect() { document.getElementById('modalBackdrop').classList.remove('open'); document.body.style.overflow = ''; }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModalDirect(); });
+function closeModalDirect() { document.getElementById('modalBackdrop').classList.remove('open'); unlockScroll(); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModalDirect(); closeLightbox(); } });
+
+let _scrollY = 0;
+function lockScroll() {
+  _scrollY = window.scrollY;
+  document.body.style.overflow = 'hidden';
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${_scrollY}px`;
+  document.body.style.width = '100%';
+}
+function unlockScroll() {
+  document.body.style.overflow = '';
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.width = '';
+  window.scrollTo(0, _scrollY);
+}
 
 // ══ PIN GATE ═══════════════════════════════════════════════════════
 function renderPinGate(target) {
@@ -1498,7 +1514,7 @@ async function renderAdmin() {
     <div class="form-group">
       <label>Images <span style="opacity:.45;font-size:.8em">(up to 4 · optional · click to enlarge)</span></label>
       <div class="ann-grid" id="annGrid">
-        ${[0,1,2,3].map(i => {
+        ${[0,1,2,3,4,5].map(i => {
           const src = (CONFIG.announcementImages||[])[i] || null;
           return `<div class="ann-grid-slot" id="annSlot${i}">
             ${src
@@ -1603,16 +1619,15 @@ document.addEventListener('click', function(e) {
 function openLightbox(src) {
   document.getElementById('lightboxImg').src = src;
   document.getElementById('lightbox').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  if (!document.getElementById('modalBackdrop').classList.contains('open')) lockScroll();
 }
 function closeLightbox() {
   document.getElementById('lightbox').classList.remove('open');
-  document.body.style.overflow = '';
+  if (!document.getElementById('modalBackdrop').classList.contains('open')) unlockScroll();
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 
 // ══ ANNOUNCEMENT ════════════════════════════════════════════════════
-let annSlots = [null, null, null, null]; // pending uploads; null = unchanged
+let annSlots = [null, null, null, null, null, null]; // pending uploads; null = unchanged
 
 function triggerAnnSlot(i) { document.getElementById('annFile'+i).click(); }
 
@@ -1679,7 +1694,7 @@ async function saveAnnouncement() {
   ], { onConflict: 'key' });
 
   btn.disabled = false; btn.textContent = 'Save Announcement';
-  annSlots = [null, null, null, null];
+  annSlots = [null, null, null, null, null, null];
 
   if (error) { alert('Save failed: ' + error.message); return; }
 
