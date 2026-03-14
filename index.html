@@ -84,6 +84,11 @@
     .orn-dot { width: 3px; height: 3px; background: var(--gold-dim); transform: rotate(45deg); }
 
     .hero-meta { font-family: 'Cinzel', serif; font-size: 0.6rem; font-weight: 400; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); line-height: 2.8; }
+    .countdown { display: flex; justify-content: center; gap: 2.5rem; margin-top: 1.8rem; }
+    .countdown-unit { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+    .countdown-num { font-family: 'Cinzel', serif; font-size: clamp(2rem, 6vw, 3.2rem); font-weight: 700; color: var(--gold); line-height: 1; filter: drop-shadow(0 0 18px rgba(200,168,75,0.4)); letter-spacing: 0.05em; }
+    .countdown-label { font-family: 'Cinzel', serif; font-size: 0.52rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--muted); }
+    .countdown-sep { font-family: 'Cormorant', serif; font-size: 2rem; color: var(--gold-dim); opacity: 0.4; align-self: center; margin-top: -0.5rem; }
 
     /* ── NAV ── */
     nav {
@@ -520,6 +525,11 @@
     <div class="orn-line"></div>
   </div>
   <div class="hero-meta" id="heroMeta"></div>
+  <div class="countdown" id="heroCountdown" style="display:none">
+    <div class="countdown-unit"><div class="countdown-num" id="cdDays">00</div><div class="countdown-label">Days</div></div>
+    <div class="countdown-sep">·</div>
+    <div class="countdown-unit"><div class="countdown-num" id="cdHours">00</div><div class="countdown-label">Hours</div></div>
+  </div>
 </div>
 
 <nav id="mainNav">
@@ -590,6 +600,24 @@ async function loadConfig() {
     });
   }
   document.getElementById('heroMeta').innerHTML = `${CONFIG.eventDate}&ensp;·&ensp;${CONFIG.eventLocation}`;
+  startCountdown();
+}
+
+const EVENT_DATE = new Date('2026-04-03T19:00:00');
+function startCountdown() {
+  const el = document.getElementById('heroCountdown');
+  const dEl = document.getElementById('cdDays');
+  const hEl = document.getElementById('cdHours');
+  function tick() {
+    const diff = EVENT_DATE - Date.now();
+    if (diff <= 0) { el.style.display='none'; return; }
+    el.style.display='flex';
+    const totalHours = Math.floor(diff / 36e5);
+    dEl.textContent = String(Math.floor(totalHours / 24)).padStart(2,'0');
+    hEl.textContent = String(totalHours % 24).padStart(2,'0');
+  }
+  tick();
+  setInterval(tick, 60000);
 }
 
 async function init() {
