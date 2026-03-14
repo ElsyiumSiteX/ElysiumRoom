@@ -170,7 +170,7 @@
       border-radius: 2px;
       display: flex; flex-direction: column;
     }
-    #modalInner { overflow-y: auto; flex: 1; }
+    #modalInner { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }
 
     /* Big bold X — always visible, top right, touch-friendly */
     .modal-close {
@@ -187,6 +187,7 @@
       backdrop-filter: blur(8px);
       transition: background 0.2s, border-color 0.2s, color 0.2s;
       line-height: 1;
+      transform: translateZ(0);
     }
     .modal-close:hover {
       background: var(--gold-dim);
