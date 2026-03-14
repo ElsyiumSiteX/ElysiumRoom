@@ -141,7 +141,7 @@
     .no-photo-initial { font-family: 'Cormorant', serif; font-size: 5.5rem; font-weight: 300; font-style: italic; color: var(--gold-dim); opacity: 0.35; line-height: 1; }
 
     .roster-overlay { position: absolute; bottom: 0; left: 0; right: 0; padding: 4rem 1.4rem 1.4rem; background: linear-gradient(to top, rgba(6,5,4,0.97) 0%, rgba(6,5,4,0.65) 50%, transparent 100%); }
-    .roster-name { font-family: 'Cormorant', serif; font-size: 1.4rem; font-weight: 400; font-style: italic; letter-spacing: 0.04em; color: var(--cream); line-height: 1.1; }
+    .roster-name { font-family: 'Cormorant', serif; font-size: 1.4rem; font-weight: 400; font-style: italic; letter-spacing: 0.04em; color: var(--cream); line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .roster-role-tag { display: inline-block; margin-top: 0.45rem; font-family: 'Cinzel', serif; font-size: 0.6rem; font-weight: 400; letter-spacing: 0.2em; text-transform: uppercase; padding: 0.28rem 0.75rem; border: 1px solid var(--gold-dim); color: var(--gold); }
     .roster-bio-hint { font-family: 'Cinzel', serif; font-size: 0.55rem; font-weight: 400; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold-dim); margin-top: 0.6rem; opacity: 0.7; transition: opacity 0.2s; }
     .roster-card:hover .roster-bio-hint { opacity: 1; }
@@ -273,7 +273,7 @@
     .info-list li { font-family: 'Cormorant', serif; font-size: 1.15rem; font-weight: 300; font-style: italic; color: var(--cream); opacity: 0.82; padding: 0.3rem 0 0.3rem 1.4rem; position: relative; line-height: 1.6; }
     .info-list li::before { content: '·'; position: absolute; left: 0; color: var(--gold-dim); font-style: normal; }
     .info-sub { font-family: 'Cinzel', serif; font-size: 0.58rem; font-weight: 400; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold-dim); margin: 1.4rem 0 0.5rem; }
-    .info-divider { border: none; border-top: 1px solid var(--border-dim); margin: 3rem 0; }
+    .info-divider { border: none; border-top: 1px solid rgba(200,168,75,0.18); margin: 3rem 0; }
     @media (max-width: 700px) {
       .info-intro-line { font-size: 1.15rem; }
       .info-body, .info-list li { font-size: 1.1rem; }
@@ -411,7 +411,9 @@
       .orn-line { width: 60px; }
 
       /* Nav */
-      nav button { padding: 1rem 1rem; font-size: 0.6rem; letter-spacing: 0.18em; }
+      nav { justify-content: flex-start; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      nav::-webkit-scrollbar { display: none; }
+      nav button { padding: 1rem 0.85rem; font-size: 0.58rem; letter-spacing: 0.14em; white-space: nowrap; flex-shrink: 0; }
 
       /* Stats */
       .stats-row { grid-template-columns: 1fr 1fr; }
@@ -554,6 +556,9 @@
 // ══ SUPABASE INIT ══════════════════════════════════════════════════
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
+// Safe HTML escape
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 // ══ STATE ══════════════════════════════════════════════════════════
 let adminIn      = false;
 let currentGuest = null; // { id, name, pin } of logged-in guest
@@ -647,7 +652,7 @@ async function renderChat() {
   const el = document.getElementById('chatContent');
 
   if (!currentGuest || isPreview) {
-    el.innerHTML = `<div class="chat-gate">Chat is available to confirmed guests.<br><span style="font-size:.85em;opacity:.6">RSVP and get approved to join the conversation.</span></div>`;
+    el.innerHTML = `<div class="chat-gate">Chat is available to confirmed guests.<br><span style="font-size:.85em;opacity:.6;display:block;margin-bottom:1.5rem;">RSVP and get approved to join the conversation.</span><button class="btn btn-solid" onclick="showView('rsvp',document.querySelector('[onclick=\\'showView(\\'rsvp\\',this)\\']'))">RSVP Now</button></div>`;
     return;
   }
 
@@ -689,9 +694,10 @@ function renderMessages(msgs) {
 function appendMessage(m) {
   const el = document.getElementById('chatMessages');
   if (!el) return;
+  const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
   el.querySelector('.chat-empty')?.remove();
   el.insertAdjacentHTML('beforeend', msgHtml(m));
-  el.scrollTop = el.scrollHeight;
+  if (nearBottom) el.scrollTop = el.scrollHeight;
 }
 
 function msgHtml(m) {
@@ -961,10 +967,10 @@ async function renderRoster() {
     const vibes = g.vibes || [];
     return `
     <div class="roster-card" onclick="openModal('${g.id}')" style="animation-delay:${i*0.05}s">
-      ${primary ? `<img src="${primary}" alt="" />` : `<div class="no-photo"><div class="no-photo-initial">${g.name.charAt(0).toUpperCase()}</div></div>`}
+      ${primary ? `<img src="${primary}" alt="" />` : `<div class="no-photo"><div class="no-photo-initial">${esc(g.name.charAt(0).toUpperCase())}</div></div>`}
       <div class="roster-overlay">
-        <div class="roster-name">${g.name}</div>
-        ${g.role ? `<div class="roster-role-tag">${g.role}</div>` : ''}
+        <div class="roster-name">${esc(g.name)}</div>
+        ${g.role ? `<div class="roster-role-tag">${esc(g.role)}</div>` : ''}
         ${vibes.length ? `<div style="margin-top:.45rem;display:flex;gap:.35rem;">
           ${vibes.map(v => {
             const map = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
@@ -993,13 +999,13 @@ async function openModal(id) {
         <div class="sec-thumb ${p1?'':'empty'}">${p1?`<img src="${p1}" alt="" onclick="openLightbox('${p1}')" />`:`<div class="sec-empty-icon">✦</div>`}</div>
         <div class="sec-thumb ${p2?'':'empty'}">${p2?`<img src="${p2}" alt="" onclick="openLightbox('${p2}')" />`:`<div class="sec-empty-icon">✦</div>`}</div>
       </div>
-    </div>` : `<div class="modal-photos"><div class="modal-no-photo"><div class="no-photo-initial">${g.name.charAt(0).toUpperCase()}</div></div></div>`;
+    </div>` : `<div class="modal-photos"><div class="modal-no-photo"><div class="no-photo-initial">${esc(g.name.charAt(0).toUpperCase())}</div></div></div>`;
 
   document.getElementById('modalInner').innerHTML = `
     ${photosHtml}
     <div class="modal-info">
-      <div class="modal-name">${g.name}</div>
-      ${g.role ? `<div class="modal-role">${g.role}</div>` : ''}
+      <div class="modal-name">${esc(g.name)}</div>
+      ${g.role ? `<div class="modal-role">${esc(g.role)}</div>` : ''}
       ${vibes.length ? `<div style="display:flex;gap:.5rem;margin-top:.8rem;margin-bottom:.5rem;">
         ${vibes.map(v => {
           const map = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
@@ -1011,7 +1017,7 @@ async function openModal(id) {
         ${g.last_tested ? `<div><div class="modal-bio-label">Last Tested</div><div style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--cream);opacity:.8">${g.last_tested}</div></div>` : ''}
         ${g.prep ? `<div><div class="modal-bio-label">PrEP</div><div style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--cream);opacity:.8">${g.prep==='yes'?'Yes':'No'}</div></div>` : ''}
       </div>` : ''}
-      ${g.bio ? `<hr class="modal-divider" /><div class="modal-bio-label">About</div><div class="modal-bio">${g.bio.replace(/\n/g,'<br>')}</div>` : ''}
+      ${g.bio ? `<hr class="modal-divider" /><div class="modal-bio-label">About</div><div class="modal-bio">${esc(g.bio).replace(/\n/g,'<br>')}</div>` : ''}
     </div>`;
 
   document.getElementById('modalBackdrop').classList.add('open');
@@ -1042,6 +1048,7 @@ function pinNext(i) {
   const el = document.getElementById('pd' + i);
   el.value = el.value.replace(/[^0-9]/g,'');
   if (el.value && i < 5) document.getElementById('pd' + (i+1))?.focus();
+  if (el.value && i === 5) submitPin('roster');
 }
 
 function pinBack(e, i) {
@@ -1195,6 +1202,7 @@ function toggleVibe(v, btn) {
 function handleSlot(i, input) { const f=input.files[0]; if(f) processSlot(i,f); }
 
 function processSlot(i, file) {
+  if (!file.type.startsWith('image/')) { alert('Please select an image file.'); return; }
   const reader = new FileReader();
   reader.onload = e => {
     const img = new Image();
@@ -1205,8 +1213,10 @@ function processSlot(i, file) {
       c.getContext('2d').drawImage(img,0,0,w,h);
       photoSlots[i]=c.toDataURL('image/jpeg',0.8); updateSlotUI(i);
     };
+    img.onerror = () => alert('Could not load that image. Try a different file.');
     img.src=e.target.result;
   };
+  reader.onerror = () => alert('Could not read that file. Try again.');
   reader.readAsDataURL(file);
 }
 
@@ -1516,7 +1526,7 @@ async function renderAdmin() {
           const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
           return `
           <div class="pending-item">
-            ${thumb?`<img class="p-thumb" src="${thumb}" alt="" />`:`<div class="p-thumb-ph">${g.name.charAt(0).toUpperCase()}</div>`}
+            ${thumb?`<img class="p-thumb" src="${thumb}" alt="" />`:`<div class="p-thumb-ph">${esc(g.name.charAt(0).toUpperCase())}</div>`}
             <div class="p-info">
               <div class="p-name">${g.name}</div>
               <div class="p-meta">${g.role||''}  ·  PIN: ${g.pin}  ·  ${g.photos?g.photos.length:0} photo(s)  ·  ${new Date(g.created_at).toLocaleString()}</div>
@@ -1539,7 +1549,7 @@ async function renderAdmin() {
           const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
           return `
           <div class="approved-item">
-            ${thumb?`<img class="p-thumb" src="${thumb}" alt="" />`:`<div class="p-thumb-ph">${g.name.charAt(0).toUpperCase()}</div>`}
+            ${thumb?`<img class="p-thumb" src="${thumb}" alt="" />`:`<div class="p-thumb-ph">${esc(g.name.charAt(0).toUpperCase())}</div>`}
             <div class="a-name">
               ${g.name}
               <span style="color:var(--gold-dim);font-size:.8rem"> · ${g.role||''}</span>
