@@ -194,6 +194,19 @@
       border-color: var(--gold);
       color: var(--black);
     }
+    .modal-return-row {
+      display: flex; justify-content: center;
+      padding: 1.2rem 1.5rem 1.8rem;
+      border-top: 1px solid var(--border-dim);
+    }
+    .modal-return-btn {
+      font-family: 'Cinzel', serif; font-size: 0.72rem; font-weight: 400;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--gold-dim); background: transparent;
+      border: 1px solid var(--border); padding: 0.6rem 1.6rem;
+      cursor: pointer; transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+    .modal-return-btn:hover { color: var(--gold); border-color: var(--gold-dim); background: rgba(195,168,75,0.06); }
 
     .modal-photos { display: grid; grid-template-columns: 2fr 1fr; gap: 2px; }
     .modal-photo-primary { aspect-ratio: 3/4; overflow: hidden; }
@@ -1073,6 +1086,9 @@ async function openModal(id) {
         ${g.prep ? `<div><div class="modal-bio-label">PrEP</div><div style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--cream);opacity:.8">${g.prep==='yes'?'Yes':'No'}</div></div>` : ''}
       </div>` : ''}
       ${g.bio ? `<hr class="modal-divider" /><div class="modal-bio-label">About</div><div class="modal-bio">${esc(g.bio).replace(/\n/g,'<br>')}</div>` : ''}
+    </div>
+    <div class="modal-return-row">
+      <button class="modal-return-btn" onclick="closeModalDirect()">← Return to Roster</button>
     </div>`;
 
   document.getElementById('modalBackdrop').classList.add('open');
