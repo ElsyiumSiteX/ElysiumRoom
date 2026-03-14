@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elysium Room</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --black:       #060504;
+      --black-card:  #131008;
+      --black-raise: #1c1810;
+      --gold:        #c8a84b;
+      --gold-light:  #e8cf88;
+      --gold-bright: #f0d898;
+      --gold-dim:    #806a28;
+      --gold-glow:   rgba(200,168,75,0.18);
+      --gold-glow2:  rgba(200,168,75,0.08);
+      --neon-blue:   #5bc8f5;
+      --neon-purple: #c3a8e8;
+      --nb-glow:     rgba(91,200,245,0.14);
+      --np-glow:     rgba(195,168,232,0.14);
+      --cream:       #f2ead8;
+      --muted:       #5c5540;
+      --muted2:      #3a3428;
+      --border:      rgba(200,168,75,0.22);
+      --border-dim:  rgba(200,168,75,0.08);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Cormorant', Georgia, serif;
+      background: var(--black);
+      color: var(--cream);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background:
+        radial-gradient(ellipse 70% 50% at 0% 0%,   rgba(91,200,245,0.04)  0%, transparent 65%),
+        radial-gradient(ellipse 60% 45% at 100% 90%, rgba(195,168,232,0.05) 0%, transparent 65%),
+        radial-gradient(ellipse 45% 35% at 50% 50%,  rgba(200,168,75,0.03)  0%, transparent 70%);
+    }
+
+    body::after {
+      content: ''; position: fixed; inset: 0;
+      pointer-events: none; z-index: 9999; opacity: 0.028;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.88' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative; z-index: 1;
+      text-align: center;
+      padding: 6rem 2rem 4rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(to bottom, rgba(200,168,75,0.04) 0%, transparent 100%);
+    }
+
+    .hero-eyebrow { font-family: 'Cinzel', serif; font-size: 0.65rem; font-weight: 400; letter-spacing: 0.55em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 2rem; }
+
+    .hero-title {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(3.5rem, 9vw, 7rem);
+      font-weight: 700; letter-spacing: 0.12em; line-height: 0.9;
+      background: linear-gradient(160deg, var(--gold-bright) 0%, var(--gold-light) 30%, var(--gold) 60%, var(--gold-dim) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      filter: drop-shadow(0 0 40px rgba(200,168,75,0.3)); margin-bottom: 0.3rem;
+    }
+
+    .hero-sub { font-family: 'Cormorant', serif; font-size: clamp(1.2rem, 3vw, 2rem); font-weight: 300; font-style: italic; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold-dim); margin-top: 0.5rem; }
+
+    .hero-ornament { display: flex; align-items: center; justify-content: center; gap: 1.5rem; margin: 2.5rem auto; }
+    .orn-line { width: 120px; height: 1px; background: linear-gradient(to right, transparent, var(--gold-dim), transparent); }
+    .orn-center { display: flex; align-items: center; gap: 0.6rem; }
+    .orn-diamond { width: 7px; height: 7px; background: var(--gold); transform: rotate(45deg); box-shadow: 0 0 12px var(--gold), 0 0 24px rgba(200,168,75,0.4); }
+    .orn-dot { width: 3px; height: 3px; background: var(--gold-dim); transform: rotate(45deg); }
+
+    .hero-meta { font-family: 'Cinzel', serif; font-size: 0.6rem; font-weight: 400; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); line-height: 2.8; }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; justify-content: center;
+      border-bottom: 1px solid var(--border);
+      background: rgba(6,5,4,0.92);
+      backdrop-filter: blur(20px) saturate(1.4);
+    }
+
+    nav button { font-family: 'Cinzel', serif; font-size: 0.58rem; font-weight: 400; letter-spacing: 0.35em; text-transform: uppercase; background: none; border: none; border-bottom: 1px solid transparent; padding: 1.4rem 3rem 1.3rem; cursor: pointer; color: var(--muted2); transition: color 0.4s, border-color 0.4s, text-shadow 0.4s; margin-bottom: -1px; }
+    nav button.active { color: var(--gold-light); border-bottom-color: var(--gold); text-shadow: 0 0 30px rgba(200,168,75,0.5); }
+    nav button:hover:not(.active) { color: var(--gold-dim); }
+
+    /* ── MAIN ── */
+    main { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 4rem 3rem; }
+
+    .view { display: none; }
+    .view.active { display: block; animation: fadeUp 0.5s ease both; }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── STATS ── */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin-bottom: 1px; border: 1px solid var(--border); }
+    .stat { background: var(--black-card); padding: 2rem; border-right: 1px solid var(--border-dim); position: relative; }
+    .stat:last-child { border-right: none; }
+    .stat::before { content: ''; position: absolute; bottom: 0; left: 15%; right: 15%; height: 1px; background: linear-gradient(to right, transparent, var(--gold-dim), transparent); }
+    .stat-num { font-family: 'Cormorant', serif; font-size: 4rem; font-weight: 300; line-height: 1; color: var(--gold); }
+    .stat-num.blue   { color: var(--neon-blue); text-shadow: 0 0 30px var(--nb-glow); }
+    .stat-num.purple { color: var(--neon-purple); text-shadow: 0 0 30px var(--np-glow); }
+    .stat-num.dim    { color: var(--muted); }
+    .stat-label { font-family: 'Cinzel', serif; font-size: 0.5rem; font-weight: 400; letter-spacing: 0.28em; text-transform: uppercase; color: var(--muted); margin-top: 0.5rem; }
+
+    .cap-wrap { background: var(--black-card); border: 1px solid var(--border); border-top: none; padding: 1.6rem 2rem; margin-bottom: 4rem; }
+    .cap-header { display: flex; justify-content: space-between; margin-bottom: 1rem; }
+    .cap-label { font-family: 'Cinzel', serif; font-size: 0.5rem; font-weight: 400; letter-spacing: 0.28em; text-transform: uppercase; color: var(--muted); }
+    .cap-count { font-family: 'Cormorant', serif; font-size: 0.85rem; letter-spacing: 0.1em; color: var(--gold-dim); }
+    .cap-track { height: 1px; background: rgba(255,255,255,0.04); }
+    .cap-fill { height: 100%; background: linear-gradient(to right, var(--gold-dim), var(--gold), var(--gold-bright)); box-shadow: 0 0 16px var(--gold-glow); transition: width 1s cubic-bezier(0.4,0,0.2,1); }
+    .cap-fill.warn { background: linear-gradient(to right, #b86030, #d88050); }
+    .cap-fill.full { background: linear-gradient(to right, #7a2828, #b03838); }
+
+    /* ── ROSTER ── */
+    .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 2px; }
+
+    .roster-card { background: var(--black-card); border: 1px solid var(--border-dim); overflow: hidden; position: relative; aspect-ratio: 3/4; cursor: pointer; transition: transform 0.4s cubic-bezier(0.4,0,0.2,1), box-shadow 0.4s, border-color 0.4s; animation: fadeUp 0.6s ease both; }
+    .roster-card:nth-child(3n)   { border-top-color: rgba(91,200,245,0.2); }
+    .roster-card:nth-child(3n+1) { border-top-color: rgba(195,168,232,0.2); }
+    .roster-card:nth-child(3n+2) { border-top-color: rgba(200,168,75,0.2); }
+    .roster-card:hover { transform: translateY(-6px) scale(1.015); box-shadow: 0 24px 60px rgba(0,0,0,0.8), 0 0 32px var(--gold-glow); border-color: var(--gold-dim); z-index: 2; }
+    .roster-card img { width: 100%; height: 100%; object-fit: cover; display: block; filter: brightness(0.8) contrast(1.08) saturate(0.85); transition: filter 0.4s; }
+    .roster-card:hover img { filter: brightness(0.95) contrast(1.06) saturate(1); }
+
+    .no-photo { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(145deg, var(--black-card) 0%, var(--black-raise) 100%); }
+    .no-photo-initial { font-family: 'Cormorant', serif; font-size: 5.5rem; font-weight: 300; font-style: italic; color: var(--gold-dim); opacity: 0.35; line-height: 1; }
+
+    .roster-overlay { position: absolute; bottom: 0; left: 0; right: 0; padding: 4rem 1.4rem 1.4rem; background: linear-gradient(to top, rgba(6,5,4,0.97) 0%, rgba(6,5,4,0.65) 50%, transparent 100%); }
+    .roster-name { font-family: 'Cormorant', serif; font-size: 1.4rem; font-weight: 400; font-style: italic; letter-spacing: 0.04em; color: var(--cream); line-height: 1.1; }
+    .roster-role-tag { display: inline-block; margin-top: 0.45rem; font-family: 'Cinzel', serif; font-size: 0.46rem; font-weight: 400; letter-spacing: 0.22em; text-transform: uppercase; padding: 0.22rem 0.65rem; border: 1px solid var(--gold-dim); color: var(--gold); }
+    .roster-bio-hint { font-family: 'Cinzel', serif; font-size: 0.4rem; font-weight: 400; letter-spacing: 0.18em; text-transform: uppercase; color: var(--neon-blue); margin-top: 0.6rem; opacity: 0.7; transition: opacity 0.2s; }
+    .roster-card:hover .roster-bio-hint { opacity: 1; }
+
+    /* ── MODAL ── */
+    .modal-backdrop { display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(6,5,4,0.92); backdrop-filter: blur(12px); align-items: center; justify-content: center; padding: 2rem; }
+    .modal-backdrop.open { display: flex; animation: fadeUp 0.3s ease both; }
+    .modal { background: var(--black-card); border: 1px solid var(--border); max-width: 760px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative; }
+    .modal-close { position: absolute; top: 1.2rem; right: 1.4rem; font-family: 'Cinzel', serif; font-size: 0.55rem; font-weight: 400; letter-spacing: 0.28em; text-transform: uppercase; color: var(--muted); background: none; border: none; cursor: pointer; z-index: 10; transition: color 0.2s; }
+    .modal-close:hover { color: var(--gold); }
+    .modal-photos { display: grid; grid-template-columns: 2fr 1fr; gap: 2px; }
+    .modal-photo-primary { aspect-ratio: 3/4; overflow: hidden; }
+    .modal-photo-primary img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .modal-photo-secondary { display: flex; flex-direction: column; gap: 2px; }
+    .modal-photo-secondary .sec-thumb { flex: 1; overflow: hidden; }
+    .modal-photo-secondary .sec-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .modal-photo-secondary .sec-thumb.empty { background: var(--black-raise); display: flex; align-items: center; justify-content: center; }
+    .modal-photo-secondary .sec-empty-icon { font-family: 'Cormorant', serif; font-size: 1.5rem; font-style: italic; color: var(--gold-dim); opacity: 0.2; }
+    .modal-no-photo { grid-column: 1/-1; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; background: linear-gradient(145deg, var(--black-card), var(--black-raise)); }
+    .modal-info { padding: 2rem 2.5rem 2.5rem; }
+    .modal-name { font-family: 'Cormorant', serif; font-size: 2.2rem; font-weight: 300; font-style: italic; color: var(--cream); line-height: 1; margin-bottom: 0.3rem; }
+    .modal-role { display: inline-block; margin-bottom: 1rem; font-family: 'Cinzel', serif; font-size: 0.5rem; font-weight: 400; letter-spacing: 0.24em; text-transform: uppercase; padding: 0.25rem 0.7rem; border: 1px solid var(--gold-dim); color: var(--gold); }
+    .modal-bio-label { font-family: 'Cinzel', serif; font-size: 0.48rem; font-weight: 400; letter-spacing: 0.28em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 0.6rem; }
+    .modal-bio { font-family: 'Cormorant', serif; font-size: 1.05rem; font-weight: 300; font-style: italic; line-height: 1.8; color: var(--cream); opacity: 0.8; }
+    .modal-divider { border: none; border-top: 1px solid var(--border-dim); margin: 1.5rem 0; }
+
+    /* ── FORMS ── */
+    .form-wrap { max-width: 600px; margin: 0 auto; }
+    .form-title { font-family: 'Cinzel', serif; font-size: 2.4rem; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 0.6rem; background: linear-gradient(135deg, var(--gold-bright), var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .form-sub { font-family: 'Cormorant', serif; font-size: 1rem; font-style: italic; font-weight: 300; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 3.5rem; }
+    .form-group { margin-bottom: 2.2rem; }
+
+    label { display: block; font-family: 'Cinzel', serif; font-size: 0.5rem; font-weight: 400; letter-spacing: 0.28em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 0.7rem; }
+    label .req { color: var(--neon-blue); margin-left: 0.2rem; }
+
+    input[type="text"], input[type="password"], input[type="number"], textarea {
+      width: 100%; font-family: 'Cormorant', serif; font-size: 1.1rem; font-weight: 300; letter-spacing: 0.05em;
+      background: var(--black-card); border: 1px solid var(--border); padding: 1rem 1.2rem; color: var(--cream); outline: none;
+      transition: border-color 0.3s, box-shadow 0.3s; -webkit-appearance: none;
+    }
+    input:focus, textarea:focus { border-color: var(--gold-dim); box-shadow: 0 0 0 1px rgba(200,168,75,0.15), 0 0 28px var(--gold-glow2); }
+    textarea { resize: vertical; min-height: 100px; }
+
+    /* PHOTO SLOTS */
+    .photo-slots { display: grid; grid-template-columns: 2fr 1fr; gap: 2px; margin-bottom: 0.8rem; }
+    .photo-slot { background: var(--black-card); border: 1px dashed var(--border); position: relative; cursor: pointer; overflow: hidden; transition: border-color 0.3s, background 0.3s; }
+    .photo-slot:hover { border-color: var(--gold-dim); background: rgba(200,168,75,0.04); }
+    .photo-slot.drag-over { border-color: var(--gold); background: rgba(200,168,75,0.07); }
+    .photo-slot input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .slot-primary { aspect-ratio: 3/4; }
+    .slot-secondary-col { display: flex; flex-direction: column; gap: 2px; }
+    .slot-secondary { flex: 1; }
+    .slot-inner { width: 100%; height: 100%; min-height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem; padding: 1rem; }
+    .slot-icon { font-family: 'Cormorant', serif; font-size: 1.8rem; font-style: italic; color: var(--gold-dim); opacity: 0.3; }
+    .slot-label { font-family: 'Cinzel', serif; font-size: 0.45rem; font-weight: 400; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); text-align: center; }
+    .slot-preview { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .slot-remove { position: absolute; top: 0.4rem; right: 0.4rem; z-index: 10; font-family: 'Cinzel', serif; font-size: 0.45rem; letter-spacing: 0.15em; background: rgba(6,5,4,0.8); border: 1px solid var(--border-dim); color: var(--muted); padding: 0.2rem 0.4rem; cursor: pointer; transition: color 0.2s, border-color 0.2s; }
+    .slot-remove:hover { color: var(--gold); border-color: var(--gold-dim); }
+    .photo-rule-note { font-family: 'Cinzel', serif; font-size: 0.48rem; font-weight: 400; letter-spacing: 0.2em; text-transform: uppercase; color: var(--neon-blue); margin-bottom: 0.3rem; }
+    .photo-hint-note { font-family: 'Cormorant', serif; font-size: 0.85rem; font-style: italic; color: var(--muted); }
+
+    /* VIBE */
+    .vibe-picker { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+    .vibe-btn { display: flex; align-items: center; gap: 0.6rem; font-family: 'Cinzel', serif; font-size: 0.52rem; font-weight: 400; letter-spacing: 0.2em; text-transform: uppercase; padding: 0.6rem 1.1rem; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.25s; }
+    .vibe-swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .vibe-btn[data-vibe="up"]:hover, .vibe-btn[data-vibe="up"].selected { border-color: #e05050; color: #e05050; box-shadow: 0 0 16px rgba(224,80,80,0.25); }
+    .vibe-btn[data-vibe="down"]:hover, .vibe-btn[data-vibe="down"].selected { border-color: #5bc8f5; color: var(--neon-blue); box-shadow: 0 0 16px var(--nb-glow); }
+    .vibe-btn[data-vibe="dash"]:hover, .vibe-btn[data-vibe="dash"].selected { border-color: #d4b84a; color: #d4b84a; box-shadow: 0 0 16px rgba(212,184,74,0.25); }
+
+    /* BUTTONS */
+    .btn { font-family: 'Cinzel', serif; font-size: 0.55rem; font-weight: 400; letter-spacing: 0.35em; text-transform: uppercase; padding: 1.1rem 2.8rem; border: 1px solid var(--gold-dim); background: transparent; color: var(--gold-light); cursor: pointer; transition: all 0.35s; }
+    .btn:hover { border-color: var(--gold); box-shadow: 0 0 32px var(--gold-glow); }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .btn-solid { background: linear-gradient(135deg, var(--gold-dim), var(--gold)); color: var(--black); border-color: var(--gold); font-weight: 600; }
+    .btn-solid:hover { background: linear-gradient(135deg, var(--gold), var(--gold-bright)); box-shadow: 0 0 40px var(--gold-glow); }
+    .btn-blue { border-color: rgba(91,200,245,0.35); color: var(--neon-blue); }
+    .btn-blue:hover { border-color: var(--neon-blue); box-shadow: 0 0 24px var(--nb-glow); }
+    .btn-danger { border-color: rgba(180,60,60,0.4); color: #cc7070; }
+    .btn-danger:hover { border-color: #b04040; }
+    .btn-sm { padding: 0.5rem 1rem; font-size: 0.46rem; }
+    .btn-ghost { border-color: var(--border-dim); color: var(--muted); }
+    .btn-ghost:hover { border-color: var(--gold-dim); color: var(--gold-dim); }
+
+    .btn-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+    /* MESSAGES */
+    .msg { font-family: 'Cormorant', serif; font-size: 1rem; font-weight: 300; font-style: italic; letter-spacing: 0.04em; padding: 1.1rem 1.4rem; border-left: 2px solid; margin-bottom: 2rem; }
+    .msg-success { border-color: #4a7c59; background: rgba(74,124,89,0.07); color: #8ad4a0; }
+    .msg-error   { border-color: #8b3030; background: rgba(139,48,48,0.07); color: #cc8080; }
+    .msg-info    { border-color: var(--gold-dim); background: var(--gold-glow2); color: var(--gold-light); }
+
+    /* PIN DISPLAY */
+    .pin-display {
+      text-align: center; padding: 3rem; border: 1px solid var(--border); background: var(--black-card); margin: 2rem 0;
+    }
+    .pin-number {
+      font-family: 'Cinzel', serif; font-size: 4rem; font-weight: 700; letter-spacing: 0.5em;
+      background: linear-gradient(135deg, var(--gold-bright), var(--gold));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      filter: drop-shadow(0 0 20px rgba(200,168,75,0.4));
+      margin-bottom: 0.5rem;
+    }
+    .pin-label { font-family: 'Cinzel', serif; font-size: 0.52rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
+    .pin-warning { font-family: 'Cormorant', serif; font-size: 0.95rem; font-style: italic; color: var(--neon-blue); margin-top: 1rem; }
+
+    /* PIN INPUT */
+    .pin-input-wrap { display: flex; gap: 0.5rem; justify-content: center; margin: 1.5rem 0; }
+    .pin-digit {
+      width: 3rem; height: 4rem;
+      font-family: 'Cinzel', serif; font-size: 1.5rem; font-weight: 600;
+      text-align: center; letter-spacing: 0;
+      background: var(--black-card); border: 1px solid var(--border);
+      color: var(--gold-light); outline: none;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .pin-digit:focus { border-color: var(--gold-dim); box-shadow: 0 0 0 1px rgba(200,168,75,0.15), 0 0 20px var(--gold-glow2); }
+
+    /* ADMIN */
+    .admin-login-wrap { max-width: 380px; margin: 2rem auto; }
+    .section-label { font-family: 'Cinzel', serif; font-size: 0.5rem; font-weight: 400; letter-spacing: 0.35em; text-transform: uppercase; color: var(--gold-dim); border-bottom: 1px solid var(--border-dim); padding-bottom: 0.7rem; margin-bottom: 1.8rem; }
+    .pending-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 3.5rem; }
+    .pending-item { display: flex; align-items: center; gap: 1.4rem; background: var(--black-card); border: 1px solid var(--border-dim); padding: 1.1rem 1.4rem; }
+    .p-thumb { width: 56px; height: 56px; object-fit: cover; border: 1px solid var(--border-dim); flex-shrink: 0; }
+    .p-thumb-ph { width: 56px; height: 56px; flex-shrink: 0; background: var(--black-raise); border: 1px solid var(--border-dim); display: flex; align-items: center; justify-content: center; font-family: 'Cormorant', serif; font-size: 1.5rem; font-style: italic; color: var(--gold-dim); }
+    .p-info { flex: 1; }
+    .p-name { font-family: 'Cormorant', serif; font-size: 1.1rem; font-weight: 400; font-style: italic; color: var(--cream); }
+    .p-meta { font-family: 'Cinzel', serif; font-size: 0.45rem; letter-spacing: 0.14em; color: var(--muted); margin-top: 0.3rem; }
+    .p-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+    .approved-list { display: flex; flex-direction: column; gap: 2px; }
+    .approved-item { display: flex; align-items: center; gap: 1.2rem; background: var(--black-card); border: 1px solid var(--border-dim); padding: 0.8rem 1.4rem; }
+    .a-name { flex: 1; font-family: 'Cormorant', serif; font-size: 1rem; font-weight: 300; font-style: italic; color: var(--cream); }
+    .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 4rem; max-width: 580px; margin-bottom: 2.5rem; }
+    hr.div { border: none; border-top: 1px solid var(--border-dim); margin: 3.5rem 0; }
+    .empty-state { font-family: 'Cormorant', serif; font-size: 1rem; font-style: italic; font-weight: 300; color: var(--muted2); text-align: center; padding: 3.5rem; border: 1px solid var(--border-dim); }
+    .full-overlay { text-align: center; padding: 6rem 2rem; border: 1px solid var(--border); background: var(--black-card); }
+    .full-title { font-family: 'Cinzel', serif; font-size: 2.5rem; font-weight: 700; color: var(--gold); margin-bottom: 1rem; filter: drop-shadow(0 0 20px rgba(200,168,75,0.3)); }
+    .full-sub { font-family: 'Cormorant', serif; font-size: 1.1rem; font-style: italic; font-weight: 300; color: var(--muted); }
+
+    /* SESSION INDICATOR */
+    .session-bar { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 200; display: flex; align-items: center; gap: 0.8rem; background: var(--black-card); border: 1px solid var(--border-dim); padding: 0.7rem 1.2rem; }
+    .session-name { font-family: 'Cinzel', serif; font-size: 0.48rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-dim); }
+    .session-btn { font-family: 'Cinzel', serif; font-size: 0.44rem; letter-spacing: 0.18em; text-transform: uppercase; background: none; border: none; color: var(--muted); cursor: pointer; transition: color 0.2s; }
+    .session-btn:hover { color: var(--gold); }
+
+    @media (max-width: 700px) {
+      main { padding: 2.5rem 1.5rem; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .settings-grid { grid-template-columns: 1fr; }
+      nav button { padding: 1.2rem 1.5rem; font-size: 0.5rem; }
+      .hero-title { font-size: 3rem; }
+      .modal-photos { grid-template-columns: 1fr; }
+      .modal-photo-secondary { flex-direction: row; }
+      .pin-digit { width: 2.4rem; height: 3.2rem; font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ CONFIG ══════════════════════════════════════════════════════ -->
+<script>
+  const CONFIG = {
+    eventName:       "Elysium Room",
+    eventDate:       "Saturday, April 19 · 9pm",
+    eventLocation:   "Location revealed upon confirmation",
+    capacity:        30,
+    adminPassword:   "elysium2024",       // ← change before deploying
+    guestPreviewPin: "000000",            // ← one-time shared preview PIN
+    requireApproval: true,
+  };
+
+  const SUPABASE_URL  = "https://jgbucleklafprtpfpmxi.supabase.co";
+  const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnYnVjbGVrbGFmcHJ0cGZwbXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0NjM0NjksImV4cCI6MjA4OTAzOTQ2OX0.j-u5YgGpP_kno6__IkmrdSo9WGwpguYjWf7jTeF6I3A";
+</script>
+<!-- ════════════════════════════════════════════════════════════════ -->
+
+<div class="hero">
+  <div class="hero-eyebrow">A Private Invitation</div>
+  <div class="hero-title">ELYSIUM</div>
+  <div class="hero-sub">Room</div>
+  <div class="hero-ornament">
+    <div class="orn-line"></div>
+    <div class="orn-center"><div class="orn-dot"></div><div class="orn-diamond"></div><div class="orn-dot"></div></div>
+    <div class="orn-line"></div>
+  </div>
+  <div class="hero-meta" id="heroMeta"></div>
+</div>
+
+<nav id="mainNav">
+  <button class="active" onclick="showView('roster',this)">Roster</button>
+  <button onclick="showView('rsvp',this)">RSVP</button>
+  <button onclick="showView('account',this)">My Profile</button>
+  <button onclick="showView('admin',this)">Admin</button>
+</nav>
+
+<main>
+  <div id="view-roster" class="view active"><div id="rosterContent"></div></div>
+  <div id="view-rsvp"   class="view"><div class="form-wrap" id="rsvpContent"></div></div>
+  <div id="view-account" class="view"><div class="form-wrap" id="accountContent"></div></div>
+  <div id="view-admin"  class="view"><div id="adminContent"></div></div>
+</main>
+
+<!-- MODAL -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="closeModal(event)">
+  <div class="modal" id="modalBox">
+    <button class="modal-close" onclick="closeModalDirect()">Close &nbsp;✕</button>
+    <div id="modalInner"></div>
+  </div>
+</div>
+
+<!-- SESSION BAR -->
+<div class="session-bar" id="sessionBar" style="display:none">
+  <span class="session-name" id="sessionName"></span>
+  <button class="session-btn" onclick="editProfile()">Edit Profile</button>
+  <button class="session-btn" onclick="logout()">Log Out</button>
+</div>
+
+<script>
+// ══ SUPABASE INIT ══════════════════════════════════════════════════
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ══ STATE ══════════════════════════════════════════════════════════
+let adminIn      = false;
+let currentGuest = null; // { id, name, pin } of logged-in guest
+let isPreview    = false; // true if logged in with shared guest PIN
+let photoSlots   = [null, null, null];
+let selectedVibes = [];
+
+// ══ INIT ═══════════════════════════════════════════════════════════
+document.getElementById('heroMeta').innerHTML = `${CONFIG.eventDate}&ensp;·&ensp;${CONFIG.eventLocation}`;
+
+// Restore session from localStorage
+(function restoreSession() {
+  const saved = localStorage.getItem('elysium_session');
+  if (saved) {
+    try {
+      const s = JSON.parse(saved);
+      if (s.pin === CONFIG.guestPreviewPin) {
+        isPreview = true; currentGuest = null;
+        showSessionBar('Preview Guest');
+      } else {
+        currentGuest = s;
+        showSessionBar(s.name);
+      }
+    } catch {}
+  }
+  renderRoster();
+  renderRsvp();
+})();
+
+// ══ NAV ════════════════════════════════════════════════════════════
+function showView(name, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  else document.querySelector(`[onclick="showView('${name}',this)"]`)?.classList.add('active');
+  if (name === 'roster')  renderRoster();
+  if (name === 'rsvp')    renderRsvp();
+  if (name === 'account') renderAccount();
+  if (name === 'admin')   renderAdmin();
+}
+
+// ══ SESSION BAR ════════════════════════════════════════════════════
+function showSessionBar(name) {
+  const bar = document.getElementById('sessionBar');
+  document.getElementById('sessionName').textContent = name;
+  bar.style.display = 'flex';
+}
+
+function hideSessionBar() {
+  document.getElementById('sessionBar').style.display = 'none';
+}
+
+function logout() {
+  currentGuest = null; isPreview = false;
+  localStorage.removeItem('elysium_session');
+  hideSessionBar();
+  renderRoster();
+  renderRsvp();
+  renderAccount();
+}
+
+function editProfile() {
+  showView('account', null);
+}
+
+// ══ ROSTER ═════════════════════════════════════════════════════════
+async function renderRoster() {
+  const el = document.getElementById('rosterContent');
+
+  if (!currentGuest && !isPreview && !adminIn) {
+    el.innerHTML = renderPinGate('roster');
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="stats-row">
+      <div class="stat"><div class="stat-num" id="statA">—</div><div class="stat-label">Confirmed</div></div>
+      <div class="stat"><div class="stat-num blue" id="statP">—</div><div class="stat-label">Pending</div></div>
+      <div class="stat"><div class="stat-num purple" id="statR">—</div><div class="stat-label">Remaining</div></div>
+      <div class="stat"><div class="stat-num dim" id="statC">${CONFIG.capacity}</div><div class="stat-label">Capacity</div></div>
+    </div>
+    <div class="cap-wrap">
+      <div class="cap-header"><span class="cap-label">Capacity</span><span class="cap-count" id="capText"></span></div>
+      <div class="cap-track"><div class="cap-fill" id="capFill" style="width:0%"></div></div>
+    </div>
+    <div id="guestGrid"><div class="empty-state">Loading roster…</div></div>
+  `;
+
+  const { data: guests, error } = await sb.from('guests').select('*').eq('status','approved').order('created_at');
+  if (error) { document.getElementById('guestGrid').innerHTML = `<div class="empty-state">Could not load roster.</div>`; return; }
+
+  const { count: pending } = await sb.from('guests').select('*', {count:'exact',head:true}).eq('status','pending');
+  const approved = guests.length;
+  const rem = Math.max(0, CONFIG.capacity - approved);
+  const pct = Math.min(100, Math.round(approved / CONFIG.capacity * 100));
+
+  document.getElementById('statA').textContent   = approved;
+  document.getElementById('statP').textContent   = pending || 0;
+  document.getElementById('statR').textContent   = rem;
+  document.getElementById('capText').textContent = `${approved} / ${CONFIG.capacity}`;
+  const fill = document.getElementById('capFill');
+  fill.style.width = pct + '%';
+  fill.className = 'cap-fill' + (pct >= 100 ? ' full' : pct >= 80 ? ' warn' : '');
+
+  if (!guests.length) {
+    document.getElementById('guestGrid').innerHTML = `<div class="empty-state">No confirmed guests yet — be among the first.</div>`;
+    return;
+  }
+
+  document.getElementById('guestGrid').innerHTML = `<div class="roster-grid">${guests.map((g,i) => {
+    const photos = g.photos || [];
+    const primary = photos[0] || null;
+    const vibes = g.vibes || [];
+    return `
+    <div class="roster-card" onclick="openModal('${g.id}')" style="animation-delay:${i*0.05}s">
+      ${primary ? `<img src="${primary}" alt="" />` : `<div class="no-photo"><div class="no-photo-initial">${g.name.charAt(0).toUpperCase()}</div></div>`}
+      <div class="roster-overlay">
+        <div class="roster-name">${g.name}</div>
+        ${g.role ? `<div class="roster-role-tag">${g.role}</div>` : ''}
+        ${vibes.length ? `<div style="margin-top:.45rem;display:flex;gap:.35rem;">
+          ${vibes.map(v => {
+            const map = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
+            const sym = {up:'↑',down:'↓',dash:'—'};
+            return `<span style="font-family:'Cinzel',serif;font-size:0.62rem;color:${map[v]||'#888'};letter-spacing:.1em;">${sym[v]||v}</span>`;
+          }).join('')}
+        </div>` : ''}
+        ${(g.bio || photos.length > 1) ? `<div class="roster-bio-hint">Tap to view profile</div>` : ''}
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ══ MODAL ══════════════════════════════════════════════════════════
+async function openModal(id) {
+  const { data: g } = await sb.from('guests').select('*').eq('id', id).single();
+  if (!g) return;
+  const photos = g.photos || [];
+  const p0 = photos[0]||null, p1 = photos[1]||null, p2 = photos[2]||null;
+  const vibes = g.vibes || [];
+
+  let photosHtml = p0 ? `
+    <div class="modal-photos">
+      <div class="modal-photo-primary"><img src="${p0}" alt="" /></div>
+      <div class="modal-photo-secondary">
+        <div class="sec-thumb ${p1?'':'empty'}">${p1?`<img src="${p1}" alt="" />`:`<div class="sec-empty-icon">✦</div>`}</div>
+        <div class="sec-thumb ${p2?'':'empty'}">${p2?`<img src="${p2}" alt="" />`:`<div class="sec-empty-icon">✦</div>`}</div>
+      </div>
+    </div>` : `<div class="modal-photos"><div class="modal-no-photo"><div class="no-photo-initial">${g.name.charAt(0).toUpperCase()}</div></div></div>`;
+
+  document.getElementById('modalInner').innerHTML = `
+    ${photosHtml}
+    <div class="modal-info">
+      <div class="modal-name">${g.name}</div>
+      ${g.role ? `<div class="modal-role">${g.role}</div>` : ''}
+      ${vibes.length ? `<div style="display:flex;gap:.5rem;margin-top:.8rem;margin-bottom:.5rem;">
+        ${vibes.map(v => {
+          const map = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
+          const sym = {up:'↑',down:'↓',dash:'—'};
+          return `<span style="font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:.15em;color:${map[v]||'#888'};border:1px solid ${map[v]||'#888'}33;padding:.2rem .6rem;">${sym[v]||v}</span>`;
+        }).join('')}
+      </div>` : ''}
+      ${g.bio ? `<hr class="modal-divider" /><div class="modal-bio-label">About</div><div class="modal-bio">${g.bio.replace(/\n/g,'<br>')}</div>` : ''}
+    </div>`;
+
+  document.getElementById('modalBackdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(e) { if (e.target === document.getElementById('modalBackdrop')) closeModalDirect(); }
+function closeModalDirect() { document.getElementById('modalBackdrop').classList.remove('open'); document.body.style.overflow = ''; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModalDirect(); });
+
+// ══ PIN GATE ═══════════════════════════════════════════════════════
+function renderPinGate(target) {
+  return `
+    <div class="form-wrap" style="margin-top:2rem;">
+      <h2 class="form-title">Enter PIN</h2>
+      <p class="form-sub">Use your personal RSVP PIN or the guest preview code.</p>
+      <div id="pinMsg"></div>
+      <div class="pin-input-wrap" id="pinInputs">
+        ${[0,1,2,3,4,5].map(i => `<input class="pin-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]" id="pd${i}" oninput="pinNext(${i})" onkeydown="pinBack(event,${i})" />`).join('')}
+      </div>
+      <div class="btn-row" style="margin-top:1.5rem;">
+        <button class="btn btn-solid" onclick="submitPin('${target}')">Enter</button>
+      </div>
+    </div>`;
+}
+
+function pinNext(i) {
+  const el = document.getElementById('pd' + i);
+  el.value = el.value.replace(/[^0-9]/g,'');
+  if (el.value && i < 5) document.getElementById('pd' + (i+1))?.focus();
+}
+
+function pinBack(e, i) {
+  if (e.key === 'Backspace' && !document.getElementById('pd'+i).value && i > 0)
+    document.getElementById('pd'+(i-1))?.focus();
+  if (e.key === 'Enter') submitPin('roster');
+}
+
+function getEnteredPin() {
+  return [0,1,2,3,4,5].map(i => document.getElementById('pd'+i)?.value||'').join('');
+}
+
+async function submitPin(target) {
+  const pin = getEnteredPin();
+  const msgEl = document.getElementById('pinMsg');
+
+  if (pin.length < 6) {
+    msgEl.innerHTML = `<div class="msg msg-error">Please enter your full 6-digit PIN.</div>`; return;
+  }
+
+  // Check guest preview PIN
+  if (pin === CONFIG.guestPreviewPin) {
+    isPreview = true; currentGuest = null;
+    localStorage.setItem('elysium_session', JSON.stringify({pin}));
+    showSessionBar('Preview Guest');
+    renderRoster(); return;
+  }
+
+  // Check personal PIN in Supabase
+  const { data, error } = await sb.from('guests').select('*').eq('pin', pin).single();
+  if (error || !data) {
+    msgEl.innerHTML = `<div class="msg msg-error">PIN not recognised.</div>`; return;
+  }
+
+  currentGuest = data; isPreview = false;
+  localStorage.setItem('elysium_session', JSON.stringify({id:data.id, name:data.name, pin}));
+  showSessionBar(data.name);
+
+  if (target === 'roster') renderRoster();
+  else if (target === 'account') renderAccount();
+}
+
+// ══ RSVP FORM ══════════════════════════════════════════════════════
+async function renderRsvp() {
+  const el = document.getElementById('rsvpContent');
+
+  if (currentGuest && !isPreview) {
+    el.innerHTML = `
+      <h2 class="form-title">Already Registered</h2>
+      <p class="form-sub">You're on the list, ${currentGuest.name}.</p>
+      <div class="btn-row">
+        <button class="btn btn-solid" onclick="showView('account',null)">Edit My Profile</button>
+        <button class="btn btn-ghost" onclick="showView('roster',null)">View Roster</button>
+      </div>`;
+    return;
+  }
+
+  const { count: approvedCount } = await sb.from('guests').select('*',{count:'exact',head:true}).eq('status','approved');
+  if (approvedCount >= CONFIG.capacity) {
+    el.innerHTML = `<div class="full-overlay"><div class="full-title">At Capacity</div><div class="full-sub">All ${CONFIG.capacity} places have been reserved.</div></div>`;
+    return;
+  }
+
+  photoSlots = [null, null, null]; selectedVibes = [];
+  const rem = CONFIG.capacity - approvedCount;
+
+  el.innerHTML = `
+    <h2 class="form-title">Reserve Your Place</h2>
+    <p class="form-sub">${rem} of ${CONFIG.capacity} places remaining</p>
+    <div id="formMsg"></div>
+
+    <div class="form-group">
+      <label>Name <span class="req">*</span></label>
+      <input type="text" id="rName" placeholder="Your name" />
+    </div>
+
+    <div class="form-group">
+      <label>Role <span class="req">*</span></label>
+      <input type="text" id="rRole" placeholder="Your role at the event" maxlength="40" />
+      <div style="margin-top:0.6rem;">
+        <div class="vibe-picker">
+          <button type="button" class="vibe-btn" data-vibe="up" onclick="toggleVibe('up',this)">
+            <span class="vibe-swatch" style="background:#e05050;box-shadow:0 0 6px rgba(224,80,80,0.5)"></span>↑
+          </button>
+          <button type="button" class="vibe-btn" data-vibe="down" onclick="toggleVibe('down',this)">
+            <span class="vibe-swatch" style="background:#5bc8f5;box-shadow:0 0 6px rgba(91,200,245,0.5)"></span>↓
+          </button>
+          <button type="button" class="vibe-btn" data-vibe="dash" onclick="toggleVibe('dash',this)">
+            <span class="vibe-swatch" style="background:#d4b84a;box-shadow:0 0 6px rgba(212,184,74,0.5)"></span>—
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Photos <span style="opacity:.45;font-size:.8em">(up to 3 · optional)</span></label>
+      <div class="photo-slots">
+        <div class="photo-slot slot-primary" id="slot0">
+          <input type="file" accept="image/*" onchange="handleSlot(0,this)" />
+          <div class="slot-inner"><div class="slot-icon">✦</div><div class="slot-label">Primary</div></div>
+        </div>
+        <div class="slot-secondary-col">
+          <div class="photo-slot slot-secondary" id="slot1">
+            <input type="file" accept="image/*" onchange="handleSlot(1,this)" />
+            <div class="slot-inner"><div class="slot-icon" style="font-size:1.2rem">✦</div><div class="slot-label">2nd</div></div>
+          </div>
+          <div class="photo-slot slot-secondary" id="slot2">
+            <input type="file" accept="image/*" onchange="handleSlot(2,this)" />
+            <div class="slot-inner"><div class="slot-icon" style="font-size:1.2rem">✦</div><div class="slot-label">3rd</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="photo-rule-note">Faceless encouraged — group privacy</div>
+      <div class="photo-hint-note">Body, silhouette, abstract. Your call.</div>
+    </div>
+
+    <div class="form-group">
+      <label>Bio <span style="opacity:.45;font-size:.8em">(optional)</span></label>
+      <textarea id="rBio" placeholder="A few words about yourself…"></textarea>
+    </div>
+
+    <button class="btn btn-solid" onclick="submitRsvp()">Request Admission</button>
+  `;
+
+  [0,1,2].forEach(i => {
+    const slot = document.getElementById('slot'+i);
+    slot.addEventListener('dragover', e => { e.preventDefault(); slot.classList.add('drag-over'); });
+    slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
+    slot.addEventListener('drop', e => { e.preventDefault(); slot.classList.remove('drag-over'); const f=e.dataTransfer.files[0]; if(f&&f.type.startsWith('image/')) processSlot(i,f); });
+  });
+}
+
+function toggleVibe(v, btn) {
+  if (selectedVibes.includes(v)) { selectedVibes = selectedVibes.filter(x=>x!==v); btn.classList.remove('selected'); }
+  else { if (selectedVibes.length >= 2) return; selectedVibes.push(v); btn.classList.add('selected'); }
+}
+
+function handleSlot(i, input) { const f=input.files[0]; if(f) processSlot(i,f); }
+
+function processSlot(i, file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const max=700; let w=img.width, h=img.height;
+      if(w>max||h>max){ if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;} }
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      photoSlots[i]=c.toDataURL('image/jpeg',0.8); updateSlotUI(i);
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateSlotUI(i) {
+  const slot=document.getElementById('slot'+i);
+  if (!slot) return;
+  const inner=slot.querySelector('.slot-inner');
+  slot.querySelector('.slot-preview')?.remove();
+  slot.querySelector('.slot-remove')?.remove();
+  if (photoSlots[i]) {
+    inner.style.display='none';
+    const img=document.createElement('img'); img.className='slot-preview'; img.src=photoSlots[i];
+    const btn=document.createElement('button'); btn.className='slot-remove'; btn.textContent='✕';
+    btn.onclick=ev=>{ev.stopPropagation();photoSlots[i]=null;inner.style.display='';img.remove();btn.remove();};
+    slot.appendChild(img); slot.appendChild(btn);
+  } else { inner.style.display=''; }
+}
+
+function generatePin() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+async function submitRsvp() {
+  const name  = document.getElementById('rName').value.trim();
+  const role  = document.getElementById('rRole').value.trim();
+  const msgEl = document.getElementById('formMsg');
+
+  if (!name) { msgEl.innerHTML=`<div class="msg msg-error">Please enter your name.</div>`; return; }
+  if (!role) { msgEl.innerHTML=`<div class="msg msg-error">Please enter your role.</div>`; return; }
+
+  const btn = document.querySelector('#rsvpContent .btn-solid');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+
+  const pin = generatePin();
+  const photos = photoSlots.filter(Boolean);
+
+  const { data, error } = await sb.from('guests').insert({
+    name,
+    role,
+    photos,
+    vibes:  [...selectedVibes],
+    bio:    document.getElementById('rBio').value.trim(),
+    pin,
+    status: CONFIG.requireApproval ? 'pending' : 'approved',
+  }).select().single();
+
+  if (error) {
+    msgEl.innerHTML=`<div class="msg msg-error">Something went wrong. Please try again.</div>`;
+    btn.disabled=false; btn.textContent='Request Admission'; return;
+  }
+
+  currentGuest = data; isPreview = false;
+  localStorage.setItem('elysium_session', JSON.stringify({id:data.id, name:data.name, pin}));
+  showSessionBar(data.name);
+
+  document.getElementById('rsvpContent').innerHTML = `
+    <h2 class="form-title" style="margin-bottom:1rem;">Thank you, ${name}.</h2>
+    <p class="form-sub">${CONFIG.requireApproval ? 'Your request is under review.' : 'You are confirmed.'}</p>
+    <div class="pin-display">
+      <div class="pin-label">Your Personal PIN</div>
+      <div class="pin-number">${pin}</div>
+      <div class="pin-warning">Save this — it's your key to log back in and edit your profile.</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-solid" onclick="showView('roster',null)">View Roster</button>
+    </div>`;
+}
+
+// ══ ACCOUNT / PROFILE EDIT ═════════════════════════════════════════
+async function renderAccount() {
+  const el = document.getElementById('accountContent');
+
+  if (!currentGuest && !isPreview) {
+    el.innerHTML = renderPinGate('account'); return;
+  }
+
+  if (isPreview) {
+    el.innerHTML = `
+      <h2 class="form-title">Preview Access</h2>
+      <p class="form-sub">You're browsing as a guest. RSVP to create your profile.</p>
+      <button class="btn btn-solid" onclick="showView('rsvp',null)">RSVP Now</button>`;
+    return;
+  }
+
+  // Reload fresh data
+  const { data: g } = await sb.from('guests').select('*').eq('id', currentGuest.id).single();
+  if (!g) { el.innerHTML=`<div class="empty-state">Profile not found.</div>`; return; }
+
+  photoSlots = [...(g.photos||[null,null,null]).slice(0,3)];
+  while (photoSlots.length < 3) photoSlots.push(null);
+  selectedVibes = [...(g.vibes||[])];
+
+  el.innerHTML = `
+    <h2 class="form-title">My Profile</h2>
+    <p class="form-sub" style="margin-bottom:1.5rem;">${g.name} &ensp;·&ensp; <span style="color:var(--gold-dim)">PIN: ${g.pin}</span></p>
+    <div id="accountMsg"></div>
+
+    <div class="form-group">
+      <label>Role <span class="req">*</span></label>
+      <input type="text" id="eRole" value="${g.role||''}" maxlength="40" />
+      <div style="margin-top:0.6rem;">
+        <div class="vibe-picker" id="editVibePicker">
+          ${['up','down','dash'].map(v => {
+            const colors={up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
+            const syms={up:'↑',down:'↓',dash:'—'};
+            return `<button type="button" class="vibe-btn ${selectedVibes.includes(v)?'selected':''}" data-vibe="${v}" onclick="toggleVibeEdit('${v}',this)">
+              <span class="vibe-swatch" style="background:${colors[v]};box-shadow:0 0 6px ${colors[v]}88"></span>${syms[v]}
+            </button>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Photos <span style="opacity:.45;font-size:.8em">(up to 3)</span></label>
+      <div class="photo-slots">
+        <div class="photo-slot slot-primary" id="slot0">
+          <input type="file" accept="image/*" onchange="handleSlot(0,this)" />
+          <div class="slot-inner"><div class="slot-icon">✦</div><div class="slot-label">Primary</div></div>
+        </div>
+        <div class="slot-secondary-col">
+          <div class="photo-slot slot-secondary" id="slot1">
+            <input type="file" accept="image/*" onchange="handleSlot(1,this)" />
+            <div class="slot-inner"><div class="slot-icon" style="font-size:1.2rem">✦</div><div class="slot-label">2nd</div></div>
+          </div>
+          <div class="photo-slot slot-secondary" id="slot2">
+            <input type="file" accept="image/*" onchange="handleSlot(2,this)" />
+            <div class="slot-inner"><div class="slot-icon" style="font-size:1.2rem">✦</div><div class="slot-label">3rd</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="photo-rule-note">Faceless encouraged — group privacy</div>
+      <div class="photo-hint-note">Body, silhouette, abstract. Your call.</div>
+    </div>
+
+    <div class="form-group">
+      <label>Bio <span style="opacity:.45;font-size:.8em">(optional)</span></label>
+      <textarea id="eBio" placeholder="A few words about yourself…">${g.bio||''}</textarea>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-solid" onclick="saveProfile()">Save Changes</button>
+      <button class="btn btn-ghost" onclick="showView('roster',null)">Back to Roster</button>
+    </div>
+  `;
+
+  // Restore existing photos in slots
+  [0,1,2].forEach(i => { if (photoSlots[i]) updateSlotUI(i); });
+  [0,1,2].forEach(i => {
+    const slot=document.getElementById('slot'+i);
+    if (!slot) return;
+    slot.addEventListener('dragover', e=>{e.preventDefault();slot.classList.add('drag-over');});
+    slot.addEventListener('dragleave', ()=>slot.classList.remove('drag-over'));
+    slot.addEventListener('drop', e=>{e.preventDefault();slot.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))processSlot(i,f);});
+  });
+}
+
+function toggleVibeEdit(v, btn) {
+  if (selectedVibes.includes(v)) { selectedVibes=selectedVibes.filter(x=>x!==v); btn.classList.remove('selected'); }
+  else { if(selectedVibes.length>=2) return; selectedVibes.push(v); btn.classList.add('selected'); }
+}
+
+async function saveProfile() {
+  const role = document.getElementById('eRole').value.trim();
+  const msgEl = document.getElementById('accountMsg');
+  if (!role) { msgEl.innerHTML=`<div class="msg msg-error">Role is required.</div>`; return; }
+
+  const btn = document.querySelector('#accountContent .btn-solid');
+  btn.disabled=true; btn.textContent='Saving…';
+
+  const { error } = await sb.from('guests').update({
+    role,
+    photos: photoSlots.filter(Boolean),
+    vibes:  [...selectedVibes],
+    bio:    document.getElementById('eBio').value.trim(),
+  }).eq('id', currentGuest.id);
+
+  if (error) {
+    msgEl.innerHTML=`<div class="msg msg-error">Save failed. Try again.</div>`;
+    btn.disabled=false; btn.textContent='Save Changes'; return;
+  }
+
+  msgEl.innerHTML=`<div class="msg msg-success">Profile updated.</div>`;
+  btn.disabled=false; btn.textContent='Save Changes';
+  setTimeout(()=>{ msgEl.innerHTML=''; }, 3000);
+}
+
+// ══ ADMIN ══════════════════════════════════════════════════════════
+async function renderAdmin() {
+  const el = document.getElementById('adminContent');
+  if (!adminIn) {
+    el.innerHTML = `
+      <div class="admin-login-wrap">
+        <div class="form-title" style="font-size:1.8rem;margin-bottom:2rem;">Admin</div>
+        <div id="adminMsg"></div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="adminPass" placeholder="·  ·  ·  ·  ·  ·  ·  ·" onkeydown="if(event.key==='Enter')adminLogin()" />
+        </div>
+        <button class="btn btn-solid" onclick="adminLogin()">Enter</button>
+      </div>`;
+    return;
+  }
+
+  const { data: pend } = await sb.from('guests').select('*').eq('status','pending').order('created_at');
+  const { data: appr } = await sb.from('guests').select('*').eq('status','approved').order('created_at');
+  const pendList = pend||[], apprList = appr||[];
+
+  el.innerHTML = `
+    <div class="section-label">Event Settings</div>
+    <div class="settings-grid">
+      <div class="form-group"><label>Event Name</label><input type="text" id="sName" value="${CONFIG.eventName}" /></div>
+      <div class="form-group"><label>Capacity</label><input type="number" id="sCap" value="${CONFIG.capacity}" min="1" /></div>
+      <div class="form-group"><label>Date / Time</label><input type="text" id="sDate" value="${CONFIG.eventDate}" /></div>
+      <div class="form-group"><label>Location</label><input type="text" id="sLoc" value="${CONFIG.eventLocation}" /></div>
+      <div class="form-group"><label>Guest Preview PIN</label><input type="text" id="sGuestPin" value="${CONFIG.guestPreviewPin}" maxlength="6" /></div>
+    </div>
+    <div style="display:flex;gap:1rem;margin-bottom:3rem;">
+      <button class="btn btn-solid" onclick="saveSettings()">Save Settings</button>
+      <button class="btn btn-ghost" onclick="adminLogout()">Log Out</button>
+    </div>
+
+    <hr class="div" />
+
+    <div class="section-label">Pending Approval — ${pendList.length}</div>
+    <div class="pending-list">
+      ${!pendList.length ? `<div class="empty-state">No pending submissions.</div>` :
+        pendList.map(g => {
+          const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
+          return `
+          <div class="pending-item">
+            ${thumb?`<img class="p-thumb" src="${thumb}" alt="" />`:`<div class="p-thumb-ph">${g.name.charAt(0).toUpperCase()}</div>`}
+            <div class="p-info">
+              <div class="p-name">${g.name}</div>
+              <div class="p-meta">${g.role||''}  ·  PIN: ${g.pin}  ·  ${g.photos?g.photos.length:0} photo(s)  ·  ${new Date(g.created_at).toLocaleString()}</div>
+              ${g.bio?`<div class="p-meta" style="margin-top:.3rem;font-style:italic;opacity:.7">"${g.bio.substring(0,80)}${g.bio.length>80?'…':''}"</div>`:''}
+            </div>
+            <div class="p-actions">
+              <button class="btn btn-blue btn-sm" data-action="approve" data-id="${g.id}">Approve</button>
+              <button class="btn btn-danger btn-sm" data-action="reject" data-id="${g.id}">Decline</button>
+            </div>
+          </div>`;
+        }).join('')}
+    </div>
+
+    <hr class="div" />
+
+    <div class="section-label">Confirmed — ${apprList.length}</div>
+    <div class="approved-list">
+      ${!apprList.length ? `<div class="empty-state">No confirmed guests yet.</div>` :
+        apprList.map(g => {
+          const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
+          return `
+          <div class="approved-item">
+            ${thumb?`<img class="p-thumb" src="${thumb}" alt="" />`:`<div class="p-thumb-ph">${g.name.charAt(0).toUpperCase()}</div>`}
+            <div class="a-name">
+              ${g.name}
+              <span style="color:var(--gold-dim);font-size:.8rem"> · ${g.role||''}</span>
+              <span style="color:var(--muted);font-size:.72rem"> · PIN: ${g.pin}</span>
+            </div>
+            <button class="btn btn-danger btn-sm" data-action="remove" data-id="${g.id}">Remove</button>
+          </div>`;
+        }).join('')}
+    </div>
+  `;
+}
+
+function adminLogin() {
+  if (document.getElementById('adminPass').value === CONFIG.adminPassword) {
+    adminIn=true; renderAdmin();
+  } else {
+    document.getElementById('adminMsg').innerHTML=`<div class="msg msg-error">Incorrect password.</div>`;
+  }
+}
+
+function adminLogout() { adminIn=false; renderAdmin(); }
+
+async function approveGuest(id) {
+  await sb.from('guests').update({status:'approved'}).eq('id',id);
+  renderAdmin(); renderRoster();
+}
+
+async function rejectGuest(id) {
+  await sb.from('guests').delete().eq('id',id);
+  renderAdmin(); renderRoster();
+}
+
+async function removeGuest(id) {
+  const { data: g } = await sb.from('guests').select('name').eq('id',id).single();
+  if (!window.confirm(`Remove ${g?.name||'this guest'}?`)) return;
+  await sb.from('guests').delete().eq('id',id);
+  renderAdmin(); renderRoster();
+}
+
+// Event delegation for admin buttons
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const action=btn.dataset.action, id=btn.dataset.id;
+  if (action==='approve') approveGuest(id);
+  if (action==='reject')  rejectGuest(id);
+  if (action==='remove')  removeGuest(id);
+});
+
+function saveSettings() {
+  const n=document.getElementById('sName').value.trim();
+  const c=parseInt(document.getElementById('sCap').value,10);
+  const dt=document.getElementById('sDate').value.trim();
+  const lc=document.getElementById('sLoc').value.trim();
+  const gp=document.getElementById('sGuestPin').value.trim();
+  if(n) CONFIG.eventName=n;
+  if(c>0) CONFIG.capacity=c;
+  if(dt) CONFIG.eventDate=dt;
+  if(lc) CONFIG.eventLocation=lc;
+  if(gp.length===6) CONFIG.guestPreviewPin=gp;
+  document.getElementById('heroMeta').innerHTML=`${CONFIG.eventDate}&ensp;·&ensp;${CONFIG.eventLocation}`;
+  alert('Settings updated for this session. To make permanent, update the CONFIG block in the HTML.');
+}
+</script>
+</body>
+</html>
