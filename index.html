@@ -522,7 +522,27 @@
       nav button { padding: 1.3rem 2rem; }
     }
 
-    .vibe-caption { font-family:'Cormorant',serif; font-size:0.88rem; font-style:italic; color:var(--muted); margin-top:0.6rem; letter-spacing:0.04em; }
+    .vibe-caption { font-family:'Cormorant',serif; font-size:0.88rem; font-style:italic; color:var(--muted); margin-top:0.6rem; letter-spacing:0.04em; transition:color 0.3s; }
+    @keyframes capFlash { 0%,100% { color:var(--muted); } 40% { color:var(--gold-light); } }
+    .vibe-cap-flash { animation: capFlash 0.75s ease; }
+
+    /* ── DOOR CHECK-IN ── */
+    .door-stats { display:flex; border:1px solid var(--border); margin-bottom:2rem; }
+    .door-stat-cell { flex:1; padding:1.4rem 1.8rem; background:var(--black-card); border-right:1px solid var(--border-dim); text-align:center; }
+    .door-stat-cell:last-child { border-right:none; }
+    .door-stat-val { font-family:'Cormorant',serif; font-size:3rem; font-weight:300; line-height:1; }
+    .door-stat-val.arrived-col { color:#4caf80; }
+    .door-stat-val.pending-col { color:var(--gold); }
+    .door-guest-list { display:flex; flex-direction:column; gap:1px; }
+    .door-guest-row { display:flex; align-items:center; gap:1.2rem; background:var(--black-card); border:1px solid var(--border-dim); border-bottom:none; padding:0.9rem 1.4rem; transition:opacity 0.3s, background 0.3s; }
+    .door-guest-row:last-child { border-bottom:1px solid var(--border-dim); }
+    .door-guest-row.arrived { opacity:0.42; }
+    .door-guest-info { flex:1; min-width:0; }
+    .door-guest-name { font-family:'Cormorant',serif; font-size:1.15rem; color:var(--cream); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .door-guest-meta { font-family:'Cinzel',serif; font-size:0.62rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); margin-top:0.2rem; }
+    .door-checkin-btn { padding:0.75rem 1.5rem; font-family:'Cinzel',serif; font-size:0.72rem; letter-spacing:0.2em; text-transform:uppercase; border:1px solid var(--gold-dim); background:transparent; color:var(--gold); cursor:pointer; transition:all 0.2s; white-space:nowrap; flex-shrink:0; }
+    .door-checkin-btn:hover:not(.arrived) { background:var(--gold-glow); }
+    .door-checkin-btn.arrived { border-color:rgba(76,175,128,0.4); color:#4caf80; background:rgba(76,175,128,0.07); cursor:pointer; }
 
     /* ── ADMIN STATS BAR ── */
     .admin-stats-bar { display: flex; border: 1px solid var(--border); background: var(--black-card); margin-bottom: 3rem; }
@@ -573,6 +593,7 @@
     requireApproval:    true,
     announcementText:   "",
     announcementImages: [],
+    eventDateISO:       "",
   };
 </script>
 <!-- ════════════════════════════════════════════════════════════════ -->
@@ -601,6 +622,7 @@
   <button onclick="showView('chat',this)">Chat</button>
   <button onclick="showView('account',this)">My Profile</button>
   <button onclick="showView('admin',this)">Admin</button>
+  <button id="doorNavBtn" style="display:none" onclick="showView('door',this)">Door</button>
 </nav>
 
 <main>
@@ -610,6 +632,7 @@
   <div id="view-chat"   class="view"><div id="chatContent"></div></div>
   <div id="view-account" class="view"><div class="form-wrap" id="accountContent"></div></div>
   <div id="view-admin"  class="view"><div id="adminContent"></div></div>
+  <div id="view-door"   class="view"><div id="doorContent"></div></div>
 </main>
 
 <!-- LIGHTBOX -->
@@ -650,6 +673,103 @@ let selectedPrep  = null;
 let allGuests       = [];
 let activeVibeFilter = null;
 let adminData       = { notes: {}, flagged: {} };
+let doorCheckins    = {};
+
+// ══ DOOR CHECK-IN ══════════════════════════════════════════════════
+async function loadCheckins() {
+  const { data } = await sb.from('config').select('value').eq('key','door_checkins').single();
+  if (data?.value) { try { doorCheckins = JSON.parse(data.value); } catch(e) { doorCheckins = {}; } }
+}
+
+async function saveCheckins() {
+  await sb.from('config').upsert({ key:'door_checkins', value:JSON.stringify(doorCheckins) }, { onConflict:'key' });
+}
+
+async function toggleCheckin(id) {
+  if (doorCheckins[id]) { delete doorCheckins[id]; } else { doorCheckins[id] = new Date().toISOString(); }
+  await saveCheckins();
+  const row = document.querySelector(`.door-guest-row[data-id="${id}"]`);
+  const btn = document.querySelector(`.door-checkin-btn[data-id="${id}"]`);
+  if (row && btn) {
+    const arrived = !!doorCheckins[id];
+    row.classList.toggle('arrived', arrived);
+    btn.classList.toggle('arrived', arrived);
+    btn.textContent = arrived ? '✓ Here' : 'Check In';
+    updateDoorStats();
+  }
+}
+
+function updateDoorStats() {
+  const total    = document.querySelectorAll('.door-guest-row').length;
+  const arrivedN = Object.keys(doorCheckins).length;
+  const hereEl   = document.getElementById('doorHere');
+  const notYetEl = document.getElementById('doorNotYet');
+  if (hereEl)   hereEl.textContent   = arrivedN;
+  if (notYetEl) notYetEl.textContent = Math.max(0, total - arrivedN);
+}
+
+async function resetCheckins() {
+  if (!window.confirm('Reset all check-ins for this event?')) return;
+  doorCheckins = {};
+  await saveCheckins();
+  renderDoor();
+}
+
+async function renderDoor() {
+  if (!adminIn) return;
+  const el = document.getElementById('doorContent');
+  el.innerHTML = `<div class="empty-state">Loading…</div>`;
+  await loadCheckins();
+  const { data: guests, error } = await sb.from('guests').select('*').eq('status','approved').order('name');
+  if (error || !guests || !guests.length) {
+    el.innerHTML = `<div class="empty-state">No approved guests yet.</div>`; return;
+  }
+  const arrivedCount = guests.filter(g => doorCheckins[g.id]).length;
+  const sorted = [...guests].sort((a,b) => {
+    const ai = !!doorCheckins[a.id], bi = !!doorCheckins[b.id];
+    if (ai === bi) return (a.name||'').localeCompare(b.name||'');
+    return ai ? 1 : -1;
+  });
+  const vibeMap = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
+  const symMap  = {up:'↑',down:'↓',dash:'—'};
+  el.innerHTML = `
+    <div class="door-stats">
+      <div class="door-stat-cell">
+        <div class="door-stat-val arrived-col" id="doorHere">${arrivedCount}</div>
+        <div class="stat-label">Here</div>
+      </div>
+      <div class="door-stat-cell">
+        <div class="door-stat-val pending-col" id="doorNotYet">${guests.length - arrivedCount}</div>
+        <div class="stat-label">Not Yet</div>
+      </div>
+      <div class="door-stat-cell">
+        <div class="door-stat-val dim">${guests.length}</div>
+        <div class="stat-label">Total</div>
+      </div>
+    </div>
+    <div class="door-guest-list">
+      ${sorted.map(g => {
+        const thumb   = g.photos&&g.photos[0] ? g.photos[0] : null;
+        const arrived = !!doorCheckins[g.id];
+        const vibes   = g.vibes || [];
+        const vStr    = vibes.map(v=>`<span style="color:${vibeMap[v]||'#888'}">${symMap[v]||v}</span>`).join(' ');
+        return `
+        <div class="door-guest-row${arrived?' arrived':''}" data-id="${g.id}">
+          ${thumb ? `<img class="p-thumb" src="${thumb}" alt="" />` : `<div class="p-thumb-ph">${esc(g.name.charAt(0).toUpperCase())}</div>`}
+          <div class="door-guest-info">
+            <div class="door-guest-name">${esc(g.name)}</div>
+            <div class="door-guest-meta">${esc(g.role||'')}${vStr?' &ensp;'+vStr:''}</div>
+          </div>
+          <button class="door-checkin-btn${arrived?' arrived':''}" data-id="${g.id}" onclick="toggleCheckin('${g.id}')">
+            ${arrived ? '✓ Here' : 'Check In'}
+          </button>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="margin-top:2.5rem;text-align:center;">
+      <button class="btn btn-ghost" onclick="resetCheckins()">Reset All Check-ins</button>
+    </div>`;
+}
 
 // ══ ADMIN DATA (notes & flags) ══════════════════════════════════════
 async function loadAdminData() {
@@ -682,7 +802,10 @@ async function saveNote(id, text) {
   const trimmed = text.trim();
   if (trimmed) { adminData.notes[id] = trimmed; }
   else { delete adminData.notes[id]; }
+  const ta = document.querySelector(`.a-note-input[data-note-id="${id}"]`);
+  if (ta) ta.style.borderColor = 'var(--gold-dim)';
   await saveAdminData();
+  if (ta) setTimeout(() => { ta.style.borderColor = ''; }, 1200);
 }
 
 // ══ VIBE FILTER ════════════════════════════════════════════════════
@@ -748,6 +871,7 @@ async function loadConfig() {
       else if (row.key === 'announcementImages') {
         try { CONFIG.announcementImages = JSON.parse(row.value) || []; } catch(e) { CONFIG.announcementImages = []; }
       }
+      else if (row.key === 'eventDateISO')     CONFIG.eventDateISO = row.value;
       else if (CONFIG.hasOwnProperty(row.key)) CONFIG[row.key] = row.value;
     });
   }
@@ -755,13 +879,14 @@ async function loadConfig() {
   startCountdown();
 }
 
-const EVENT_DATE = new Date('2026-04-03T19:00:00');
 function startCountdown() {
   const el = document.getElementById('heroCountdown');
+  const eventDate = CONFIG.eventDateISO ? new Date(CONFIG.eventDateISO) : null;
+  if (!eventDate || isNaN(eventDate)) { el.style.display = 'none'; return; }
   const dEl = document.getElementById('cdDays');
   const hEl = document.getElementById('cdHours');
   function tick() {
-    const diff = EVENT_DATE - Date.now();
+    const diff = eventDate - Date.now();
     if (diff <= 0) { el.style.display='none'; return; }
     el.style.display='flex';
     const totalHours = Math.floor(diff / 36e5);
@@ -775,7 +900,7 @@ function startCountdown() {
 async function init() {
   await loadConfig();
 
-  // Restore session from localStorage
+  // Restore session from localStorage, validate guest still exists in DB
   const saved = localStorage.getItem('elysium_session');
   if (saved) {
     try {
@@ -784,8 +909,14 @@ async function init() {
         isPreview = true; currentGuest = null;
         showSessionBar('Preview Guest');
       } else {
-        currentGuest = s;
-        showSessionBar(s.name);
+        const { data: g } = await sb.from('guests').select('id,name,pin').eq('id', s.id).single();
+        if (g) {
+          currentGuest = { id: g.id, name: g.name, pin: g.pin };
+          localStorage.setItem('elysium_session', JSON.stringify(currentGuest));
+          showSessionBar(g.name);
+        } else {
+          localStorage.removeItem('elysium_session');
+        }
       }
     } catch {}
   }
@@ -808,6 +939,7 @@ function showView(name, btn) {
   if (name === 'chat')    renderChat();
   if (name === 'account') renderAccount();
   if (name === 'admin')   renderAdmin();
+  if (name === 'door')    renderDoor();
 }
 
 // ══ SESSION BAR ════════════════════════════════════════════════════
@@ -899,7 +1031,7 @@ function msgHtml(m) {
       <span class="chat-msg-time">${time}</span>
       ${canDel ? `<button class="chat-msg-del" onclick="deleteMessage('${m.id}')">✕</button>` : ''}
     </div>
-    <div class="chat-msg-body">${m.content.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
+    <div class="chat-msg-body">${esc(m.content).replace(/\n/g,'<br>')}</div>
   </div>`;
 }
 
@@ -1305,7 +1437,6 @@ async function renderRsvp() {
     return;
   }
 
-  photoSlots = [null, null, null]; selectedVibes = []; selectedPrep = null;
   const rem = CONFIG.capacity - approvedCount;
 
   el.innerHTML = `
@@ -1323,13 +1454,13 @@ async function renderRsvp() {
       <input type="text" id="rRole" placeholder="Your role at the event" maxlength="40" />
       <div style="margin-top:0.6rem;">
         <div class="vibe-picker">
-          <button type="button" class="vibe-btn" data-vibe="up" onclick="toggleVibe('up',this)">
+          <button type="button" class="vibe-btn${selectedVibes.includes('up')?' selected':''}" data-vibe="up" onclick="toggleVibe('up',this)">
             <span class="vibe-swatch" style="background:#e05050;box-shadow:0 0 6px rgba(224,80,80,0.5)"></span><span class="vibe-symbol">↑</span>
           </button>
-          <button type="button" class="vibe-btn" data-vibe="down" onclick="toggleVibe('down',this)">
+          <button type="button" class="vibe-btn${selectedVibes.includes('down')?' selected':''}" data-vibe="down" onclick="toggleVibe('down',this)">
             <span class="vibe-swatch" style="background:#5bc8f5;box-shadow:0 0 6px rgba(91,200,245,0.5)"></span><span class="vibe-symbol">↓</span>
           </button>
-          <button type="button" class="vibe-btn" data-vibe="dash" onclick="toggleVibe('dash',this)">
+          <button type="button" class="vibe-btn${selectedVibes.includes('dash')?' selected':''}" data-vibe="dash" onclick="toggleVibe('dash',this)">
             <span class="vibe-swatch" style="background:#d4b84a;box-shadow:0 0 6px rgba(212,184,74,0.5)"></span><span class="vibe-symbol">—</span>
           </button>
         </div>
@@ -1367,8 +1498,8 @@ async function renderRsvp() {
     <div class="form-group">
       <label>PrEP Status <span class="req">*</span></label>
       <div class="prep-picker">
-        <button type="button" class="prep-btn" id="prepYes" onclick="togglePrep('yes',this)">Yes</button>
-        <button type="button" class="prep-btn" id="prepNo"  onclick="togglePrep('no',this)">No</button>
+        <button type="button" class="prep-btn${selectedPrep==='yes'?' selected':''}" id="prepYes" onclick="togglePrep('yes',this)">Yes</button>
+        <button type="button" class="prep-btn${selectedPrep==='no'?' selected':''}" id="prepNo"  onclick="togglePrep('no',this)">No</button>
       </div>
     </div>
 
@@ -1391,6 +1522,7 @@ async function renderRsvp() {
   `;
 
   [0,1,2].forEach(i => {
+    if (photoSlots[i]) updateSlotUI(i);
     const slot = document.getElementById('slot'+i);
     slot.addEventListener('dragover', e => { e.preventDefault(); slot.classList.add('drag-over'); });
     slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
@@ -1400,7 +1532,14 @@ async function renderRsvp() {
 
 function toggleVibe(v, btn) {
   if (selectedVibes.includes(v)) { selectedVibes = selectedVibes.filter(x=>x!==v); btn.classList.remove('selected'); }
-  else { if (selectedVibes.length >= 2) return; selectedVibes.push(v); btn.classList.add('selected'); }
+  else {
+    if (selectedVibes.length >= 2) {
+      const cap = btn.closest('.vibe-picker')?.nextElementSibling;
+      if (cap?.classList.contains('vibe-caption')) { cap.classList.remove('vibe-cap-flash'); void cap.offsetWidth; cap.classList.add('vibe-cap-flash'); setTimeout(()=>cap.classList.remove('vibe-cap-flash'),800); }
+      return;
+    }
+    selectedVibes.push(v); btn.classList.add('selected');
+  }
 }
 
 function handleSlot(i, input) { const f=input.files[0]; if(f) processSlot(i,f); }
@@ -1478,6 +1617,7 @@ async function submitRsvp() {
   }
 
   currentGuest = data; isPreview = false;
+  photoSlots = [null,null,null]; selectedVibes = []; selectedPrep = null;
   localStorage.setItem('elysium_session', JSON.stringify({id:data.id, name:data.name, pin}));
   showSessionBar(data.name);
 
@@ -1560,7 +1700,7 @@ async function renderAccount() {
         </div>
       </div>
       <div class="photo-rule-note">Sexy Faceless encouraged — group privacy</div>
-      <div class="photo-hint-note">Body, ass, cock. your call </div>
+      <div class="photo-hint-note">Body, ass, cock. Your call.</div>
     </div>
 
     <div class="form-group">
@@ -1621,7 +1761,14 @@ async function renderAccount() {
 
 function toggleVibeEdit(v, btn) {
   if (selectedVibes.includes(v)) { selectedVibes=selectedVibes.filter(x=>x!==v); btn.classList.remove('selected'); }
-  else { if(selectedVibes.length>=2) return; selectedVibes.push(v); btn.classList.add('selected'); }
+  else {
+    if (selectedVibes.length >= 2) {
+      const cap = btn.closest('.vibe-picker')?.nextElementSibling;
+      if (cap?.classList.contains('vibe-caption')) { cap.classList.remove('vibe-cap-flash'); void cap.offsetWidth; cap.classList.add('vibe-cap-flash'); setTimeout(()=>cap.classList.remove('vibe-cap-flash'),800); }
+      return;
+    }
+    selectedVibes.push(v); btn.classList.add('selected');
+  }
 }
 
 function confirmDeleteProfile() {
@@ -1711,9 +1858,10 @@ async function renderAdmin() {
     <div class="settings-grid">
       <div class="form-group"><label>Event Name</label><input type="text" id="sName" value="${CONFIG.eventName}" /></div>
       <div class="form-group"><label>Capacity</label><input type="number" id="sCap" value="${CONFIG.capacity}" min="1" /></div>
-      <div class="form-group"><label>Date / Time</label><input type="text" id="sDate" value="${CONFIG.eventDate}" /></div>
+      <div class="form-group"><label>Date / Time <span style="opacity:.45;font-size:.8em">(display)</span></label><input type="text" id="sDate" value="${CONFIG.eventDate}" /></div>
+      <div class="form-group"><label>Countdown Target</label><input type="datetime-local" id="sDateISO" value="${CONFIG.eventDateISO}" /></div>
       <div class="form-group"><label>Location</label><input type="text" id="sLoc" value="${CONFIG.eventLocation}" /></div>
-      <div class="form-group"><label>Guest Preview PIN</label><input type="text" id="sGuestPin" value="${CONFIG.guestPreviewPin}" maxlength="6" /></div>
+      <div class="form-group"><label>Guest Preview PIN</label><input type="text" id="sGuestPin" value="${CONFIG.guestPreviewPin}" maxlength="6" inputmode="numeric" /></div>
     </div>
     <div style="display:flex;gap:1rem;margin-bottom:3rem;">
       <button class="btn btn-solid" onclick="saveSettings()">Save Settings</button>
@@ -1816,13 +1964,19 @@ async function renderAdmin() {
 
 function adminLogin() {
   if (document.getElementById('adminPass').value === CONFIG.adminPassword) {
-    adminIn=true; renderAdmin();
+    adminIn=true;
+    document.getElementById('doorNavBtn').style.display = '';
+    renderAdmin();
   } else {
     document.getElementById('adminMsg').innerHTML=`<div class="msg msg-error">Incorrect password.</div>`;
   }
 }
 
-function adminLogout() { adminIn=false; renderAdmin(); }
+function adminLogout() {
+  adminIn=false;
+  document.getElementById('doorNavBtn').style.display = 'none';
+  renderAdmin();
+}
 
 async function approveGuest(id) {
   await sb.from('guests').update({status:'approved'}).eq('id',id);
@@ -1956,17 +2110,26 @@ function togglePrep(val, btn) {
 }
 
 async function saveSettings() {
-  const n  = document.getElementById('sName').value.trim();
-  const c  = parseInt(document.getElementById('sCap').value, 10);
-  const dt = document.getElementById('sDate').value.trim();
-  const lc = document.getElementById('sLoc').value.trim();
-  const gp = document.getElementById('sGuestPin').value.trim();
+  const n   = document.getElementById('sName').value.trim();
+  const c   = parseInt(document.getElementById('sCap').value, 10);
+  const dt  = document.getElementById('sDate').value.trim();
+  const lc  = document.getElementById('sLoc').value.trim();
+  const gp  = document.getElementById('sGuestPin').value.trim();
+  const iso = document.getElementById('sDateISO').value;
 
-  if (n)      CONFIG.eventName       = n;
-  if (c > 0)  CONFIG.capacity        = c;
-  if (dt)     CONFIG.eventDate       = dt;
-  if (lc)     CONFIG.eventLocation   = lc;
-  if (gp.length === 6) CONFIG.guestPreviewPin = gp;
+  if (gp && (gp.length !== 6 || !/^\d{6}$/.test(gp))) {
+    alert('Guest PIN must be exactly 6 digits (numbers only).'); return;
+  }
+  if (document.getElementById('sCap').value.trim() && (isNaN(c) || c < 1)) {
+    alert('Capacity must be a positive number.'); return;
+  }
+
+  if (n)                           CONFIG.eventName       = n;
+  if (!isNaN(c) && c > 0)          CONFIG.capacity        = c;
+  if (dt)                          CONFIG.eventDate       = dt;
+  if (lc)                          CONFIG.eventLocation   = lc;
+  if (gp.length === 6)             CONFIG.guestPreviewPin = gp;
+  if (iso)                         CONFIG.eventDateISO    = iso;
 
   const updates = [
     { key: 'eventName',       value: CONFIG.eventName },
@@ -1974,6 +2137,7 @@ async function saveSettings() {
     { key: 'eventLocation',   value: CONFIG.eventLocation },
     { key: 'capacity',        value: String(CONFIG.capacity) },
     { key: 'guestPreviewPin', value: CONFIG.guestPreviewPin },
+    { key: 'eventDateISO',    value: CONFIG.eventDateISO },
   ];
 
   const btn = document.querySelector('#adminContent .btn-solid');
@@ -1988,6 +2152,7 @@ async function saveSettings() {
   }
 
   document.getElementById('heroMeta').innerHTML = `${CONFIG.eventDate}&ensp;·&ensp;${CONFIG.eventLocation}`;
+  startCountdown();
 
   // Flash confirmation in admin
   const flash = document.createElement('div');
