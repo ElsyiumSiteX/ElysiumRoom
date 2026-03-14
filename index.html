@@ -231,6 +231,33 @@
     .modal-bio { font-family: 'Cormorant', serif; font-size: 1.1rem; font-weight: 300; font-style: italic; line-height: 1.8; color: var(--cream); opacity: 0.8; }
     .modal-divider { border: none; border-top: 1px solid var(--border-dim); margin: 1.5rem 0; }
 
+    /* ── CHAT ── */
+    .chat-wrap { display: flex; flex-direction: column; height: calc(100vh - 260px); min-height: 420px; max-width: 780px; margin: 0 auto; }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 1.5rem 0; display: flex; flex-direction: column; gap: 0; scrollbar-width: thin; scrollbar-color: var(--border-dim) transparent; }
+    .chat-msg { padding: 1.2rem 0; border-bottom: 1px solid var(--border-dim); animation: fadeUp 0.25s ease both; }
+    .chat-msg:last-child { border-bottom: none; }
+    .chat-msg-mine { background: rgba(200,168,75,0.03); padding: 1.2rem 1rem; border-bottom: 1px solid var(--border-dim); margin: 0 -1rem; }
+    .chat-msg-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 0.4rem; }
+    .chat-msg-name { font-family: 'Cinzel', serif; font-size: 0.62rem; font-weight: 400; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold); }
+    .chat-msg-name.mine { color: var(--gold-bright); }
+    .chat-msg-time { font-family: 'Cinzel', serif; font-size: 0.52rem; letter-spacing: 0.16em; color: var(--muted2); }
+    .chat-msg-del { font-family: 'Cinzel', serif; font-size: 0.5rem; letter-spacing: 0.12em; background: none; border: none; color: var(--muted2); cursor: pointer; margin-left: auto; transition: color .2s; }
+    .chat-msg-del:hover { color: #cc7070; }
+    .chat-msg-body { font-family: 'Cormorant', serif; font-size: 1.2rem; font-weight: 300; font-style: italic; color: var(--cream); line-height: 1.65; opacity: 0.88; }
+    .chat-empty { font-family: 'Cormorant', serif; font-size: 1.1rem; font-style: italic; color: var(--muted2); text-align: center; padding: 4rem 2rem; }
+    .chat-input-wrap { border-top: 1px solid var(--border); padding-top: 1.5rem; display: flex; gap: 0.8rem; align-items: flex-end; }
+    .chat-input { flex: 1; font-family: 'Cormorant', serif; font-size: 1.1rem; font-weight: 300; font-style: italic; letter-spacing: 0.04em; background: var(--black-card); border: 1px solid var(--border); padding: 1rem 1.2rem; color: var(--cream); outline: none; resize: none; transition: border-color .3s, box-shadow .3s; min-height: 52px; max-height: 140px; -webkit-appearance: none; }
+    .chat-input:focus { border-color: var(--gold-dim); box-shadow: 0 0 0 1px rgba(200,168,75,0.12), 0 0 28px var(--gold-glow2); }
+    .chat-send { font-family: 'Cinzel', serif; font-size: 0.68rem; font-weight: 400; letter-spacing: .28em; text-transform: uppercase; padding: 1rem 1.8rem; border: 1px solid var(--gold-dim); background: transparent; color: var(--gold-light); cursor: pointer; transition: all .3s; white-space: nowrap; flex-shrink: 0; }
+    .chat-send:hover { border-color: var(--gold); box-shadow: 0 0 32px var(--gold-glow); }
+    .chat-send:disabled { opacity: 0.3; cursor: not-allowed; }
+    .chat-gate { font-family: 'Cormorant', serif; font-size: 1.1rem; font-style: italic; color: var(--muted); text-align: center; padding: 4rem 2rem; border: 1px solid var(--border-dim); }
+    @media (max-width: 700px) {
+      .chat-wrap { height: calc(100vh - 200px); }
+      .chat-msg-body { font-size: 1.1rem; }
+      .chat-send { padding: 0.9rem 1.2rem; font-size: 0.65rem; letter-spacing: .18em; }
+    }
+
     /* ── INFO / FAQ ── */
     .info-wrap { max-width: 640px; margin: 0 auto; }
     .info-intro { text-align: center; margin-bottom: 4rem; padding-bottom: 3rem; border-bottom: 1px solid var(--border-dim); }
@@ -288,12 +315,17 @@
     .photo-hint-note { font-family: 'Cormorant', serif; font-size: 1rem; font-style: italic; color: var(--muted); }
 
     /* VIBE */
-    .vibe-picker { display: flex; gap: 1rem; flex-wrap: wrap; }
-    .vibe-btn { display: flex; align-items: center; gap: 0.8rem; font-family: 'Cinzel', serif; font-size: 1rem; font-weight: 400; letter-spacing: 0.18em; text-transform: uppercase; padding: 0.9rem 1.8rem; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.25s; }
-    .vibe-swatch { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
-    .vibe-btn[data-vibe="up"]:hover, .vibe-btn[data-vibe="up"].selected { border-color: #e05050; color: #e05050; box-shadow: 0 0 16px rgba(224,80,80,0.25); }
-    .vibe-btn[data-vibe="down"]:hover, .vibe-btn[data-vibe="down"].selected { border-color: #5bc8f5; color: var(--neon-blue); box-shadow: 0 0 16px var(--nb-glow); }
-    .vibe-btn[data-vibe="dash"]:hover, .vibe-btn[data-vibe="dash"].selected { border-color: #d4b84a; color: #d4b84a; box-shadow: 0 0 16px rgba(212,184,74,0.25); }
+    .vibe-picker { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+    .vibe-btn { display: flex; align-items: center; gap: 0.9rem; font-family: 'Cinzel', serif; font-size: 0.68rem; font-weight: 400; letter-spacing: 0.22em; text-transform: uppercase; padding: 1rem 1.6rem; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.3s; }
+    .vibe-symbol { font-size: 1.6rem; line-height: 1; font-family: 'Cormorant', serif; font-style: normal; }
+    .vibe-swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .vibe-btn[data-vibe="up"]:hover, .vibe-btn[data-vibe="up"].selected { border-color: #e05050; color: #e05050; box-shadow: 0 0 24px rgba(224,80,80,0.3), inset 0 0 20px rgba(224,80,80,0.04); }
+    .vibe-btn[data-vibe="down"]:hover, .vibe-btn[data-vibe="down"].selected { border-color: #5bc8f5; color: var(--neon-blue); box-shadow: 0 0 24px var(--nb-glow), inset 0 0 20px rgba(91,200,245,0.04); }
+    .vibe-btn[data-vibe="dash"]:hover, .vibe-btn[data-vibe="dash"].selected { border-color: #d4b84a; color: #d4b84a; box-shadow: 0 0 24px rgba(212,184,74,0.3), inset 0 0 20px rgba(212,184,74,0.04); }
+    /* PREP */
+    .prep-picker { display: flex; gap: 0.8rem; }
+    .prep-btn { font-family: 'Cinzel', serif; font-size: 0.72rem; font-weight: 400; letter-spacing: .22em; text-transform: uppercase; padding: 1rem 2rem; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.3s; }
+    .prep-btn.selected { border-color: var(--gold); color: var(--gold-light); box-shadow: 0 0 24px var(--gold-glow), inset 0 0 20px var(--gold-glow2); }
 
     /* BUTTONS */
     .btn { font-family: 'Cinzel', serif; font-size: 0.72rem; font-weight: 400; letter-spacing: 0.3em; text-transform: uppercase; padding: 1.2rem 3rem; border: 1px solid var(--gold-dim); background: transparent; color: var(--gold-light); cursor: pointer; transition: all 0.35s; }
@@ -483,6 +515,7 @@
   <button class="active" onclick="showView('roster',this)">Roster</button>
   <button onclick="showView('rsvp',this)">RSVP</button>
   <button onclick="showView('info',this)">Info</button>
+  <button onclick="showView('chat',this)">Chat</button>
   <button onclick="showView('account',this)">My Profile</button>
   <button onclick="showView('admin',this)">Admin</button>
 </nav>
@@ -491,6 +524,7 @@
   <div id="view-roster" class="view active"><div id="rosterContent"></div></div>
   <div id="view-rsvp"   class="view"><div class="form-wrap" id="rsvpContent"></div></div>
   <div id="view-info"    class="view"><div class="info-wrap" id="infoContent"></div></div>
+  <div id="view-chat"   class="view"><div id="chatContent"></div></div>
   <div id="view-account" class="view"><div class="form-wrap" id="accountContent"></div></div>
   <div id="view-admin"  class="view"><div id="adminContent"></div></div>
 </main>
@@ -577,6 +611,7 @@ function showView(name, btn) {
   if (name === 'roster')  renderRoster();
   if (name === 'rsvp')    renderRsvp();
   if (name === 'info')    renderInfo();
+  if (name === 'chat')    renderChat();
   if (name === 'account') renderAccount();
   if (name === 'admin')   renderAdmin();
 }
@@ -603,6 +638,94 @@ function logout() {
 
 function editProfile() {
   showView('account', null);
+}
+
+// ══ CHAT ════════════════════════════════════════════════════════════
+let chatChannel = null;
+
+async function renderChat() {
+  const el = document.getElementById('chatContent');
+
+  if (!currentGuest || isPreview) {
+    el.innerHTML = `<div class="chat-gate">Chat is available to confirmed guests.<br><span style="font-size:.85em;opacity:.6">RSVP and get approved to join the conversation.</span></div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="chat-wrap">
+      <div class="chat-messages" id="chatMessages"><div class="chat-empty">Loading…</div></div>
+      <div class="chat-input-wrap">
+        <textarea class="chat-input" id="chatInput" placeholder="Say something…" rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"
+          oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+        <button class="chat-send" onclick="sendMessage()">Send</button>
+      </div>
+    </div>`;
+
+  // Load history
+  const { data: msgs } = await sb.from('messages').select('*').order('created_at', { ascending: true }).limit(200);
+  renderMessages(msgs || []);
+
+  // Realtime subscription
+  if (chatChannel) sb.removeChannel(chatChannel);
+  chatChannel = sb.channel('public:messages')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+      appendMessage(payload.new);
+    })
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
+      document.getElementById('msg-' + payload.old.id)?.remove();
+    })
+    .subscribe();
+}
+
+function renderMessages(msgs) {
+  const el = document.getElementById('chatMessages');
+  if (!el) return;
+  if (!msgs.length) { el.innerHTML = `<div class="chat-empty">No messages yet. Say hello.</div>`; return; }
+  el.innerHTML = msgs.map(m => msgHtml(m)).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function appendMessage(m) {
+  const el = document.getElementById('chatMessages');
+  if (!el) return;
+  el.querySelector('.chat-empty')?.remove();
+  el.insertAdjacentHTML('beforeend', msgHtml(m));
+  el.scrollTop = el.scrollHeight;
+}
+
+function msgHtml(m) {
+  const mine = currentGuest && m.guest_id === currentGuest.id;
+  const time = new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  const canDel = mine || adminIn;
+  return `<div class="chat-msg${mine?' chat-msg-mine':''}" id="msg-${m.id}">
+    <div class="chat-msg-header">
+      <span class="chat-msg-name${mine?' mine':''}">${m.guest_name}</span>
+      <span class="chat-msg-time">${time}</span>
+      ${canDel ? `<button class="chat-msg-del" onclick="deleteMessage('${m.id}')">✕</button>` : ''}
+    </div>
+    <div class="chat-msg-body">${m.content.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
+  </div>`;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const content = input.value.trim();
+  if (!content || !currentGuest) return;
+  const btn = document.querySelector('.chat-send');
+  btn.disabled = true;
+  input.value = ''; input.style.height = 'auto';
+  const { error } = await sb.from('messages').insert({
+    guest_id:   currentGuest.id,
+    guest_name: currentGuest.name,
+    content,
+  });
+  btn.disabled = false;
+  if (error) { input.value = content; alert('Could not send. Try again.'); }
+}
+
+async function deleteMessage(id) {
+  await sb.from('messages').delete().eq('id', id);
 }
 
 // ══ INFO / FAQ ══════════════════════════════════════════════════════
@@ -846,7 +969,7 @@ async function renderRoster() {
           ${vibes.map(v => {
             const map = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
             const sym = {up:'↑',down:'↓',dash:'—'};
-            return `<span style="font-family:'Cinzel',serif;font-size:0.62rem;color:${map[v]||'#888'};letter-spacing:.1em;">${sym[v]||v}</span>`;
+            return `<span style="font-family:'Cormorant',serif;font-size:1.4rem;line-height:1;color:${map[v]||'#888'};">${sym[v]||v}</span>`;
           }).join('')}
         </div>` : ''}
         ${(g.bio || photos.length > 1) ? `<div class="roster-bio-hint">Tap to view profile</div>` : ''}
@@ -881,7 +1004,7 @@ async function openModal(id) {
         ${vibes.map(v => {
           const map = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
           const sym = {up:'↑',down:'↓',dash:'—'};
-          return `<span style="font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:.15em;color:${map[v]||'#888'};border:1px solid ${map[v]||'#888'}33;padding:.2rem .6rem;">${sym[v]||v}</span>`;
+          return `<span style="font-family:'Cormorant',serif;font-size:1.6rem;line-height:1;color:${map[v]||'#888'};border:1px solid ${map[v]||'#888'}33;padding:.3rem .8rem;display:inline-block;">${sym[v]||v}</span>`;
         }).join('')}
       </div>` : ''}
       ${(g.last_tested || g.prep) ? `<hr class="modal-divider" /><div style="display:flex;gap:2rem;flex-wrap:wrap;">
@@ -1001,13 +1124,13 @@ async function renderRsvp() {
       <div style="margin-top:0.6rem;">
         <div class="vibe-picker">
           <button type="button" class="vibe-btn" data-vibe="up" onclick="toggleVibe('up',this)">
-            <span class="vibe-swatch" style="background:#e05050;box-shadow:0 0 6px rgba(224,80,80,0.5)"></span>↑
+            <span class="vibe-swatch" style="background:#e05050;box-shadow:0 0 6px rgba(224,80,80,0.5)"></span><span class="vibe-symbol">↑</span>
           </button>
           <button type="button" class="vibe-btn" data-vibe="down" onclick="toggleVibe('down',this)">
-            <span class="vibe-swatch" style="background:#5bc8f5;box-shadow:0 0 6px rgba(91,200,245,0.5)"></span>↓
+            <span class="vibe-swatch" style="background:#5bc8f5;box-shadow:0 0 6px rgba(91,200,245,0.5)"></span><span class="vibe-symbol">↓</span>
           </button>
           <button type="button" class="vibe-btn" data-vibe="dash" onclick="toggleVibe('dash',this)">
-            <span class="vibe-swatch" style="background:#d4b84a;box-shadow:0 0 6px rgba(212,184,74,0.5)"></span>—
+            <span class="vibe-swatch" style="background:#d4b84a;box-shadow:0 0 6px rgba(212,184,74,0.5)"></span><span class="vibe-symbol">—</span>
           </button>
         </div>
       </div>
@@ -1195,7 +1318,7 @@ async function renderAccount() {
             const colors={up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
             const syms={up:'↑',down:'↓',dash:'—'};
             return `<button type="button" class="vibe-btn ${selectedVibes.includes(v)?'selected':''}" data-vibe="${v}" onclick="toggleVibeEdit('${v}',this)">
-              <span class="vibe-swatch" style="background:${colors[v]};box-shadow:0 0 6px ${colors[v]}88"></span>${syms[v]}
+              <span class="vibe-swatch" style="background:${colors[v]};box-shadow:0 0 6px ${colors[v]}88"></span><span class="vibe-symbol">${syms[v]}</span>
             </button>`;
           }).join('')}
         </div>
@@ -1246,6 +1369,17 @@ async function renderAccount() {
       <button class="btn btn-solid" onclick="saveProfile()">Save Changes</button>
       <button class="btn btn-ghost" onclick="showView('roster',null)">Back to Roster</button>
     </div>
+
+    <hr class="modal-divider" style="margin:3rem 0 2rem;" />
+    <div style="margin-bottom:0.6rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);">Danger Zone</div>
+    <button class="btn btn-danger" onclick="confirmDeleteProfile()">Delete My Profile</button>
+    <div id="deleteConfirm" style="display:none;margin-top:1.5rem;padding:1.5rem;border:1px solid rgba(180,60,60,0.3);background:rgba(180,60,60,0.04);">
+      <p style="font-family:'Cormorant',serif;font-size:1.05rem;font-style:italic;color:#cc8080;margin-bottom:1.2rem;">This will permanently delete your profile, photos, and all data. This cannot be undone.</p>
+      <div style="display:flex;gap:0.8rem;">
+        <button class="btn btn-danger" onclick="deleteProfile()">Yes, Delete Everything</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('deleteConfirm').style.display='none'">Cancel</button>
+      </div>
+    </div>
   `;
 
   // Restore existing photos in slots
@@ -1262,6 +1396,21 @@ async function renderAccount() {
 function toggleVibeEdit(v, btn) {
   if (selectedVibes.includes(v)) { selectedVibes=selectedVibes.filter(x=>x!==v); btn.classList.remove('selected'); }
   else { if(selectedVibes.length>=2) return; selectedVibes.push(v); btn.classList.add('selected'); }
+}
+
+function confirmDeleteProfile() {
+  document.getElementById('deleteConfirm').style.display = 'block';
+}
+
+async function deleteProfile() {
+  const btn = document.querySelector('#deleteConfirm .btn-danger');
+  btn.disabled = true; btn.textContent = 'Deleting…';
+  const { error } = await sb.from('guests').delete().eq('id', currentGuest.id);
+  if (error) { btn.disabled = false; btn.textContent = 'Yes, Delete Everything'; alert('Delete failed. Try again.'); return; }
+  currentGuest = null; isPreview = false;
+  localStorage.removeItem('elysium_session');
+  hideSessionBar();
+  showView('roster', document.querySelector('[onclick="showView(\'roster\',this)"]'));
 }
 
 async function saveProfile() {
