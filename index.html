@@ -112,7 +112,7 @@
     .stat:last-child { border-right: none; }
     .stat::before { content: ''; position: absolute; bottom: 0; left: 15%; right: 15%; height: 1px; background: linear-gradient(to right, transparent, var(--gold-dim), transparent); }
     .stat-num { font-family: 'Cormorant', serif; font-size: 4rem; font-weight: 300; line-height: 1; color: var(--gold); }
-    .stat-num.blue   { color: var(--neon-blue); text-shadow: 0 0 30px var(--nb-glow); }
+    .stat-num.blue   { color: var(--gold-light); text-shadow: 0 0 30px var(--gold-glow); }
     .stat-num.purple { color: var(--neon-purple); text-shadow: 0 0 30px var(--np-glow); }
     .stat-num.dim    { color: var(--muted); }
     .stat-label { font-family: 'Cinzel', serif; font-size: 0.68rem; font-weight: 400; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); margin-top: 0.5rem; }
@@ -143,7 +143,7 @@
     .roster-overlay { position: absolute; bottom: 0; left: 0; right: 0; padding: 4rem 1.4rem 1.4rem; background: linear-gradient(to top, rgba(6,5,4,0.97) 0%, rgba(6,5,4,0.65) 50%, transparent 100%); }
     .roster-name { font-family: 'Cormorant', serif; font-size: 1.4rem; font-weight: 400; font-style: italic; letter-spacing: 0.04em; color: var(--cream); line-height: 1.1; }
     .roster-role-tag { display: inline-block; margin-top: 0.45rem; font-family: 'Cinzel', serif; font-size: 0.6rem; font-weight: 400; letter-spacing: 0.2em; text-transform: uppercase; padding: 0.28rem 0.75rem; border: 1px solid var(--gold-dim); color: var(--gold); }
-    .roster-bio-hint { font-family: 'Cinzel', serif; font-size: 0.55rem; font-weight: 400; letter-spacing: 0.16em; text-transform: uppercase; color: var(--neon-blue); margin-top: 0.6rem; opacity: 0.7; transition: opacity 0.2s; }
+    .roster-bio-hint { font-family: 'Cinzel', serif; font-size: 0.55rem; font-weight: 400; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold-dim); margin-top: 0.6rem; opacity: 0.7; transition: opacity 0.2s; }
     .roster-card:hover .roster-bio-hint { opacity: 1; }
 
     /* ── MODAL ── */
@@ -238,7 +238,7 @@
     .form-group { margin-bottom: 2.2rem; }
 
     label { display: block; font-family: 'Cinzel', serif; font-size: 0.7rem; font-weight: 400; letter-spacing: 0.24em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 0.7rem; }
-    label .req { color: var(--neon-blue); margin-left: 0.2rem; }
+    label .req { color: var(--gold); margin-left: 0.2rem; }
 
     input[type="text"], input[type="password"], input[type="number"], textarea {
       width: 100%; font-family: 'Cormorant', serif; font-size: 1.1rem; font-weight: 300; letter-spacing: 0.05em;
@@ -263,7 +263,7 @@
     .slot-preview { width: 100%; height: 100%; object-fit: cover; display: block; }
     .slot-remove { position: absolute; top: 0.4rem; right: 0.4rem; z-index: 10; font-family: 'Cinzel', serif; font-size: 0.45rem; letter-spacing: 0.15em; background: rgba(6,5,4,0.8); border: 1px solid var(--border-dim); color: var(--muted); padding: 0.2rem 0.4rem; cursor: pointer; transition: color 0.2s, border-color 0.2s; }
     .slot-remove:hover { color: var(--gold); border-color: var(--gold-dim); }
-    .photo-rule-note { font-family: 'Cinzel', serif; font-size: 0.65rem; font-weight: 400; letter-spacing: 0.2em; text-transform: uppercase; color: var(--neon-blue); margin-bottom: 0.3rem; }
+    .photo-rule-note { font-family: 'Cinzel', serif; font-size: 0.65rem; font-weight: 400; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 0.3rem; }
     .photo-hint-note { font-family: 'Cormorant', serif; font-size: 1rem; font-style: italic; color: var(--muted); }
 
     /* VIBE */
@@ -280,8 +280,8 @@
     .btn:disabled { opacity: 0.3; cursor: not-allowed; }
     .btn-solid { background: linear-gradient(135deg, var(--gold-dim), var(--gold)); color: var(--black); border-color: var(--gold); font-weight: 600; }
     .btn-solid:hover { background: linear-gradient(135deg, var(--gold), var(--gold-bright)); box-shadow: 0 0 40px var(--gold-glow); }
-    .btn-blue { border-color: rgba(91,200,245,0.35); color: var(--neon-blue); }
-    .btn-blue:hover { border-color: var(--neon-blue); box-shadow: 0 0 24px var(--nb-glow); }
+    .btn-blue { border-color: var(--border); color: var(--gold-light); }
+    .btn-blue:hover { border-color: var(--gold); box-shadow: 0 0 24px var(--gold-glow); }
     .btn-danger { border-color: rgba(180,60,60,0.4); color: #cc7070; }
     .btn-danger:hover { border-color: #b04040; }
     .btn-sm { padding: 0.6rem 1.2rem; font-size: 0.6rem; }
@@ -308,7 +308,7 @@
       margin-bottom: 0.5rem;
     }
     .pin-label { font-family: 'Cinzel', serif; font-size: 0.52rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
-    .pin-warning { font-family: 'Cormorant', serif; font-size: 0.95rem; font-style: italic; color: var(--neon-blue); margin-top: 1rem; }
+    .pin-warning { font-family: 'Cormorant', serif; font-size: 0.95rem; font-style: italic; color: var(--gold-dim); margin-top: 1rem; }
 
     /* PIN INPUT */
     .pin-input-wrap { display: flex; gap: 0.5rem; justify-content: center; margin: 1.5rem 0; }
@@ -386,8 +386,19 @@
       /* Forms */
       .form-wrap { padding: 0; }
       .form-title { font-size: 1.8rem; }
+      .form-sub { font-size: 1.05rem; }
+      label { font-size: 0.78rem; letter-spacing: 0.18em; }
+      input[type="text"], input[type="password"], input[type="number"], textarea { font-size: 1.15rem; padding: 0.9rem 1rem; }
       .pin-digit { width: 2.4rem; height: 3.2rem; font-size: 1.2rem; }
-      .vibe-btn { padding: 0.7rem 1.2rem; font-size: 0.85rem; }
+      .vibe-btn { padding: 0.85rem 1.4rem; font-size: 0.9rem; }
+      .prep-btn { padding: 0.85rem 1.8rem; font-size: 0.9rem; }
+      .btn { font-size: 0.78rem; padding: 1.1rem 2rem; }
+      .photo-rule-note { font-size: 0.72rem; }
+      .photo-hint-note { font-size: 1.05rem; }
+      .slot-label { font-size: 0.55rem; }
+      .pin-warning { font-size: 1rem; }
+      .modal-bio-label { font-size: 0.68rem; }
+      .modal-role { font-size: 0.68rem; }
 
       /* Roster */
       .roster-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 2px; }
@@ -827,12 +838,12 @@ async function renderRsvp() {
     </div>
 
     <div class="form-group">
-      <label>Last Tested <span style="opacity:.45;font-size:.8em">(optional)</span></label>
+      <label>Last Tested <span class="req">*</span></label>
       <input type="text" id="rTested" placeholder="e.g. March 2025" />
     </div>
 
     <div class="form-group">
-      <label>PrEP <span style="opacity:.45;font-size:.8em">(optional)</span></label>
+      <label>PrEP Status <span class="req">*</span></label>
       <div class="prep-picker">
         <button type="button" class="prep-btn" id="prepYes" onclick="togglePrep('yes',this)">Yes</button>
         <button type="button" class="prep-btn" id="prepNo"  onclick="togglePrep('no',this)">No</button>
@@ -904,6 +915,8 @@ async function submitRsvp() {
 
   if (!name) { msgEl.innerHTML=`<div class="msg msg-error">Please enter your name.</div>`; return; }
   if (!role) { msgEl.innerHTML=`<div class="msg msg-error">Please enter your role.</div>`; return; }
+  if (!document.getElementById('rTested').value.trim()) { msgEl.innerHTML=`<div class="msg msg-error">Please enter your last tested date.</div>`; return; }
+  if (!selectedPrep) { msgEl.innerHTML=`<div class="msg msg-error">Please select your PrEP status.</div>`; return; }
 
   const btn = document.querySelector('#rsvpContent .btn-solid');
   btn.disabled = true; btn.textContent = 'Submitting…';
@@ -1014,12 +1027,12 @@ async function renderAccount() {
     </div>
 
     <div class="form-group">
-      <label>Last Tested <span style="opacity:.45;font-size:.8em">(optional)</span></label>
+      <label>Last Tested <span class="req">*</span></label>
       <input type="text" id="eTested" value="${g.last_tested||''}" placeholder="e.g. March 2025" />
     </div>
 
     <div class="form-group">
-      <label>PrEP <span style="opacity:.45;font-size:.8em">(optional)</span></label>
+      <label>PrEP Status <span class="req">*</span></label>
       <div class="prep-picker">
         <button type="button" class="prep-btn ${g.prep==='yes'?'selected':''}" onclick="togglePrep('yes',this)">Yes</button>
         <button type="button" class="prep-btn ${g.prep==='no'?'selected':''}"  onclick="togglePrep('no',this)">No</button>
@@ -1057,6 +1070,8 @@ async function saveProfile() {
   const role = document.getElementById('eRole').value.trim();
   const msgEl = document.getElementById('accountMsg');
   if (!role) { msgEl.innerHTML=`<div class="msg msg-error">Role is required.</div>`; return; }
+  if (!document.getElementById('eTested').value.trim()) { msgEl.innerHTML=`<div class="msg msg-error">Last tested date is required.</div>`; return; }
+  if (!selectedPrep) { msgEl.innerHTML=`<div class="msg msg-error">PrEP status is required.</div>`; return; }
 
   const btn = document.querySelector('#accountContent .btn-solid');
   btn.disabled=true; btn.textContent='Saving…';
