@@ -422,7 +422,7 @@
     .p-bio { font-family: 'Cormorant', serif; font-size: 1rem; font-style: italic; color: var(--cream); opacity: 0.75; line-height: 1.55; }
     .p-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
     .approved-list { display: flex; flex-direction: column; gap: 2px; }
-    .approved-item { display: flex; align-items: center; gap: 1.2rem; background: var(--black-card); border: 1px solid var(--border-dim); padding: 0.8rem 1.4rem; }
+    .approved-item { display: flex; align-items: center; gap: 1.2rem; background: var(--black-card); border: 1px solid var(--border-dim); padding: 0.8rem 1.4rem; flex-wrap: wrap; }
     .a-name { flex: 1; font-family: 'Cormorant', serif; font-size: 1rem; font-weight: 300; font-style: italic; color: var(--cream); }
     .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 4rem; max-width: 580px; margin-bottom: 2.5rem; }
     hr.div { border: none; border-top: 1px solid var(--border-dim); margin: 3.5rem 0; }
@@ -521,6 +521,36 @@
       .roster-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
       nav button { padding: 1.3rem 2rem; }
     }
+
+    /* ── ADMIN STATS BAR ── */
+    .admin-stats-bar { display: flex; border: 1px solid var(--border); background: var(--black-card); margin-bottom: 3rem; }
+    .admin-stat-cell { flex: 1; padding: 1.4rem 1.8rem; border-right: 1px solid var(--border-dim); }
+    .admin-stat-cell:last-child { border-right: none; }
+    .admin-stat-val { font-family: 'Cormorant', serif; font-size: 2.4rem; font-weight: 300; line-height: 1; color: var(--gold); }
+    .admin-stat-lbl { font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); margin-top: 0.4rem; }
+    .admin-cap-track { height: 2px; background: rgba(255,255,255,0.04); margin-top: 0.8rem; border-radius: 1px; }
+    .admin-cap-fill { height: 100%; background: linear-gradient(to right, var(--gold-dim), var(--gold)); transition: width 0.6s ease; border-radius: 1px; }
+    .pending-pulse { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #e05050; margin-left: 0.5rem; vertical-align: middle; animation: pulseDot 1.4s ease-in-out infinite; }
+    @keyframes pulseDot { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.45; transform:scale(0.65); } }
+
+    /* ── ADMIN NOTES & FLAGS ── */
+    .a-flag-btn { background: none; border: 1px solid transparent; font-size: 1rem; cursor: pointer; color: var(--muted); padding: 0.3rem 0.5rem; transition: color 0.2s, border-color 0.2s; line-height: 1; border-radius: 2px; }
+    .a-flag-btn:hover { color: var(--gold-dim); border-color: var(--border-dim); }
+    .a-flag-btn.flagged { color: #e05050; border-color: rgba(224,80,80,0.3); }
+    .a-note-input { flex-basis: 100%; background: var(--black-raise); border: 1px solid var(--border-dim); color: var(--muted); font-family: 'Cormorant', serif; font-size: 0.95rem; font-style: italic; padding: 0.5rem 0.8rem; resize: none; line-height: 1.5; transition: border-color 0.2s, color 0.2s; display: block; }
+    .a-note-input:focus { outline: none; border-color: var(--gold-dim); color: var(--cream); }
+    .a-note-input::placeholder { color: var(--muted2); }
+
+    /* ── VIBE FILTER ── */
+    .vibe-filter { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+    .vibe-filter-btn { font-family: 'Cormorant', serif; font-size: 1.4rem; line-height: 1; padding: 0.35rem 1rem; background: var(--black-card); border: 1px solid var(--border-dim); color: var(--muted); cursor: pointer; transition: color 0.2s, border-color 0.2s, background 0.2s; }
+    .vibe-filter-btn:hover { border-color: var(--gold-dim); color: var(--cream); }
+    .vibe-filter-btn.vf-up   { color: #e05050; border-color: rgba(224,80,80,0.5); background: rgba(224,80,80,0.07); }
+    .vibe-filter-btn.vf-down { color: #5bc8f5; border-color: rgba(91,200,245,0.5); background: rgba(91,200,245,0.07); }
+    .vibe-filter-btn.vf-dash { color: #d4b84a; border-color: rgba(212,184,74,0.5); background: rgba(212,184,74,0.07); }
+    .vibe-filter-clear { font-family: 'Cinzel', serif; font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); background: none; border: none; cursor: pointer; padding: 0.3rem 0.4rem; transition: color 0.2s; }
+    .vibe-filter-clear:hover { color: var(--gold-dim); }
+    .vibe-filter-count { font-family: 'Cinzel', serif; font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-left: auto; }
   </style>
 </head>
 <body>
@@ -615,6 +645,96 @@ let isPreview    = false; // true if logged in with shared guest PIN
 let photoSlots   = [null, null, null];
 let selectedVibes = [];
 let selectedPrep  = null;
+let allGuests       = [];
+let activeVibeFilter = null;
+let adminData       = { notes: {}, flagged: {} };
+
+// ══ ADMIN DATA (notes & flags) ══════════════════════════════════════
+async function loadAdminData() {
+  const { data } = await sb.from('config').select('value').eq('key','admin_data').single();
+  if (data?.value) {
+    try {
+      const parsed = JSON.parse(data.value);
+      adminData.notes   = parsed.notes   || {};
+      adminData.flagged = parsed.flagged || {};
+    } catch(e) {}
+  }
+}
+
+async function saveAdminData() {
+  await sb.from('config').upsert({ key: 'admin_data', value: JSON.stringify(adminData) }, { onConflict: 'key' });
+}
+
+async function toggleFlag(id) {
+  if (adminData.flagged[id]) { delete adminData.flagged[id]; }
+  else { adminData.flagged[id] = true; }
+  await saveAdminData();
+  const btn = document.querySelector(`.a-flag-btn[data-id="${id}"]`);
+  if (btn) {
+    btn.classList.toggle('flagged', !!adminData.flagged[id]);
+    btn.title = adminData.flagged[id] ? 'Flagged — click to unflag' : 'Flag guest';
+  }
+}
+
+async function saveNote(id, text) {
+  const trimmed = text.trim();
+  if (trimmed) { adminData.notes[id] = trimmed; }
+  else { delete adminData.notes[id]; }
+  await saveAdminData();
+}
+
+// ══ VIBE FILTER ════════════════════════════════════════════════════
+function getFilteredGuests() {
+  if (!activeVibeFilter) return allGuests;
+  return allGuests.filter(g => (g.vibes || []).includes(activeVibeFilter));
+}
+
+function vibeFilterBarHTML() {
+  const filtered = getFilteredGuests();
+  const vibes = [{key:'up',sym:'↑'},{key:'down',sym:'↓'},{key:'dash',sym:'—'}];
+  return `<div class="vibe-filter" id="vibeFilterBar">
+    ${vibes.map(v => `<button class="vibe-filter-btn${activeVibeFilter===v.key?' vf-'+v.key:''}" onclick="setVibeFilter('${v.key}')">${v.sym}</button>`).join('')}
+    ${activeVibeFilter ? `<button class="vibe-filter-clear" onclick="setVibeFilter(null)">✕ clear</button>` : ''}
+    <span class="vibe-filter-count">${filtered.length}${activeVibeFilter ? ` of ${allGuests.length}` : ' guests'}</span>
+  </div>`;
+}
+
+function rosterCardsHTML(list) {
+  if (!list.length) {
+    return activeVibeFilter
+      ? `<div class="empty-state">No guests with this vibe.</div>`
+      : `<div class="empty-state">No confirmed guests yet — be among the first.</div>`;
+  }
+  return `<div class="roster-grid">${list.map((g,i) => {
+    const photos = g.photos || [];
+    const primary = photos[0] || null;
+    const vibes = g.vibes || [];
+    return `
+    <div class="roster-card" onclick="openModal('${g.id}')" style="animation-delay:${i*0.05}s">
+      ${primary ? `<img src="${primary}" alt="" loading="lazy" />` : `<div class="no-photo"><div class="no-photo-initial">${esc(g.name.charAt(0).toUpperCase())}</div></div>`}
+      <div class="roster-overlay">
+        <div class="roster-name">${esc(g.name)}</div>
+        ${g.role ? `<div class="roster-role-tag">${esc(g.role)}</div>` : ''}
+        ${vibes.length ? `<div style="margin-top:.45rem;display:flex;gap:.35rem;">
+          ${vibes.map(v => {
+            const map = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
+            const sym = {up:'↑',down:'↓',dash:'—'};
+            return `<span style="font-family:'Cormorant',serif;font-size:1.4rem;line-height:1;color:${map[v]||'#888'};">${sym[v]||v}</span>`;
+          }).join('')}
+        </div>` : ''}
+        ${(g.bio || photos.length > 1) ? `<div class="roster-bio-hint">Tap to view profile</div>` : ''}
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function setVibeFilter(vibe) {
+  activeVibeFilter = (activeVibeFilter === vibe) ? null : vibe;
+  const bar = document.getElementById('vibeFilterBar');
+  if (bar) bar.outerHTML = vibeFilterBarHTML();
+  const wrap = document.getElementById('rosterGridWrap');
+  if (wrap) wrap.innerHTML = rosterCardsHTML(getFilteredGuests());
+}
 
 // ══ INIT ═══════════════════════════════════════════════════════════
 async function loadConfig() {
@@ -1010,6 +1130,8 @@ async function renderRoster() {
   const { data: guests, error } = await sb.from('guests').select('*').eq('status','approved').order('created_at');
   if (error) { document.getElementById('guestGrid').innerHTML = `<div class="empty-state">Could not load roster.</div>`; return; }
 
+  allGuests = guests;
+
   const { count: pending } = await sb.from('guests').select('*', {count:'exact',head:true}).eq('status','pending');
   const approved = guests.length;
   const rem = Math.max(0, CONFIG.capacity - approved);
@@ -1028,27 +1150,9 @@ async function renderRoster() {
     return;
   }
 
-  document.getElementById('guestGrid').innerHTML = `<div class="roster-grid">${guests.map((g,i) => {
-    const photos = g.photos || [];
-    const primary = photos[0] || null;
-    const vibes = g.vibes || [];
-    return `
-    <div class="roster-card" onclick="openModal('${g.id}')" style="animation-delay:${i*0.05}s">
-      ${primary ? `<img src="${primary}" alt="" loading="lazy" />` : `<div class="no-photo"><div class="no-photo-initial">${esc(g.name.charAt(0).toUpperCase())}</div></div>`}
-      <div class="roster-overlay">
-        <div class="roster-name">${esc(g.name)}</div>
-        ${g.role ? `<div class="roster-role-tag">${esc(g.role)}</div>` : ''}
-        ${vibes.length ? `<div style="margin-top:.45rem;display:flex;gap:.35rem;">
-          ${vibes.map(v => {
-            const map = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
-            const sym = {up:'↑',down:'↓',dash:'—'};
-            return `<span style="font-family:'Cormorant',serif;font-size:1.4rem;line-height:1;color:${map[v]||'#888'};">${sym[v]||v}</span>`;
-          }).join('')}
-        </div>` : ''}
-        ${(g.bio || photos.length > 1) ? `<div class="roster-bio-hint">Tap to view profile</div>` : ''}
-      </div>
-    </div>`;
-  }).join('')}</div>`;
+  document.getElementById('guestGrid').innerHTML =
+    vibeFilterBarHTML() +
+    `<div id="rosterGridWrap">${rosterCardsHTML(getFilteredGuests())}</div>`;
 }
 
 // ══ MODAL ══════════════════════════════════════════════════════════
@@ -1582,7 +1686,23 @@ async function renderAdmin() {
   const { data: appr } = await sb.from('guests').select('*').eq('status','approved').order('created_at');
   const pendList = pend||[], apprList = appr||[];
 
+  await loadAdminData();
+
+  const aPct = Math.min(100, Math.round(apprList.length / CONFIG.capacity * 100));
+
   el.innerHTML = `
+    <div class="admin-stats-bar">
+      <div class="admin-stat-cell">
+        <div class="admin-stat-val">${apprList.length} <span style="font-size:1.2rem;color:var(--muted);">/ ${CONFIG.capacity}</span></div>
+        <div class="admin-stat-lbl">Approved</div>
+        <div class="admin-cap-track"><div class="admin-cap-fill" style="width:${aPct}%"></div></div>
+      </div>
+      <div class="admin-stat-cell">
+        <div class="admin-stat-val">${pendList.length}${pendList.length > 0 ? `<span class="pending-pulse"></span>` : ''}</div>
+        <div class="admin-stat-lbl">Pending</div>
+      </div>
+    </div>
+
     <div class="section-label">Event Settings</div>
     <div class="settings-grid">
       <div class="form-group"><label>Event Name</label><input type="text" id="sName" value="${CONFIG.eventName}" /></div>
@@ -1669,15 +1789,21 @@ async function renderAdmin() {
       ${!apprList.length ? `<div class="empty-state">No confirmed guests yet.</div>` :
         apprList.map(g => {
           const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
+          const isFlagged = !!adminData.flagged[g.id];
+          const note = adminData.notes[g.id] || '';
           return `
           <div class="approved-item">
             ${thumb?`<img class="p-thumb" src="${thumb}" alt="" />`:`<div class="p-thumb-ph">${esc(g.name.charAt(0).toUpperCase())}</div>`}
-            <div class="a-name">
-              ${g.name}
-              <span style="color:var(--gold-dim);font-size:.8rem"> · ${g.role||''}</span>
-              <span style="color:var(--muted);font-size:.72rem"> · PIN: ${g.pin}</span>
+            <div class="a-name" style="flex:1;">
+              ${esc(g.name)}
+              <span style="color:var(--gold-dim);font-size:.8rem"> · ${esc(g.role||'')}</span>
+              <span style="color:var(--muted);font-size:.72rem"> · PIN: ${esc(g.pin)}</span>
             </div>
-            <button class="btn btn-danger btn-sm" data-action="remove" data-id="${g.id}">Remove</button>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+              <button class="a-flag-btn ${isFlagged?'flagged':''}" data-action="flag" data-id="${g.id}" title="${isFlagged?'Flagged — click to unflag':'Flag guest'}">⚑</button>
+              <button class="btn btn-danger btn-sm" data-action="remove" data-id="${g.id}">Remove</button>
+            </div>
+            <textarea class="a-note-input" rows="1" placeholder="Private note…" data-note-id="${g.id}" onblur="saveNote(this.dataset.noteId, this.value)">${esc(note)}</textarea>
           </div>`;
         }).join('')}
     </div>
@@ -1719,6 +1845,7 @@ document.addEventListener('click', function(e) {
   if (action==='approve') approveGuest(id);
   if (action==='reject')  rejectGuest(id);
   if (action==='remove')  removeGuest(id);
+  if (action==='flag')    toggleFlag(id);
 });
 
 // ══ LIGHTBOX ════════════════════════════════════════════════════════
