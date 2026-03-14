@@ -231,6 +231,27 @@
     .modal-bio { font-family: 'Cormorant', serif; font-size: 1.1rem; font-weight: 300; font-style: italic; line-height: 1.8; color: var(--cream); opacity: 0.8; }
     .modal-divider { border: none; border-top: 1px solid var(--border-dim); margin: 1.5rem 0; }
 
+    /* ── INFO / FAQ ── */
+    .info-wrap { max-width: 640px; margin: 0 auto; }
+    .info-intro { text-align: center; margin-bottom: 4rem; padding-bottom: 3rem; border-bottom: 1px solid var(--border-dim); }
+    .info-intro-tag { font-family: 'Cinzel', serif; font-size: 0.62rem; font-weight: 400; letter-spacing: 0.38em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 1.6rem; }
+    .info-intro-line { font-family: 'Cormorant', serif; font-size: 1.35rem; font-weight: 300; font-style: italic; color: var(--cream); line-height: 1.7; opacity: 0.85; }
+    .info-section { margin-bottom: 3.5rem; }
+    .info-title { font-family: 'Cinzel', serif; font-size: 0.65rem; font-weight: 400; letter-spacing: 0.32em; text-transform: uppercase; color: var(--gold); margin-bottom: 1.4rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border-dim); }
+    .info-body { font-family: 'Cormorant', serif; font-size: 1.15rem; font-weight: 300; font-style: italic; color: var(--cream); line-height: 1.85; opacity: 0.82; }
+    .info-body p { margin-bottom: 0.8rem; }
+    .info-body p:last-child { margin-bottom: 0; }
+    .info-body strong { font-weight: 400; font-style: normal; color: var(--gold-light); opacity: 1; }
+    .info-list { list-style: none; padding: 0; margin: 0.8rem 0 0; }
+    .info-list li { font-family: 'Cormorant', serif; font-size: 1.15rem; font-weight: 300; font-style: italic; color: var(--cream); opacity: 0.82; padding: 0.3rem 0 0.3rem 1.4rem; position: relative; line-height: 1.6; }
+    .info-list li::before { content: '·'; position: absolute; left: 0; color: var(--gold-dim); font-style: normal; }
+    .info-sub { font-family: 'Cinzel', serif; font-size: 0.58rem; font-weight: 400; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold-dim); margin: 1.4rem 0 0.5rem; }
+    .info-divider { border: none; border-top: 1px solid var(--border-dim); margin: 3rem 0; }
+    @media (max-width: 700px) {
+      .info-intro-line { font-size: 1.15rem; }
+      .info-body, .info-list li { font-size: 1.1rem; }
+    }
+
     /* ── FORMS ── */
     .form-wrap { max-width: 600px; margin: 0 auto; }
     .form-title { font-family: 'Cinzel', serif; font-size: 2.4rem; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 0.6rem; background: linear-gradient(135deg, var(--gold-bright), var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
@@ -461,6 +482,7 @@
 <nav id="mainNav">
   <button class="active" onclick="showView('roster',this)">Roster</button>
   <button onclick="showView('rsvp',this)">RSVP</button>
+  <button onclick="showView('info',this)">Info</button>
   <button onclick="showView('account',this)">My Profile</button>
   <button onclick="showView('admin',this)">Admin</button>
 </nav>
@@ -468,6 +490,7 @@
 <main>
   <div id="view-roster" class="view active"><div id="rosterContent"></div></div>
   <div id="view-rsvp"   class="view"><div class="form-wrap" id="rsvpContent"></div></div>
+  <div id="view-info"    class="view"><div class="info-wrap" id="infoContent"></div></div>
   <div id="view-account" class="view"><div class="form-wrap" id="accountContent"></div></div>
   <div id="view-admin"  class="view"><div id="adminContent"></div></div>
 </main>
@@ -553,6 +576,7 @@ function showView(name, btn) {
   else document.querySelector(`[onclick="showView('${name}',this)"]`)?.classList.add('active');
   if (name === 'roster')  renderRoster();
   if (name === 'rsvp')    renderRsvp();
+  if (name === 'info')    renderInfo();
   if (name === 'account') renderAccount();
   if (name === 'admin')   renderAdmin();
 }
@@ -579,6 +603,180 @@ function logout() {
 
 function editProfile() {
   showView('account', null);
+}
+
+// ══ INFO / FAQ ══════════════════════════════════════════════════════
+function renderInfo() {
+  document.getElementById('infoContent').innerHTML = `
+    <div class="info-intro">
+      <div class="info-intro-tag">Elysium Room</div>
+      <div class="info-intro-line">
+        Private. Curated. Invite-only.<br>
+        A relaxed space for connection, play, and pleasure.<br>
+        Respectful. Sex-positive. Low-pressure.<br><br>
+        Show up open, curious, and kind.
+      </div>
+    </div>
+
+    <div class="info-section">
+      <div class="info-title">Time &amp; Entry</div>
+      <div class="info-body">
+        <p><strong>Doors open:</strong> 6:55 PM</p>
+        <p><strong>Doors lock:</strong> 8:20 PM — no late entry</p>
+        <p><strong>Duration:</strong> ~3 hours</p>
+      </div>
+      <div class="info-sub">Confirmed guests receive</div>
+      <ul class="info-list">
+        <li>Address</li>
+        <li>Building QR code</li>
+      </ul>
+      <div class="info-sub">Arrival</div>
+      <ul class="info-list">
+        <li>Enter building</li>
+        <li>Take elevator</li>
+        <li>Enter unit</li>
+      </ul>
+      <div class="info-sub">Inside</div>
+      <ul class="info-list">
+        <li>Label bag</li>
+        <li>Undress</li>
+        <li>Store clothes</li>
+        <li>Grab wristband</li>
+        <li>Join the room</li>
+      </ul>
+    </div>
+
+    <hr class="info-divider" />
+
+    <div class="info-section">
+      <div class="info-title">The Vibe</div>
+      <div class="info-body">
+        <p>Relaxed. Conversational. Low-volume.</p>
+        <p>Think spa energy, not party energy.</p>
+      </div>
+    </div>
+
+    <hr class="info-divider" />
+
+    <div class="info-section">
+      <div class="info-title">Core Rules</div>
+      <div class="info-sub">Consent</div>
+      <div class="info-body"><p>Ask before touching. Anyone may stop or leave anytime.</p></div>
+      <div class="info-sub">Substances</div>
+      <div class="info-body"><p>No drugs or alcohol. Poppers OK. No smoking or vaping inside.</p></div>
+      <div class="info-sub">Privacy</div>
+      <div class="info-body"><p>No photos. No video. Phones stay out of play areas.</p></div>
+      <div class="info-sub">Cleanliness</div>
+      <div class="info-body"><p>Use towels, wipes, and bins. Respect the space.</p></div>
+      <div class="info-sub">Noise</div>
+      <div class="info-body"><p>Keep voices low.</p></div>
+    </div>
+
+    <hr class="info-divider" />
+
+    <div class="info-section">
+      <div class="info-title">Group Play</div>
+      <div class="info-body"><p>Flows naturally.</p></div>
+      <ul class="info-list">
+        <li>Watch</li>
+        <li>Join</li>
+        <li>Move around</li>
+        <li>Step back</li>
+      </ul>
+      <div class="info-body" style="margin-top:1rem"><p>Always ask before touching.</p></div>
+    </div>
+
+    <hr class="info-divider" />
+
+    <div class="info-section">
+      <div class="info-title">Pacing</div>
+      <div class="info-body">
+        <p>No pressure.</p>
+        <p>Some people take it slow. Some play multiple rounds. Both normal.</p>
+      </div>
+    </div>
+
+    <hr class="info-divider" />
+
+    <div class="info-section">
+      <div class="info-title">Hygiene</div>
+      <div class="info-body"><p>Arrive clean and groomed.</p></div>
+      <ul class="info-list">
+        <li>Shower</li>
+        <li>Trim nails</li>
+        <li>Groom thoughtfully</li>
+      </ul>
+      <div class="info-body" style="margin-top:1rem"><p>Clean &gt; everything.</p></div>
+    </div>
+
+    <hr class="info-divider" />
+
+    <div class="info-section">
+      <div class="info-title">What to Wear</div>
+      <div class="info-body"><p>Arrive in comfortable, discreet clothes.</p></div>
+      <ul class="info-list">
+        <li>Sweats</li>
+        <li>Shorts</li>
+        <li>T-shirt</li>
+      </ul>
+      <div class="info-body" style="margin-top:1rem"><p>Inside: naked or jock.</p></div>
+    </div>
+
+    <hr class="info-divider" />
+
+    <div class="info-section">
+      <div class="info-title">Sexual Health</div>
+      <div class="info-body"><p>Guests are expected to be proactive.</p></div>
+      <div class="info-body"><p>Many attendees:</p></div>
+      <ul class="info-list">
+        <li>Test regularly</li>
+        <li>Use PrEP</li>
+        <li>Use doxy protocols</li>
+      </ul>
+      <div class="info-body" style="margin-top:1rem"><p>Your health is your responsibility.</p></div>
+    </div>
+
+    <hr class="info-divider" />
+
+    <div class="info-section">
+      <div class="info-title">Guests</div>
+      <div class="info-body">
+        <p>Invite-only. No additional guests.</p>
+        <p>Referrals possible after attending.</p>
+      </div>
+    </div>
+
+    <hr class="info-divider" />
+
+    <div class="info-section">
+      <div class="info-title">RSVP</div>
+      <div class="info-body">
+        <p>If you RSVP, please attend.</p>
+        <p>Cancel early if plans change.</p>
+        <p>No-shows may affect future invites.</p>
+      </div>
+    </div>
+
+    <hr class="info-divider" />
+
+    <div class="info-section">
+      <div class="info-title">Contributions</div>
+      <div class="info-body">
+        <p>Event is free.</p>
+        <p>Tips help cover hosting costs.</p>
+        <p>Suggested: $10–20</p>
+      </div>
+    </div>
+
+    <hr class="info-divider" />
+
+    <div class="info-section" style="text-align:center;padding-bottom:2rem;">
+      <div class="info-body">
+        <p>Respect the space.<br>Respect each other.</p>
+        <p style="margin-top:1.2rem;color:var(--gold);font-style:normal;font-family:'Cinzel',serif;font-size:0.85rem;letter-spacing:.2em;">Have fun.</p>
+      </div>
+    </div>
+  `;
 }
 
 // ══ ROSTER ═════════════════════════════════════════════════════════
