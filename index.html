@@ -331,6 +331,11 @@
     .vibe-btn[data-vibe="down"]:hover, .vibe-btn[data-vibe="down"].selected { border-color: #5bc8f5; color: var(--neon-blue); box-shadow: 0 0 24px var(--nb-glow), inset 0 0 20px rgba(91,200,245,0.04); }
     .vibe-btn[data-vibe="dash"]:hover, .vibe-btn[data-vibe="dash"].selected { border-color: #d4b84a; color: #d4b84a; box-shadow: 0 0 24px rgba(212,184,74,0.3), inset 0 0 20px rgba(212,184,74,0.04); }
     /* PREP */
+    .age-select { font-family: 'Cinzel', serif; font-size: 1rem; letter-spacing: 0.12em; background: var(--black-card); border: 1px solid var(--border); padding: 1rem 1.2rem; color: var(--cream); outline: none; cursor: pointer; -webkit-appearance: none; appearance: none; width: 100%; max-width: 180px; transition: border-color 0.3s, box-shadow 0.3s; }
+    .age-select:focus { border-color: var(--gold-dim); box-shadow: 0 0 0 1px rgba(200,168,75,0.15), 0 0 28px var(--gold-glow2); }
+    .age-select option { background: var(--black-card); color: var(--cream); }
+    .age-wrap { position: relative; display: inline-block; }
+    .age-wrap::after { content: '▾'; position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: var(--gold-dim); pointer-events: none; font-size: 0.8rem; }
     .prep-picker { display: flex; gap: 0.8rem; }
     .prep-btn { font-family: 'Cinzel', serif; font-size: 0.8rem; font-weight: 400; letter-spacing: .22em; text-transform: uppercase; padding: 1rem 2rem; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.3s; }
     .prep-btn.selected { border-color: var(--gold); color: var(--gold-light); box-shadow: 0 0 24px var(--gold-glow), inset 0 0 20px var(--gold-glow2); }
@@ -1061,7 +1066,8 @@ async function openModal(id) {
           return `<span style="font-family:'Cormorant',serif;font-size:1.6rem;line-height:1;color:${map[v]||'#888'};border:1px solid ${map[v]||'#888'}33;padding:.3rem .8rem;display:inline-block;">${sym[v]||v}</span>`;
         }).join('')}
       </div>` : ''}
-      ${(g.last_tested || g.prep) ? `<hr class="modal-divider" /><div style="display:flex;gap:2rem;flex-wrap:wrap;">
+      ${(g.last_tested || g.prep || g.age) ? `<hr class="modal-divider" /><div style="display:flex;gap:2rem;flex-wrap:wrap;">
+        ${g.age ? `<div><div class="modal-bio-label">Age</div><div style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--cream);opacity:.8">${g.age}</div></div>` : ''}
         ${g.last_tested ? `<div><div class="modal-bio-label">Last Tested</div><div style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--cream);opacity:.8">${g.last_tested}</div></div>` : ''}
         ${g.prep ? `<div><div class="modal-bio-label">PrEP</div><div style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--cream);opacity:.8">${g.prep==='yes'?'Yes':'No'}</div></div>` : ''}
       </div>` : ''}
@@ -1243,6 +1249,16 @@ async function renderRsvp() {
     </div>
 
     <div class="form-group">
+      <label>Age <span style="opacity:.45;font-size:.8em">(optional)</span></label>
+      <div class="age-wrap">
+        <select id="rAge" class="age-select">
+          <option value="">— select —</option>
+          ${Array.from({length:13},(_,i)=>`<option value="${i+18}">${i+18}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
       <label>Bio <span style="opacity:.45;font-size:.8em">(optional)</span></label>
       <textarea id="rBio" placeholder="A few words about yourself…"></textarea>
     </div>
@@ -1327,6 +1343,7 @@ async function submitRsvp() {
     bio:          document.getElementById('rBio').value.trim(),
     last_tested:  document.getElementById('rTested').value.trim(),
     prep:         selectedPrep,
+    age:          document.getElementById('rAge').value ? parseInt(document.getElementById('rAge').value) : null,
     pin,
     status: CONFIG.requireApproval ? 'pending' : 'approved',
   }).select().single();
@@ -1435,6 +1452,16 @@ async function renderAccount() {
     </div>
 
     <div class="form-group">
+      <label>Age <span style="opacity:.45;font-size:.8em">(optional)</span></label>
+      <div class="age-wrap">
+        <select id="eAge" class="age-select">
+          <option value="">— select —</option>
+          ${Array.from({length:13},(_,i)=>`<option value="${i+18}" ${g.age==i+18?'selected':''}>${i+18}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
       <label>Bio <span style="opacity:.45;font-size:.8em">(optional)</span></label>
       <textarea id="eBio" placeholder="A few words about yourself…">${g.bio||''}</textarea>
     </div>
@@ -1504,6 +1531,7 @@ async function saveProfile() {
     bio:          document.getElementById('eBio').value.trim(),
     last_tested:  document.getElementById('eTested').value.trim(),
     prep:         selectedPrep,
+    age:          document.getElementById('eAge').value ? parseInt(document.getElementById('eAge').value) : null,
   }).eq('id', currentGuest.id);
 
   if (error) {
@@ -1604,6 +1632,7 @@ async function renderAdmin() {
             ${photos.length ? `<div class="p-photo-grid">${photos.map(src=>`<img src="${src}" alt="" onclick="openLightbox('${src}')">`).join('')}</div>` : ''}
             <div class="p-details-row">
               ${vibes.length ? `<div class="p-section"><div class="p-label">Vibes</div><div style="display:flex;gap:.4rem;margin-top:.2rem;">${vibes.map(v=>`<span style="font-family:'Cormorant',serif;font-size:1.5rem;line-height:1;color:${vibeMap[v]||'#888'};border:1px solid ${vibeMap[v]||'#888'}44;padding:.2rem .6rem;">${symMap[v]||v}</span>`).join('')}</div></div>` : ''}
+              ${g.age ? `<div class="p-section"><div class="p-label">Age</div><div class="p-value">${g.age}</div></div>` : ''}
               ${g.last_tested ? `<div class="p-section"><div class="p-label">Last Tested</div><div class="p-value">${esc(g.last_tested)}</div></div>` : ''}
               ${g.prep ? `<div class="p-section"><div class="p-label">PrEP</div><div class="p-value">${g.prep==='yes'?'Yes':'No'}</div></div>` : ''}
             </div>
