@@ -302,18 +302,19 @@
 
 <!-- ══ CONFIG ══════════════════════════════════════════════════════ -->
 <script>
-  const CONFIG = {
-    eventName:       "Elysium Room",
-    eventDate:       "Saturday, April 19 · 9pm",
-    eventLocation:   "Location revealed upon confirmation",
-    capacity:        30,
-    adminPassword:   "elysium2024",       // ← change before deploying
-    guestPreviewPin: "000000",            // ← one-time shared preview PIN
-    requireApproval: true,
-  };
-
   const SUPABASE_URL  = "https://jgbucleklafprtpfpmxi.supabase.co";
   const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnYnVjbGVrbGFmcHJ0cGZwbXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0NjM0NjksImV4cCI6MjA4OTAzOTQ2OX0.j-u5YgGpP_kno6__IkmrdSo9WGwpguYjWf7jTeF6I3A";
+
+  // CONFIG is populated from Supabase on load — no need to edit this file
+  const CONFIG = {
+    eventName:       "Elysium Room",
+    eventDate:       "",
+    eventLocation:   "",
+    capacity:        30,
+    adminPassword:   "elysium2024",
+    guestPreviewPin: "000000",
+    requireApproval: true,
+  };
 </script>
 <!-- ════════════════════════════════════════════════════════════════ -->
 
@@ -370,10 +371,22 @@ let photoSlots   = [null, null, null];
 let selectedVibes = [];
 
 // ══ INIT ═══════════════════════════════════════════════════════════
-document.getElementById('heroMeta').innerHTML = `${CONFIG.eventDate}&ensp;·&ensp;${CONFIG.eventLocation}`;
+async function loadConfig() {
+  const { data, error } = await sb.from('config').select('key, value');
+  if (!error && data) {
+    data.forEach(row => {
+      if (row.key === 'capacity')        CONFIG.capacity        = parseInt(row.value, 10) || 30;
+      else if (row.key === 'requireApproval') CONFIG.requireApproval = row.value === 'true';
+      else if (CONFIG.hasOwnProperty(row.key)) CONFIG[row.key]   = row.value;
+    });
+  }
+  document.getElementById('heroMeta').innerHTML = `${CONFIG.eventDate}&ensp;·&ensp;${CONFIG.eventLocation}`;
+}
 
-// Restore session from localStorage
-(function restoreSession() {
+async function init() {
+  await loadConfig();
+
+  // Restore session from localStorage
   const saved = localStorage.getItem('elysium_session');
   if (saved) {
     try {
@@ -389,7 +402,9 @@ document.getElementById('heroMeta').innerHTML = `${CONFIG.eventDate}&ensp;·&ens
   }
   renderRoster();
   renderRsvp();
-})();
+}
+
+init();
 
 // ══ NAV ════════════════════════════════════════════════════════════
 function showView(name, btn) {
@@ -1011,19 +1026,47 @@ document.addEventListener('click', function(e) {
   if (action==='remove')  removeGuest(id);
 });
 
-function saveSettings() {
-  const n=document.getElementById('sName').value.trim();
-  const c=parseInt(document.getElementById('sCap').value,10);
-  const dt=document.getElementById('sDate').value.trim();
-  const lc=document.getElementById('sLoc').value.trim();
-  const gp=document.getElementById('sGuestPin').value.trim();
-  if(n) CONFIG.eventName=n;
-  if(c>0) CONFIG.capacity=c;
-  if(dt) CONFIG.eventDate=dt;
-  if(lc) CONFIG.eventLocation=lc;
-  if(gp.length===6) CONFIG.guestPreviewPin=gp;
-  document.getElementById('heroMeta').innerHTML=`${CONFIG.eventDate}&ensp;·&ensp;${CONFIG.eventLocation}`;
-  alert('Settings updated for this session. To make permanent, update the CONFIG block in the HTML.');
+async function saveSettings() {
+  const n  = document.getElementById('sName').value.trim();
+  const c  = parseInt(document.getElementById('sCap').value, 10);
+  const dt = document.getElementById('sDate').value.trim();
+  const lc = document.getElementById('sLoc').value.trim();
+  const gp = document.getElementById('sGuestPin').value.trim();
+
+  if (n)      CONFIG.eventName       = n;
+  if (c > 0)  CONFIG.capacity        = c;
+  if (dt)     CONFIG.eventDate       = dt;
+  if (lc)     CONFIG.eventLocation   = lc;
+  if (gp.length === 6) CONFIG.guestPreviewPin = gp;
+
+  const updates = [
+    { key: 'eventName',       value: CONFIG.eventName },
+    { key: 'eventDate',       value: CONFIG.eventDate },
+    { key: 'eventLocation',   value: CONFIG.eventLocation },
+    { key: 'capacity',        value: String(CONFIG.capacity) },
+    { key: 'guestPreviewPin', value: CONFIG.guestPreviewPin },
+  ];
+
+  const btn = document.querySelector('#adminContent .btn-solid');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const { error } = await sb.from('config').upsert(updates, { onConflict: 'key' });
+
+  btn.disabled = false; btn.textContent = 'Save Settings';
+
+  if (error) {
+    alert('Save failed: ' + error.message); return;
+  }
+
+  document.getElementById('heroMeta').innerHTML = `${CONFIG.eventDate}&ensp;·&ensp;${CONFIG.eventLocation}`;
+
+  // Flash confirmation in admin
+  const flash = document.createElement('div');
+  flash.className = 'msg msg-success';
+  flash.style.cssText = 'margin-bottom:1rem;';
+  flash.textContent = 'Settings saved.';
+  btn.parentNode.insertBefore(flash, btn.parentNode.firstChild);
+  setTimeout(() => flash.remove(), 3000);
 }
 </script>
 </body>
