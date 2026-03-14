@@ -1034,7 +1034,7 @@ async function renderRoster() {
     const vibes = g.vibes || [];
     return `
     <div class="roster-card" onclick="openModal('${g.id}')" style="animation-delay:${i*0.05}s">
-      ${primary ? `<img src="${primary}" alt="" />` : `<div class="no-photo"><div class="no-photo-initial">${esc(g.name.charAt(0).toUpperCase())}</div></div>`}
+      ${primary ? `<img src="${primary}" alt="" loading="lazy" />` : `<div class="no-photo"><div class="no-photo-initial">${esc(g.name.charAt(0).toUpperCase())}</div></div>`}
       <div class="roster-overlay">
         <div class="roster-name">${esc(g.name)}</div>
         ${g.role ? `<div class="roster-role-tag">${esc(g.role)}</div>` : ''}
@@ -1308,7 +1308,7 @@ function processSlot(i, file) {
       if(w>max||h>max){ if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;} }
       const c=document.createElement('canvas'); c.width=w; c.height=h;
       c.getContext('2d').drawImage(img,0,0,w,h);
-      photoSlots[i]=c.toDataURL('image/jpeg',0.8); updateSlotUI(i);
+      photoSlots[i]=c.toDataURL('image/jpeg',0.65); updateSlotUI(i);
     };
     img.onerror = () => alert('Could not load that image. Try a different file.');
     img.src=e.target.result;
