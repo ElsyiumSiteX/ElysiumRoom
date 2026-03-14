@@ -522,6 +522,8 @@
       nav button { padding: 1.3rem 2rem; }
     }
 
+    .vibe-caption { font-family:'Cormorant',serif; font-size:0.88rem; font-style:italic; color:var(--muted); margin-top:0.6rem; letter-spacing:0.04em; }
+
     /* ── ADMIN STATS BAR ── */
     .admin-stats-bar { display: flex; border: 1px solid var(--border); background: var(--black-card); margin-bottom: 3rem; }
     .admin-stat-cell { flex: 1; padding: 1.4rem 1.8rem; border-right: 1px solid var(--border-dim); }
@@ -1331,6 +1333,7 @@ async function renderRsvp() {
             <span class="vibe-swatch" style="background:#d4b84a;box-shadow:0 0 6px rgba(212,184,74,0.5)"></span><span class="vibe-symbol">—</span>
           </button>
         </div>
+        <div class="vibe-caption">↑ top &ensp;·&ensp; ↓ bottom &ensp;·&ensp; — side &ensp;·&ensp; select multiple &ensp;·&ensp; editable later</div>
       </div>
     </div>
 
@@ -1534,6 +1537,7 @@ async function renderAccount() {
             </button>`;
           }).join('')}
         </div>
+        <div class="vibe-caption">↑ top &ensp;·&ensp; ↓ bottom &ensp;·&ensp; — side &ensp;·&ensp; select multiple</div>
       </div>
     </div>
 
