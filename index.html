@@ -584,6 +584,16 @@
     .admin-cap-track { height: 2px; background: rgba(255,255,255,0.04); margin-top: 0.8rem; border-radius: 1px; }
     .admin-cap-fill { height: 100%; background: linear-gradient(to right, var(--gold-dim), var(--gold)); transition: width 0.6s ease; border-radius: 1px; }
     .pending-pulse { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #e05050; margin-left: 0.5rem; vertical-align: middle; animation: pulseDot 1.4s ease-in-out infinite; }
+    .wl-pulse { background: #d4b84a; }
+    .waitlist-notice { background: rgba(212,184,74,0.07); border: 1px solid rgba(212,184,74,0.28); border-radius: 3px; padding: 1rem 1.2rem; margin-bottom: 1.5rem; font-family: 'Cormorant', serif; font-size: 1rem; font-style: italic; color: var(--muted); text-align: center; line-height: 1.5; }
+    .wl-badge { display: inline-block; background: rgba(212,184,74,0.12); border: 1px solid rgba(212,184,74,0.35); color: var(--gold-dim); font-size: 0.68rem; font-family: 'Cinzel', serif; letter-spacing: 0.12em; padding: 0.18em 0.55em; text-transform: uppercase; vertical-align: middle; margin-left: 0.5rem; }
+    .waitlist-status-block { background: rgba(212,184,74,0.06); border: 1px solid rgba(212,184,74,0.22); border-radius: 3px; padding: 1.4rem; margin-bottom: 1.8rem; text-align: center; }
+    .wl-status-pos { font-family: 'Cinzel', serif; font-size: 2.2rem; font-weight: 700; color: var(--gold); line-height: 1; margin-bottom: 0.4rem; }
+    .wl-status-label { font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); }
+    .wl-pos { font-family: 'Cinzel', serif; font-size: 1.2rem; font-weight: 700; color: var(--gold-dim); min-width: 2.2rem; text-align: center; padding-right: 0.6rem; align-self: center; }
+    .settings-toggles { display: flex; gap: 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .toggle-row { display: flex; align-items: center; gap: 0.6rem; font-family: 'Cinzel', serif; font-size: 0.78rem; letter-spacing: 0.1em; color: var(--muted); cursor: pointer; user-select: none; }
+    .toggle-row input[type=checkbox] { width: 1rem; height: 1rem; accent-color: var(--gold); cursor: pointer; }
     @keyframes pulseDot { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.45; transform:scale(0.65); } }
 
     /* ── ADMIN NOTES & FLAGS ── */
@@ -633,6 +643,7 @@
     announcementText:   "",
     announcementImages: [],
     eventDateISO:       "",
+    waitlistEnabled:    false,
   };
 </script>
 <!-- ════════════════════════════════════════════════════════════════ -->
@@ -1027,7 +1038,8 @@ async function loadConfig() {
   if (!error && data) {
     data.forEach(row => {
       if (row.key === 'capacity')             CONFIG.capacity           = parseInt(row.value, 10) || 30;
-      else if (row.key === 'requireApproval') CONFIG.requireApproval    = row.value === 'true';
+      else if (row.key === 'requireApproval')  CONFIG.requireApproval  = row.value === 'true';
+      else if (row.key === 'waitlistEnabled')  CONFIG.waitlistEnabled  = row.value === 'true';
       else if (row.key === 'announcementImages') {
         try { CONFIG.announcementImages = JSON.parse(row.value) || []; } catch(e) { CONFIG.announcementImages = []; }
       }
@@ -1612,16 +1624,21 @@ async function renderRsvp() {
   }
 
   const { count: approvedCount } = await sb.from('guests').select('*',{count:'exact',head:true}).eq('status','approved');
-  if (approvedCount >= CONFIG.capacity) {
+  const atCapacity = approvedCount >= CONFIG.capacity;
+  if (atCapacity && !CONFIG.waitlistEnabled) {
     el.innerHTML = `<div class="full-overlay"><div class="full-title">At Capacity</div><div class="full-sub">All ${CONFIG.capacity} places have been reserved.</div></div>`;
     return;
   }
 
-  const rem = CONFIG.capacity - approvedCount;
+  const rsvpIsWaitlist = atCapacity && CONFIG.waitlistEnabled;
+  const rem = rsvpIsWaitlist ? 0 : CONFIG.capacity - approvedCount;
 
   el.innerHTML = `
-    <h2 class="form-title">Reserve Your Place</h2>
-    <p class="form-sub">${rem} of ${CONFIG.capacity} places remaining</p>
+    <h2 class="form-title">${rsvpIsWaitlist ? 'Join the Waitlist' : 'Reserve Your Place'}</h2>
+    ${rsvpIsWaitlist
+      ? `<div class="waitlist-notice">All ${CONFIG.capacity} places are reserved. Add your details below and you'll be contacted if a spot opens up.</div>`
+      : `<p class="form-sub">${rem} of ${CONFIG.capacity} places remaining</p>`
+    }
     <div id="formMsg"></div>
 
     <div class="form-group">
@@ -1698,7 +1715,7 @@ async function renderRsvp() {
       <textarea id="rBio" placeholder="A few words about yourself…"></textarea>
     </div>
 
-    <button class="btn btn-solid" onclick="submitRsvp()">Request Admission</button>
+    <button class="btn btn-solid" onclick="submitRsvp()">${rsvpIsWaitlist ? 'Join Waitlist' : 'Request Admission'}</button>
   `;
 
   [0,1,2].forEach(i => {
@@ -1785,6 +1802,17 @@ async function submitRsvp() {
   const pin = generatePin();
   const photos = photoSlots.filter(Boolean);
 
+  // Re-check capacity at submit time to avoid race conditions
+  const { count: approvedNow } = await sb.from('guests').select('*',{count:'exact',head:true}).eq('status','approved');
+  const submitAtCapacity = approvedNow >= CONFIG.capacity;
+  let submitStatus;
+  if (submitAtCapacity && CONFIG.waitlistEnabled) submitStatus = 'waitlisted';
+  else if (submitAtCapacity && !CONFIG.waitlistEnabled) {
+    msgEl.innerHTML=`<div class="msg msg-error">Sorry, the event just reached capacity.</div>`;
+    btn.disabled=false; btn.textContent='Request Admission'; return;
+  }
+  else submitStatus = CONFIG.requireApproval ? 'pending' : 'approved';
+
   const { data, error } = await sb.from('guests').insert({
     name,
     role,
@@ -1795,7 +1823,7 @@ async function submitRsvp() {
     prep:         selectedPrep,
     age:          document.getElementById('rAge').value ? parseInt(document.getElementById('rAge').value) : null,
     pin,
-    status: CONFIG.requireApproval ? 'pending' : 'approved',
+    status: submitStatus,
   }).select().single();
 
   if (error) {
@@ -1809,17 +1837,22 @@ async function submitRsvp() {
   showSessionBar(data.name);
   await loadSocialData();
 
+  const isWaitlisted = submitStatus === 'waitlisted';
+  const statusLine = isWaitlisted
+    ? 'You\'re on the waitlist. We\'ll be in touch if a spot opens.'
+    : CONFIG.requireApproval ? 'Your request is under review.' : 'You are confirmed.';
+
   document.getElementById('rsvpContent').innerHTML = `
-    <h2 class="form-title" style="margin-bottom:1rem;">Thank you, ${name}.</h2>
-    <p class="form-sub">${CONFIG.requireApproval ? 'Your request is under review.' : 'You are confirmed.'}</p>
+    <h2 class="form-title" style="margin-bottom:1rem;">${isWaitlisted ? 'You\'re on the list.' : `Thank you, ${esc(name)}.`}</h2>
+    <p class="form-sub">${statusLine}</p>
     <div class="pin-display">
       <div class="pin-label">Your Personal PIN</div>
       <div class="pin-number">${pin}</div>
-      <div class="pin-warning">Save this — it's your key to log back in and edit your profile.</div>
+      <div class="pin-warning">Save this — it's your key to log back in and check your status.</div>
     </div>
     <div class="btn-row">
       <button class="btn btn-solid" id="copyPinBtn" onclick="copyPin('${pin}')">Copy PIN</button>
-      <button class="btn btn-ghost" onclick="showView('roster',null)">View Roster</button>
+      ${isWaitlisted ? '' : `<button class="btn btn-ghost" onclick="showView('roster',null)">View Roster</button>`}
     </div>`;
 }
 
@@ -1848,9 +1881,20 @@ async function renderAccount() {
   selectedVibes = [...(g.vibes||[])];
   selectedPrep  = g.prep || null;
 
+  let wlPosition = null;
+  if (g.status === 'waitlisted') {
+    const { data: wlAll } = await sb.from('guests').select('id').eq('status','waitlisted').order('created_at');
+    wlPosition = (wlAll||[]).findIndex(r => r.id === g.id) + 1;
+  }
+
   el.innerHTML = `
     <h2 class="form-title">My Profile</h2>
-    <p class="form-sub" style="margin-bottom:1.5rem;">${g.name} &ensp;·&ensp; <span style="color:var(--gold-dim)">PIN: ${g.pin}</span></p>
+    <p class="form-sub" style="margin-bottom:1.5rem;">${esc(g.name)} &ensp;·&ensp; <span style="color:var(--gold-dim)">PIN: ${g.pin}</span>${g.status==='waitlisted'?`<span class="wl-badge">Waitlist</span>`:''}</p>
+    ${g.status==='waitlisted' ? `
+    <div class="waitlist-status-block">
+      <div class="wl-status-pos">#${wlPosition||'—'}</div>
+      <div class="wl-status-label">Your position on the waitlist</div>
+    </div>` : ''}
     <div id="accountMsg"></div>
 
     <div class="form-group">
@@ -2026,7 +2070,8 @@ async function renderAdmin() {
 
   const { data: pend } = await sb.from('guests').select('*').eq('status','pending').order('created_at');
   const { data: appr } = await sb.from('guests').select('*').eq('status','approved').order('created_at');
-  const pendList = pend||[], apprList = appr||[];
+  const { data: wl }   = await sb.from('guests').select('*').eq('status','waitlisted').order('created_at');
+  const pendList = pend||[], apprList = appr||[], wlList = wl||[];
 
   await loadAdminData();
 
@@ -2043,6 +2088,11 @@ async function renderAdmin() {
         <div class="admin-stat-val">${pendList.length}${pendList.length > 0 ? `<span class="pending-pulse"></span>` : ''}</div>
         <div class="admin-stat-lbl">Pending</div>
       </div>
+      ${CONFIG.waitlistEnabled ? `
+      <div class="admin-stat-cell">
+        <div class="admin-stat-val">${wlList.length}${wlList.length > 0 ? `<span class="pending-pulse wl-pulse"></span>` : ''}</div>
+        <div class="admin-stat-lbl">Waitlist</div>
+      </div>` : ''}
     </div>
 
     <div class="section-label">Event Settings</div>
@@ -2053,6 +2103,16 @@ async function renderAdmin() {
       <div class="form-group"><label>Countdown Target</label><input type="datetime-local" id="sDateISO" value="${CONFIG.eventDateISO}" /></div>
       <div class="form-group"><label>Location</label><input type="text" id="sLoc" value="${CONFIG.eventLocation}" /></div>
       <div class="form-group"><label>Guest Preview PIN</label><input type="text" id="sGuestPin" value="${CONFIG.guestPreviewPin}" maxlength="6" inputmode="numeric" /></div>
+    </div>
+    <div class="settings-toggles">
+      <label class="toggle-row">
+        <input type="checkbox" id="sRequireApproval" ${CONFIG.requireApproval?'checked':''} />
+        Require Approval
+      </label>
+      <label class="toggle-row">
+        <input type="checkbox" id="sWaitlistEnabled" ${CONFIG.waitlistEnabled?'checked':''} />
+        Enable Waitlist
+      </label>
     </div>
     <div style="display:flex;gap:1rem;margin-bottom:3rem;">
       <button class="btn btn-solid" onclick="saveSettings()">Save Settings</button>
@@ -2120,6 +2180,31 @@ async function renderAdmin() {
             <div class="p-actions">
               <button class="btn btn-blue btn-sm" data-action="approve" data-id="${g.id}">Approve</button>
               <button class="btn btn-danger btn-sm" data-action="reject" data-id="${g.id}">Decline</button>
+            </div>
+          </div>`;
+        }).join('')}
+    </div>
+
+    <hr class="div" />
+
+    <div class="section-label">Waitlist — ${wlList.length}</div>
+    <div class="pending-list">
+      ${!wlList.length ? `<div class="empty-state">${CONFIG.waitlistEnabled ? 'No one on the waitlist.' : 'Waitlist is disabled. Enable it in Settings.'}</div>` :
+        wlList.map((g, idx) => {
+          const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
+          return `
+          <div class="pending-item">
+            <div class="p-header">
+              <div class="wl-pos">#${idx+1}</div>
+              ${thumb?`<img class="p-thumb" src="${thumb}" alt="" />`:`<div class="p-thumb-ph">${esc(g.name.charAt(0).toUpperCase())}</div>`}
+              <div class="p-info">
+                <div class="p-name">${esc(g.name)}</div>
+                <div class="p-meta">${esc(g.role||'')} · PIN: ${esc(g.pin)} · Joined ${new Date(g.created_at).toLocaleString()}</div>
+              </div>
+            </div>
+            <div class="p-actions">
+              <button class="btn btn-blue btn-sm" data-action="promote-waitlist" data-id="${g.id}">Promote</button>
+              <button class="btn btn-danger btn-sm" data-action="remove-waitlisted" data-id="${g.id}">Remove</button>
             </div>
           </div>`;
         }).join('')}
@@ -2197,15 +2282,31 @@ async function removeGuest(id) {
   renderAdmin(); renderRoster();
 }
 
+async function promoteFromWaitlist(id) {
+  // Promoting from waitlist is an explicit admin decision — go straight to approved.
+  await sb.from('guests').update({status:'approved'}).eq('id',id);
+  renderAdmin(); renderRoster();
+}
+
+async function removeWaitlisted(id) {
+  const { data: g, error } = await sb.from('guests').select('name').eq('id',id).single();
+  if (error || !g) return;
+  if (!window.confirm(`Remove ${g.name} from the waitlist?`)) return;
+  await sb.from('guests').delete().eq('id',id);
+  renderAdmin();
+}
+
 // Event delegation for admin buttons
 document.addEventListener('click', function(e) {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
   const action=btn.dataset.action, id=btn.dataset.id;
-  if (action==='approve') approveGuest(id);
-  if (action==='reject')  rejectGuest(id);
-  if (action==='remove')  removeGuest(id);
-  if (action==='flag')    toggleFlag(id);
+  if (action==='approve')          approveGuest(id);
+  if (action==='reject')           rejectGuest(id);
+  if (action==='remove')           removeGuest(id);
+  if (action==='flag')             toggleFlag(id);
+  if (action==='promote-waitlist') promoteFromWaitlist(id);
+  if (action==='remove-waitlisted') removeWaitlisted(id);
 });
 
 // ══ LIGHTBOX ════════════════════════════════════════════════════════
@@ -2318,6 +2419,8 @@ async function saveSettings() {
   const lc  = document.getElementById('sLoc').value.trim();
   const gp  = document.getElementById('sGuestPin').value.trim();
   const iso = document.getElementById('sDateISO').value;
+  const reqApproval  = document.getElementById('sRequireApproval').checked;
+  const wlEnabled    = document.getElementById('sWaitlistEnabled').checked;
 
   if (gp && (gp.length !== 6 || !/^\d{6}$/.test(gp))) {
     alert('Guest PIN must be exactly 6 digits (numbers only).'); return;
@@ -2326,20 +2429,24 @@ async function saveSettings() {
     alert('Capacity must be a positive number.'); return;
   }
 
-  if (n)                           CONFIG.eventName       = n;
-  if (!isNaN(c) && c > 0)          CONFIG.capacity        = c;
-  if (dt)                          CONFIG.eventDate       = dt;
-  if (lc)                          CONFIG.eventLocation   = lc;
-  if (gp.length === 6)             CONFIG.guestPreviewPin = gp;
-  if (iso)                         CONFIG.eventDateISO    = iso;
+  if (n)                           CONFIG.eventName        = n;
+  if (!isNaN(c) && c > 0)          CONFIG.capacity         = c;
+  if (dt)                          CONFIG.eventDate        = dt;
+  if (lc)                          CONFIG.eventLocation    = lc;
+  if (gp.length === 6)             CONFIG.guestPreviewPin  = gp;
+  if (iso)                         CONFIG.eventDateISO     = iso;
+  CONFIG.requireApproval  = reqApproval;
+  CONFIG.waitlistEnabled  = wlEnabled;
 
   const updates = [
-    { key: 'eventName',       value: CONFIG.eventName },
-    { key: 'eventDate',       value: CONFIG.eventDate },
-    { key: 'eventLocation',   value: CONFIG.eventLocation },
-    { key: 'capacity',        value: String(CONFIG.capacity) },
-    { key: 'guestPreviewPin', value: CONFIG.guestPreviewPin },
-    { key: 'eventDateISO',    value: CONFIG.eventDateISO },
+    { key: 'eventName',        value: CONFIG.eventName },
+    { key: 'eventDate',        value: CONFIG.eventDate },
+    { key: 'eventLocation',    value: CONFIG.eventLocation },
+    { key: 'capacity',         value: String(CONFIG.capacity) },
+    { key: 'guestPreviewPin',  value: CONFIG.guestPreviewPin },
+    { key: 'eventDateISO',     value: CONFIG.eventDateISO },
+    { key: 'requireApproval',  value: String(CONFIG.requireApproval) },
+    { key: 'waitlistEnabled',  value: String(CONFIG.waitlistEnabled) },
   ];
 
   const btn = document.querySelector('#adminContent .btn-solid');
