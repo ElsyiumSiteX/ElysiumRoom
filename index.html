@@ -434,6 +434,12 @@
 
     /* SESSION INDICATOR */
     .session-bar { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 200; display: flex; align-items: center; gap: 0.8rem; background: var(--black-card); border: 1px solid var(--border-dim); padding: 0.7rem 1.2rem; }
+    .session-fire-badge { font-family: 'Cormorant', serif; font-size: 0.85rem; color: #e05050; opacity: 0.9; letter-spacing: 0.04em; white-space: nowrap; }
+    .fire-toast { position: fixed; bottom: 5.5rem; right: 1.5rem; z-index: 210; background: var(--black-card); border: 1px solid rgba(224,80,80,0.35); padding: 0.65rem 1rem 0.65rem 1.1rem; display: flex; align-items: center; gap: 0.7rem; max-width: 260px; animation: fireToastIn 0.35s ease; }
+    @keyframes fireToastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .fire-toast-text { font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cream); line-height: 1.45; }
+    .fire-toast-dismiss { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 0.1rem; flex-shrink: 0; transition: color 0.2s; }
+    .fire-toast-dismiss:hover { color: var(--cream); }
     .a2hs-btn { position: fixed; bottom: 1.5rem; left: 1.5rem; z-index: 200; display: flex; align-items: center; gap: 0.6rem; background: var(--black-card); border: 1px solid var(--border-dim); padding: 0.7rem 1.1rem; cursor: pointer; font-family: 'Cinzel', serif; font-size: 0.78rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold-dim); transition: border-color 0.2s, color 0.2s; }
     .a2hs-btn:hover { border-color: var(--gold); color: var(--gold); }
     .a2hs-btn svg { flex-shrink: 0; }
@@ -703,6 +709,7 @@
 <!-- SESSION BAR -->
 <div class="session-bar" id="sessionBar" style="display:none">
   <span class="session-name" id="sessionName"></span>
+  <span class="session-fire-badge" id="sessionFireBadge" style="display:none"></span>
   <button class="session-btn" onclick="editProfile()">Edit Profile</button>
   <button class="session-btn" onclick="logout()">Log Out</button>
 </div>
@@ -745,6 +752,41 @@ async function loadSocialData() {
 
 async function saveSocialData() {
   await sb.from('config').upsert({ key:'social', value:JSON.stringify(socialData) }, { onConflict:'key' });
+}
+
+function firesReceivedCount() {
+  if (!currentGuest) return 0;
+  return Object.values(socialData.fires).filter(arr => arr.includes(currentGuest.id)).length;
+}
+
+function updateFireBadge() {
+  const badge = document.getElementById('sessionFireBadge');
+  if (!badge || !currentGuest) return;
+  const n = firesReceivedCount();
+  if (n > 0) {
+    badge.textContent = '🔥 ' + n;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function showFireToast() {
+  if (!currentGuest || isPreview) return;
+  const n = firesReceivedCount();
+  if (!n) return;
+  const key = 'elysium_fire_toast_' + currentGuest.id;
+  const seen = sessionStorage.getItem(key);
+  if (seen === String(n)) return; // already shown for this count this session
+  sessionStorage.setItem(key, String(n));
+  const existing = document.getElementById('fireToast');
+  if (existing) existing.remove();
+  const msg = n === 1 ? 'Someone fav\'d you' : n + '\u00a0people fav\'d you';
+  const toast = document.createElement('div');
+  toast.className = 'fire-toast'; toast.id = 'fireToast';
+  toast.innerHTML = `<span class="fire-toast-text">🔥 ${msg}</span><button class="fire-toast-dismiss" onclick="document.getElementById('fireToast')?.remove()">✕</button>`;
+  document.body.appendChild(toast);
+  setTimeout(() => { document.getElementById('fireToast')?.remove(); }, 7000);
 }
 
 function isFired(id)      { return !!currentGuest && (socialData.fires[currentGuest.id]||[]).includes(id); }
@@ -1094,6 +1136,8 @@ async function init() {
           localStorage.setItem('elysium_session', JSON.stringify(currentGuest));
           showSessionBar(g.name);
           await loadSocialData();
+          updateFireBadge();
+          showFireToast();
         } else {
           localStorage.removeItem('elysium_session');
         }
@@ -1610,6 +1654,8 @@ async function submitPin(target) {
   localStorage.setItem('elysium_session', JSON.stringify({id:data.id, name:data.name, pin}));
   showSessionBar(data.name);
   await loadSocialData();
+  updateFireBadge();
+  showFireToast();
 
   if (target === 'roster') renderRoster();
   else if (target === 'account') renderAccount();
@@ -1843,6 +1889,8 @@ async function submitRsvp() {
   localStorage.setItem('elysium_session', JSON.stringify({id:data.id, name:data.name, pin}));
   showSessionBar(data.name);
   await loadSocialData();
+  updateFireBadge();
+  showFireToast();
 
   const isWaitlisted = submitStatus === 'waitlisted';
   const statusLine = isWaitlisted
