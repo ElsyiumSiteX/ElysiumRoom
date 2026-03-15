@@ -2134,6 +2134,15 @@ async function renderAdmin() {
           const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
           const isFlagged = !!adminData.flagged[g.id];
           const note = adminData.notes[g.id] || '';
+          const firesRcvd = Object.values(socialData.fires).filter(arr=>arr.includes(g.id)).length;
+          const savesRcvd = Object.values(socialData.saved).filter(arr=>arr.includes(g.id)).length;
+          const firesGiven = (socialData.fires[g.id]||[]).length;
+          const mutuals    = (socialData.fires[g.id]||[]).filter(id=>(socialData.fires[id]||[]).includes(g.id)).length;
+          const socialLine = (firesRcvd||savesRcvd||firesGiven) ? `
+            <div style="font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:0.12em;color:var(--muted);margin-top:0.2rem;">
+              🔥 ${firesRcvd} rcvd · ${firesGiven} sent${mutuals?` · <span style="color:#e05050">${mutuals} mutual</span>`:''}
+              ${savesRcvd ? `&ensp;★ ${savesRcvd} saved` : ''}
+            </div>` : '';
           return `
           <div class="approved-item">
             ${thumb?`<img class="p-thumb" src="${thumb}" alt="" />`:`<div class="p-thumb-ph">${esc(g.name.charAt(0).toUpperCase())}</div>`}
@@ -2141,6 +2150,7 @@ async function renderAdmin() {
               ${esc(g.name)}
               <span style="color:var(--gold-dim);font-size:.8rem"> · ${esc(g.role||'')}</span>
               <span style="color:var(--muted);font-size:.72rem"> · PIN: ${esc(g.pin)}</span>
+              ${socialLine}
             </div>
             <div style="display:flex;gap:0.5rem;align-items:center;">
               <button class="a-flag-btn ${isFlagged?'flagged':''}" data-action="flag" data-id="${g.id}" title="${isFlagged?'Flagged — click to unflag':'Flag guest'}">⚑</button>
