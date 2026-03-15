@@ -622,6 +622,62 @@
     /* ── CHAT BADGE ── */
     .nav-badge { display: inline-block; width: 6px; height: 6px; background: var(--gold); border-radius: 50%; margin-left: 0.4rem; vertical-align: middle; box-shadow: 0 0 8px rgba(200,168,75,0.7); }
 
+    /* ── PILL TOGGLES ── */
+    .pill-toggle-wrap { display: flex; align-items: center; gap: 0.8rem; cursor: pointer; user-select: none; }
+    .pill-toggle-wrap .toggle-label { font-family: 'Cinzel', serif; font-size: 0.78rem; letter-spacing: 0.1em; color: var(--muted); transition: color 0.2s; }
+    .pill-toggle { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+    .pill-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .pill-slider { position: absolute; inset: 0; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 11px; transition: background 0.25s, border-color 0.25s; cursor: pointer; }
+    .pill-slider::before { content: ''; position: absolute; width: 14px; height: 14px; left: 3px; top: 50%; transform: translateY(-50%); background: var(--muted); border-radius: 50%; transition: transform 0.25s ease, background 0.25s; }
+    .pill-toggle input:checked + .pill-slider { background: rgba(200,168,75,0.15); border-color: rgba(200,168,75,0.55); }
+    .pill-toggle input:checked + .pill-slider::before { transform: translateX(16px) translateY(-50%); background: var(--gold); }
+    .pill-toggle-wrap:hover .toggle-label { color: var(--cream); }
+
+    /* ── ADMIN INTERNAL TABS ── */
+    .admin-tabs { display: flex; border-bottom: 1px solid var(--border-dim); margin-bottom: 2.5rem; }
+    .admin-tab-btn { font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase; background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); padding: 0.8rem 1.4rem; cursor: pointer; transition: color 0.2s, border-color 0.2s; margin-bottom: -1px; white-space: nowrap; }
+    .admin-tab-btn:hover { color: var(--cream); }
+    .admin-tab-btn.active { color: var(--gold); border-bottom-color: var(--gold-dim); }
+    .admin-tab-badge { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #e05050; margin-left: 0.45rem; vertical-align: middle; animation: pulseDot 1.4s ease-in-out infinite; }
+
+    /* ── ADMIN INSIGHTS ── */
+    .insights-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1px; margin-bottom: 3rem; background: var(--border-dim); border: 1px solid var(--border-dim); }
+    .insight-cell { background: var(--black-card); padding: 1.2rem 1.4rem; }
+    .insight-val { font-family: 'Cormorant', serif; font-size: 2rem; font-weight: 300; line-height: 1; color: var(--gold); }
+    .insight-lbl { font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-top: 0.35rem; }
+    .insight-sub { font-family: 'Cormorant', serif; font-size: 0.88rem; font-style: italic; color: var(--muted2); margin-top: 0.2rem; line-height: 1.3; }
+    .insight-val.arrived-col { color: #4caf80; }
+    .insight-val.fire-col { color: #e05050; }
+
+    /* ── VIBE BREAKDOWN ── */
+    .vibe-breakdown { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 2.5rem; }
+    .vibe-breakdown-label { font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted2); margin-right: 0.3rem; }
+    .vibe-chip { font-family: 'Cormorant', serif; font-size: 1.2rem; line-height: 1; padding: 0.22rem 0.7rem; border: 1px solid; display: flex; align-items: center; gap: 0.35rem; }
+    .vibe-chip-count { font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: 0.1em; }
+    .vc-up   { color: #e05050; border-color: rgba(224,80,80,0.3);  background: rgba(224,80,80,0.06); }
+    .vc-down { color: #5bc8f5; border-color: rgba(91,200,245,0.3); background: rgba(91,200,245,0.06); }
+    .vc-dash { color: #d4b84a; border-color: rgba(212,184,74,0.3); background: rgba(212,184,74,0.06); }
+    .vc-verse{ color: #b97fdb; border-color: rgba(185,127,219,0.3);background: rgba(185,127,219,0.06); }
+
+    /* ── HOT GUESTS ── */
+    .hot-guests-list { display: flex; flex-direction: column; gap: 1px; margin-bottom: 3rem; }
+    .hot-guest-row { display: flex; align-items: center; gap: 1rem; background: var(--black-card); border: 1px solid var(--border-dim); padding: 0.65rem 1.2rem; }
+    .hot-rank { font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.1em; color: var(--muted2); min-width: 1.4rem; }
+    .hot-name { font-family: 'Cormorant', serif; font-size: 1.05rem; color: var(--cream); flex: 1; }
+    .hot-fires { font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.12em; color: #e05050; }
+    .hot-mutual { font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: 0.1em; color: var(--muted2); margin-left: 0.5rem; }
+
+    /* ── CHECK-IN BADGE ── */
+    .checkin-badge { font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: #4caf80; background: rgba(76,175,128,0.08); border: 1px solid rgba(76,175,128,0.28); padding: 0.18em 0.55em; white-space: nowrap; flex-shrink: 0; }
+
+    /* ── EVENT PHASE SELECTOR ── */
+    .phase-selector { display: flex; gap: 0; margin-bottom: 1.5rem; border: 1px solid var(--border-dim); width: fit-content; }
+    .phase-btn { font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; background: none; border: none; border-right: 1px solid var(--border-dim); color: var(--muted); padding: 0.6rem 1.2rem; cursor: pointer; transition: color 0.2s, background 0.2s; }
+    .phase-btn:last-child { border-right: none; }
+    .phase-btn.active { background: rgba(200,168,75,0.1); color: var(--gold); }
+    .phase-btn.phase-live.active { background: rgba(76,175,128,0.1); color: #4caf80; }
+    .phase-btn.phase-closed.active { background: rgba(224,80,80,0.07); color: #e05050; }
+
     /* ── PHOTO WATERMARK ── */
     /* Invisible during normal viewing; becomes legible in screenshots */
     .roster-card::after,
@@ -659,6 +715,7 @@
     announcementImages: [],
     eventDateISO:       "",
     waitlistEnabled:    false,
+    eventPhase:         'pre',
   };
 </script>
 <!-- ════════════════════════════════════════════════════════════════ -->
@@ -745,6 +802,8 @@ let activeVibeFilter = null;
 let adminData       = { notes: {}, flagged: {} };
 let doorCheckins    = {};
 let socialData      = { fires: {}, saved: {} };
+let adminTab        = 'overview';
+let adminCachedData = null;
 
 // ══ SOCIAL ═════════════════════════════════════════════════════════
 async function loadSocialData() {
@@ -1101,6 +1160,7 @@ async function loadConfig() {
         try { CONFIG.announcementImages = JSON.parse(row.value) || []; } catch(e) { CONFIG.announcementImages = []; }
       }
       else if (row.key === 'eventDateISO')     CONFIG.eventDateISO = row.value;
+      else if (row.key === 'eventPhase')       CONFIG.eventPhase   = row.value;
       else if (CONFIG.hasOwnProperty(row.key)) CONFIG[row.key] = row.value;
     });
   }
@@ -2133,21 +2193,63 @@ async function renderAdmin() {
     return;
   }
 
-  const { data: pend } = await sb.from('guests').select('*').eq('status','pending').order('created_at');
-  const { data: appr } = await sb.from('guests').select('*').eq('status','approved').order('created_at');
-  const { data: wl }   = await sb.from('guests').select('*').eq('status','waitlisted').order('created_at');
-  const pendList = pend||[], apprList = appr||[], wlList = wl||[];
+  const [{ data: pend }, { data: appr }, { data: wl }] = await Promise.all([
+    sb.from('guests').select('*').eq('status','pending').order('created_at'),
+    sb.from('guests').select('*').eq('status','approved').order('created_at'),
+    sb.from('guests').select('*').eq('status','waitlisted').order('created_at'),
+  ]);
+  adminCachedData = { pend: pend||[], appr: appr||[], wl: wl||[] };
 
-  await loadAdminData();
-  await loadSocialData();
+  await Promise.all([loadAdminData(), loadSocialData()]);
+  buildAdminHTML(el);
+}
 
+function buildAdminHTML(el) {
+  const { pend: pendList, appr: apprList, wl: wlList } = adminCachedData;
+
+  // ── computed stats ──────────────────────────────────────────────
   const aPct = CONFIG.capacity > 0 ? Math.min(100, Math.round(apprList.length / CONFIG.capacity * 100)) : 0;
+  const arrivedCount = apprList.filter(g => doorCheckins[g.id]).length;
 
-  el.innerHTML = `
+  // vibe breakdown across all approved guests
+  const vibeCounts = {};
+  for (const g of apprList) { for (const v of (g.vibes||[])) vibeCounts[v] = (vibeCounts[v]||0)+1; }
+  const vibeOrder = [['up','↑','vc-up'],['down','↓','vc-down'],['dash','—','vc-dash'],['verse','↕','vc-verse']];
+  const vibeChips = vibeOrder.filter(([k])=>vibeCounts[k]).map(([k,sym,cls])=>
+    `<span class="vibe-chip ${cls}">${sym}<span class="vibe-chip-count">${vibeCounts[k]}</span></span>`).join('');
+
+  // social insights
+  const engagedIds = new Set([
+    ...Object.keys(socialData.fires).filter(id=>(socialData.fires[id]||[]).length>0),
+    ...Object.keys(socialData.saved).filter(id=>(socialData.saved[id]||[]).length>0),
+  ]);
+  const engagementPct = apprList.length > 0 ? Math.round(engagedIds.size / apprList.length * 100) : 0;
+
+  const mutualPairsSeen = new Set();
+  for (const a of Object.keys(socialData.fires)) {
+    for (const b of (socialData.fires[a]||[])) {
+      if ((socialData.fires[b]||[]).includes(a)) {
+        const key = [a,b].sort().join('|');
+        mutualPairsSeen.add(key);
+      }
+    }
+  }
+  const mutualCount = mutualPairsSeen.size;
+  const totalFires  = Object.values(socialData.fires).reduce((s,arr)=>s+arr.length,0);
+
+  // top guests by fires received
+  const hotGuests = apprList
+    .map(g => ({ g, fr: Object.values(socialData.fires).filter(arr=>arr.includes(g.id)).length }))
+    .filter(x => x.fr > 0)
+    .sort((a,b) => b.fr - a.fr)
+    .slice(0, 5);
+
+  // ── tab content ─────────────────────────────────────────────────
+  const tabOverview = adminTab === 'overview' ? `
     <div class="admin-stats-bar">
       <div class="admin-stat-cell">
         <div class="admin-stat-val">${apprList.length} <span style="font-size:1.2rem;color:var(--muted);">/ ${CONFIG.capacity}</span></div>
-        <div class="admin-stat-lbl">Approved</div>
+        <div class="admin-stat-lbl">Confirmed</div>
         <div class="admin-cap-track"><div class="admin-cap-fill" style="width:${aPct}%"></div></div>
       </div>
       <div class="admin-stat-cell">
@@ -2159,96 +2261,91 @@ async function renderAdmin() {
         <div class="admin-stat-val">${wlList.length}${wlList.length > 0 ? `<span class="pending-pulse wl-pulse"></span>` : ''}</div>
         <div class="admin-stat-lbl">Waitlist</div>
       </div>` : ''}
-    </div>
-
-    <div class="section-label">Event Settings</div>
-    <div class="settings-grid">
-      <div class="form-group"><label>Event Name</label><input type="text" id="sName" value="${esc(CONFIG.eventName||'')}" /></div>
-      <div class="form-group"><label>Capacity</label><input type="number" id="sCap" value="${CONFIG.capacity}" min="1" /></div>
-      <div class="form-group"><label>Date / Time <span style="opacity:.45;font-size:.8em">(display)</span></label><input type="text" id="sDate" value="${esc(CONFIG.eventDate||'')}" /></div>
-      <div class="form-group"><label>Countdown Target</label><input type="datetime-local" id="sDateISO" value="${esc(CONFIG.eventDateISO||'')}" /></div>
-      <div class="form-group"><label>Location</label><input type="text" id="sLoc" value="${esc(CONFIG.eventLocation||'')}" /></div>
-      <div class="form-group"><label>Guest Preview PIN</label><input type="text" id="sGuestPin" value="${esc(CONFIG.guestPreviewPin||'')}" maxlength="6" inputmode="numeric" /></div>
-    </div>
-    <div class="settings-toggles">
-      <label class="toggle-row">
-        <input type="checkbox" id="sRequireApproval" ${CONFIG.requireApproval?'checked':''} />
-        Require Approval
-      </label>
-      <label class="toggle-row">
-        <input type="checkbox" id="sWaitlistEnabled" ${CONFIG.waitlistEnabled?'checked':''} />
-        Enable Waitlist
-      </label>
-    </div>
-    <div style="display:flex;gap:1rem;margin-bottom:3rem;">
-      <button class="btn btn-solid" onclick="saveSettings()">Save Settings</button>
-      <button class="btn btn-ghost" onclick="adminLogout()">Log Out</button>
-    </div>
-
-    <hr class="div" />
-
-    <div class="section-label">Announcement</div>
-    <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">Shown to all guests above the roster. Leave blank to hide.</p>
-    <div class="form-group">
-      <label>Message</label>
-      <textarea id="annText" rows="4" placeholder="Write something for your guests…">${esc(CONFIG.announcementText||'')}</textarea>
-    </div>
-    <div class="form-group">
-      <label>Images <span style="opacity:.45;font-size:.8em">(up to 6 · optional · click to enlarge)</span></label>
-      <div class="ann-grid" id="annGrid">
-        ${[0,1,2,3,4,5].map(i => {
-          const src = (CONFIG.announcementImages||[])[i] || null;
-          return `<div class="ann-grid-slot" id="annSlot${i}">
-            ${src
-              ? `<img class="ann-grid-preview" src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)" />
-                 <button class="slot-remove" onclick="clearAnnSlot(${i})">✕</button>`
-              : `<div class="ann-grid-slot-inner" onclick="triggerAnnSlot(${i})">
-                   <div class="slot-icon" style="font-size:1.2rem">✦</div>
-                   <div class="slot-label">Add photo</div>
-                 </div>`}
-            <input type="file" id="annFile${i}" accept="image/*" style="display:none" onchange="loadAnnSlot(${i},event)" />
-          </div>`;
-        }).join('')}
+      <div class="admin-stat-cell">
+        <div class="admin-stat-val arrived-col" style="color:#4caf80;">${arrivedCount}</div>
+        <div class="admin-stat-lbl">Arrived</div>
       </div>
     </div>
-    <div style="display:flex;gap:1rem;margin-bottom:3rem;">
-      <button class="btn btn-solid" id="annSaveBtn" onclick="saveAnnouncement()">Save Announcement</button>
+
+    ${vibeChips ? `
+    <div class="vibe-breakdown">
+      <span class="vibe-breakdown-label">Vibes</span>
+      ${vibeChips}
+    </div>` : ''}
+
+    <div class="section-label" style="margin-bottom:1rem;">Social Pulse</div>
+    <div class="insights-grid">
+      <div class="insight-cell">
+        <div class="insight-val">${engagementPct}<span style="font-size:1.2rem;color:var(--muted);">%</span></div>
+        <div class="insight-lbl">Engaged</div>
+        <div class="insight-sub">${engagedIds.size} of ${apprList.length} interacted</div>
+      </div>
+      <div class="insight-cell">
+        <div class="insight-val fire-col">${mutualCount}</div>
+        <div class="insight-lbl">Mutual Fires</div>
+        <div class="insight-sub">${totalFires} total fires cast</div>
+      </div>
+      <div class="insight-cell">
+        <div class="insight-val arrived-col">${arrivedCount}</div>
+        <div class="insight-lbl">At the Door</div>
+        <div class="insight-sub">${apprList.length - arrivedCount} still expected</div>
+      </div>
+      <div class="insight-cell">
+        <div class="insight-val" style="color:var(--muted);">${apprList.filter(g=>Object.values(socialData.fires).filter(arr=>arr.includes(g.id)).length===0).length}</div>
+        <div class="insight-lbl">Cold Guests</div>
+        <div class="insight-sub">no fires received yet</div>
+      </div>
     </div>
 
-    <hr class="div" />
+    ${hotGuests.length ? `
+    <div class="section-label" style="margin-bottom:1rem;">Most Fired</div>
+    <div class="hot-guests-list">
+      ${hotGuests.map((x,i) => {
+        const mutuals = (socialData.fires[x.g.id]||[]).filter(id=>(socialData.fires[id]||[]).includes(x.g.id)).length;
+        return `<div class="hot-guest-row">
+          <span class="hot-rank">${i+1}</span>
+          <span class="hot-name">${esc(x.g.name)}</span>
+          <span class="hot-fires">🔥 ${x.fr}</span>
+          ${mutuals ? `<span class="hot-mutual">${mutuals} mutual</span>` : ''}
+        </div>`;
+      }).join('')}
+    </div>` : ''}
+  ` : '';
 
+  const pendingItemHTML = g => {
+    const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
+    const photos = g.photos||[];
+    const vibeMap = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
+    const symMap  = {up:'↑',down:'↓',dash:'—'};
+    const vibes   = g.vibes||[];
+    return `
+    <div class="pending-item">
+      <div class="p-header">
+        ${thumb?`<img class="p-thumb" src="${thumb}" alt="" />`:`<div class="p-thumb-ph">${esc((g.name||'?').charAt(0).toUpperCase())}</div>`}
+        <div class="p-info">
+          <div class="p-name">${esc(g.name)}</div>
+          <div class="p-meta">${esc(g.role||'')} · PIN: ${esc(g.pin)} · Submitted ${new Date(g.created_at).toLocaleString()}</div>
+        </div>
+      </div>
+      ${photos.length ? `<div class="p-photo-grid">${photos.map(src=>`<img src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)">`).join('')}</div>` : ''}
+      <div class="p-details-row">
+        ${vibes.length ? `<div class="p-section"><div class="p-label">Vibes</div><div style="display:flex;gap:.4rem;margin-top:.2rem;">${vibes.map(v=>`<span style="font-family:'Cormorant',serif;font-size:1.5rem;line-height:1;color:${vibeMap[v]||'#888'};border:1px solid ${vibeMap[v]||'#888'}44;padding:.2rem .6rem;">${symMap[v]||v}</span>`).join('')}</div></div>` : ''}
+        ${g.age ? `<div class="p-section"><div class="p-label">Age</div><div class="p-value">${g.age}</div></div>` : ''}
+        ${g.last_tested ? `<div class="p-section"><div class="p-label">Last Tested</div><div class="p-value">${esc(g.last_tested)}</div></div>` : ''}
+        ${g.prep ? `<div class="p-section"><div class="p-label">PrEP</div><div class="p-value">${g.prep==='yes'?'Yes':'No'}</div></div>` : ''}
+      </div>
+      ${g.bio ? `<div class="p-section"><div class="p-label">About</div><div class="p-bio">${esc(g.bio).replace(/\n/g,'<br>')}</div></div>` : ''}
+      <div class="p-actions">
+        <button class="btn btn-blue btn-sm" data-action="approve" data-id="${g.id}">Approve</button>
+        <button class="btn btn-danger btn-sm" data-action="reject" data-id="${g.id}">Decline</button>
+      </div>
+    </div>`;
+  };
+
+  const tabGuests = adminTab === 'guests' ? `
     <div class="section-label">Pending Approval — ${pendList.length}</div>
     <div class="pending-list">
-      ${!pendList.length ? `<div class="empty-state">No pending submissions.</div>` :
-        pendList.map(g => {
-          const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
-          const photos = g.photos||[];
-          const vibeMap = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
-          const symMap  = {up:'↑',down:'↓',dash:'—'};
-          const vibes   = g.vibes||[];
-          return `
-          <div class="pending-item">
-            <div class="p-header">
-              ${thumb?`<img class="p-thumb" src="${thumb}" alt="" />`:`<div class="p-thumb-ph">${esc((g.name||'?').charAt(0).toUpperCase())}</div>`}
-              <div class="p-info">
-                <div class="p-name">${esc(g.name)}</div>
-                <div class="p-meta">${esc(g.role||'')} · PIN: ${esc(g.pin)} · Submitted ${new Date(g.created_at).toLocaleString()}</div>
-              </div>
-            </div>
-            ${photos.length ? `<div class="p-photo-grid">${photos.map(src=>`<img src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)">`).join('')}</div>` : ''}
-            <div class="p-details-row">
-              ${vibes.length ? `<div class="p-section"><div class="p-label">Vibes</div><div style="display:flex;gap:.4rem;margin-top:.2rem;">${vibes.map(v=>`<span style="font-family:'Cormorant',serif;font-size:1.5rem;line-height:1;color:${vibeMap[v]||'#888'};border:1px solid ${vibeMap[v]||'#888'}44;padding:.2rem .6rem;">${symMap[v]||v}</span>`).join('')}</div></div>` : ''}
-              ${g.age ? `<div class="p-section"><div class="p-label">Age</div><div class="p-value">${g.age}</div></div>` : ''}
-              ${g.last_tested ? `<div class="p-section"><div class="p-label">Last Tested</div><div class="p-value">${esc(g.last_tested)}</div></div>` : ''}
-              ${g.prep ? `<div class="p-section"><div class="p-label">PrEP</div><div class="p-value">${g.prep==='yes'?'Yes':'No'}</div></div>` : ''}
-            </div>
-            ${g.bio ? `<div class="p-section"><div class="p-label">About</div><div class="p-bio">${esc(g.bio).replace(/\n/g,'<br>')}</div></div>` : ''}
-            <div class="p-actions">
-              <button class="btn btn-blue btn-sm" data-action="approve" data-id="${g.id}">Approve</button>
-              <button class="btn btn-danger btn-sm" data-action="reject" data-id="${g.id}">Decline</button>
-            </div>
-          </div>`;
-        }).join('')}
+      ${!pendList.length ? `<div class="empty-state">No pending submissions.</div>` : pendList.map(pendingItemHTML).join('')}
     </div>
 
     <hr class="div" />
@@ -2283,10 +2380,11 @@ async function renderAdmin() {
       ${!apprList.length ? `<div class="empty-state">No confirmed guests yet.</div>` :
         apprList.map(g => {
           const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
-          const isFlagged = !!adminData.flagged[g.id];
-          const note = adminData.notes[g.id] || '';
-          const firesRcvd = Object.values(socialData.fires).filter(arr=>arr.includes(g.id)).length;
-          const savesRcvd = Object.values(socialData.saved).filter(arr=>arr.includes(g.id)).length;
+          const isFlagged  = !!adminData.flagged[g.id];
+          const note       = adminData.notes[g.id] || '';
+          const isArrived  = !!doorCheckins[g.id];
+          const firesRcvd  = Object.values(socialData.fires).filter(arr=>arr.includes(g.id)).length;
+          const savesRcvd  = Object.values(socialData.saved).filter(arr=>arr.includes(g.id)).length;
           const firesGiven = (socialData.fires[g.id]||[]).length;
           const mutuals    = (socialData.fires[g.id]||[]).filter(id=>(socialData.fires[id]||[]).includes(g.id)).length;
           const socialLine = (firesRcvd||savesRcvd||firesGiven) ? `
@@ -2304,6 +2402,7 @@ async function renderAdmin() {
               ${socialLine}
             </div>
             <div style="display:flex;gap:0.5rem;align-items:center;">
+              ${isArrived ? `<span class="checkin-badge">✓ Here</span>` : ''}
               <button class="a-flag-btn ${isFlagged?'flagged':''}" data-action="flag" data-id="${g.id}" title="${isFlagged?'Flagged — click to unflag':'Flag guest'}">⚑</button>
               <button class="btn btn-danger btn-sm" data-action="remove" data-id="${g.id}">Remove</button>
             </div>
@@ -2311,6 +2410,88 @@ async function renderAdmin() {
           </div>`;
         }).join('')}
     </div>
+  ` : '';
+
+  const tabAnnounce = adminTab === 'announce' ? `
+    <div class="section-label">Announcement</div>
+    <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">Shown to all guests above the roster. Leave blank to hide.</p>
+    <div class="form-group">
+      <label>Message</label>
+      <textarea id="annText" rows="4" placeholder="Write something for your guests…">${esc(CONFIG.announcementText||'')}</textarea>
+    </div>
+    <div class="form-group">
+      <label>Images <span style="opacity:.45;font-size:.8em">(up to 6 · optional · click to enlarge)</span></label>
+      <div class="ann-grid" id="annGrid">
+        ${[0,1,2,3,4,5].map(i => {
+          const src = (CONFIG.announcementImages||[])[i] || null;
+          return `<div class="ann-grid-slot" id="annSlot${i}">
+            ${src
+              ? `<img class="ann-grid-preview" src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)" />
+                 <button class="slot-remove" onclick="clearAnnSlot(${i})">✕</button>`
+              : `<div class="ann-grid-slot-inner" onclick="triggerAnnSlot(${i})">
+                   <div class="slot-icon" style="font-size:1.2rem">✦</div>
+                   <div class="slot-label">Add photo</div>
+                 </div>`}
+            <input type="file" id="annFile${i}" accept="image/*" style="display:none" onchange="loadAnnSlot(${i},event)" />
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div style="display:flex;gap:1rem;margin-bottom:3rem;">
+      <button class="btn btn-solid" id="annSaveBtn" onclick="saveAnnouncement()">Save Announcement</button>
+    </div>
+  ` : '';
+
+  const tabSettings = adminTab === 'settings' ? `
+    <div class="section-label">Event Settings</div>
+    <div class="settings-grid">
+      <div class="form-group"><label>Event Name</label><input type="text" id="sName" value="${esc(CONFIG.eventName||'')}" /></div>
+      <div class="form-group"><label>Capacity</label><input type="number" id="sCap" value="${CONFIG.capacity}" min="1" /></div>
+      <div class="form-group"><label>Date / Time <span style="opacity:.45;font-size:.8em">(display)</span></label><input type="text" id="sDate" value="${esc(CONFIG.eventDate||'')}" /></div>
+      <div class="form-group"><label>Countdown Target</label><input type="datetime-local" id="sDateISO" value="${esc(CONFIG.eventDateISO||'')}" /></div>
+      <div class="form-group"><label>Location</label><input type="text" id="sLoc" value="${esc(CONFIG.eventLocation||'')}" /></div>
+      <div class="form-group"><label>Guest Preview PIN</label><input type="text" id="sGuestPin" value="${esc(CONFIG.guestPreviewPin||'')}" maxlength="6" inputmode="numeric" /></div>
+    </div>
+
+    <div class="section-label" style="margin-bottom:0.8rem;">Event Phase</div>
+    <div class="phase-selector" style="margin-bottom:2rem;">
+      <button class="phase-btn ${CONFIG.eventPhase==='pre'?'active':''}" data-phase="pre" onclick="selectPhase('pre')">Pre-Event</button>
+      <button class="phase-btn phase-live ${CONFIG.eventPhase==='live'?'active':''}" data-phase="live" onclick="selectPhase('live')">Live</button>
+      <button class="phase-btn phase-closed ${CONFIG.eventPhase==='closed'?'active':''}" data-phase="closed" onclick="selectPhase('closed')">Closed</button>
+    </div>
+
+    <div class="settings-toggles">
+      <label class="pill-toggle-wrap">
+        <span class="toggle-label">Require Approval</span>
+        <div class="pill-toggle">
+          <input type="checkbox" id="sRequireApproval" ${CONFIG.requireApproval?'checked':''} />
+          <span class="pill-slider"></span>
+        </div>
+      </label>
+      <label class="pill-toggle-wrap">
+        <span class="toggle-label">Enable Waitlist</span>
+        <div class="pill-toggle">
+          <input type="checkbox" id="sWaitlistEnabled" ${CONFIG.waitlistEnabled?'checked':''} />
+          <span class="pill-slider"></span>
+        </div>
+      </label>
+    </div>
+    <div style="display:flex;gap:1rem;margin-bottom:3rem;margin-top:1.5rem;">
+      <button class="btn btn-solid" onclick="saveSettings()">Save Settings</button>
+      <button class="btn btn-ghost" onclick="adminLogout()">Log Out</button>
+    </div>
+  ` : '';
+
+  el.innerHTML = `
+    <div class="admin-tabs">
+      <button class="admin-tab-btn ${adminTab==='overview'?'active':''}" onclick="setAdminTab('overview')">Overview</button>
+      <button class="admin-tab-btn ${adminTab==='guests'?'active':''}" onclick="setAdminTab('guests')">
+        Guests${pendList.length ? `<span class="admin-tab-badge"></span>` : ''}
+      </button>
+      <button class="admin-tab-btn ${adminTab==='announce'?'active':''}" onclick="setAdminTab('announce')">Announce</button>
+      <button class="admin-tab-btn ${adminTab==='settings'?'active':''}" onclick="setAdminTab('settings')">Settings</button>
+    </div>
+    ${tabOverview}${tabGuests}${tabAnnounce}${tabSettings}
   `;
 }
 
@@ -2326,8 +2507,21 @@ function adminLogin() {
 
 function adminLogout() {
   adminIn=false;
+  adminCachedData=null;
   document.getElementById('doorNavBtn').style.display = 'none';
   renderAdmin();
+}
+
+function setAdminTab(tab) {
+  adminTab = tab;
+  if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
+}
+
+function selectPhase(phase) {
+  CONFIG.eventPhase = phase;
+  document.querySelectorAll('#adminContent .phase-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.phase === phase);
+  });
 }
 
 async function approveGuest(id) {
@@ -2514,6 +2708,7 @@ async function saveSettings() {
     { key: 'eventDateISO',     value: CONFIG.eventDateISO },
     { key: 'requireApproval',  value: String(CONFIG.requireApproval) },
     { key: 'waitlistEnabled',  value: String(CONFIG.waitlistEnabled) },
+    { key: 'eventPhase',       value: CONFIG.eventPhase },
   ];
 
   const btn = document.querySelector('#adminContent .btn-solid');
