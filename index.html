@@ -1415,8 +1415,8 @@ async function renderRoster() {
     ${hasAnn ? `<div class="announce-banner">
       <div class="announce-header">From the Host</div>
       <div class="announce-body">
-        ${CONFIG.announcementText ? `<div class="announce-text">${CONFIG.announcementText.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>` : ''}
-        ${annImgs.length ? `<div class="announce-imgs">${annImgs.map(src=>`<img src="${src}" alt="" onclick="openLightbox('${src}')" />`).join('')}</div>` : ''}
+        ${CONFIG.announcementText ? `<div class="announce-text">${esc(CONFIG.announcementText).replace(/\n/g,'<br>')}</div>` : ''}
+        ${annImgs.length ? `<div class="announce-imgs">${annImgs.map(src=>`<img src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)" />`).join('')}</div>` : ''}
       </div>
     </div>` : ''}
     <div class="stats-row">
@@ -1471,10 +1471,10 @@ async function openModal(id) {
 
   let photosHtml = p0 ? `
     <div class="modal-photos">
-      <div class="modal-photo-primary"><img src="${p0}" alt="" onclick="openLightbox('${p0}')" style="cursor:zoom-in" /></div>
+      <div class="modal-photo-primary"><img src="${esc(p0)}" alt="" data-src="${esc(p0)}" onclick="openLightbox(this.dataset.src)" style="cursor:zoom-in" /></div>
       <div class="modal-photo-secondary">
-        <div class="sec-thumb ${p1?'':'empty'}">${p1?`<img src="${p1}" alt="" onclick="openLightbox('${p1}')" />`:`<div class="sec-empty-icon">✦</div>`}</div>
-        <div class="sec-thumb ${p2?'':'empty'}">${p2?`<img src="${p2}" alt="" onclick="openLightbox('${p2}')" />`:`<div class="sec-empty-icon">✦</div>`}</div>
+        <div class="sec-thumb ${p1?'':'empty'}">${p1?`<img src="${esc(p1)}" alt="" data-src="${esc(p1)}" onclick="openLightbox(this.dataset.src)" />`:`<div class="sec-empty-icon">✦</div>`}</div>
+        <div class="sec-thumb ${p2?'':'empty'}">${p2?`<img src="${esc(p2)}" alt="" data-src="${esc(p2)}" onclick="openLightbox(this.dataset.src)" />`:`<div class="sec-empty-icon">✦</div>`}</div>
       </div>
     </div>` : `<div class="modal-photos"><div class="modal-no-photo"><div class="no-photo-initial">${esc(g.name.charAt(0).toUpperCase())}</div></div></div>`;
 
@@ -2068,13 +2068,13 @@ async function renderAdmin() {
       <textarea id="annText" rows="4" placeholder="Write something for your guests…">${CONFIG.announcementText}</textarea>
     </div>
     <div class="form-group">
-      <label>Images <span style="opacity:.45;font-size:.8em">(up to 4 · optional · click to enlarge)</span></label>
+      <label>Images <span style="opacity:.45;font-size:.8em">(up to 6 · optional · click to enlarge)</span></label>
       <div class="ann-grid" id="annGrid">
         ${[0,1,2,3,4,5].map(i => {
           const src = (CONFIG.announcementImages||[])[i] || null;
           return `<div class="ann-grid-slot" id="annSlot${i}">
             ${src
-              ? `<img class="ann-grid-preview" src="${src}" alt="" onclick="openLightbox('${src}')" />
+              ? `<img class="ann-grid-preview" src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)" />
                  <button class="slot-remove" onclick="clearAnnSlot(${i})">✕</button>`
               : `<div class="ann-grid-slot-inner" onclick="triggerAnnSlot(${i})">
                    <div class="slot-icon" style="font-size:1.2rem">✦</div>
@@ -2109,7 +2109,7 @@ async function renderAdmin() {
                 <div class="p-meta">${esc(g.role||'')} · PIN: ${esc(g.pin)} · Submitted ${new Date(g.created_at).toLocaleString()}</div>
               </div>
             </div>
-            ${photos.length ? `<div class="p-photo-grid">${photos.map(src=>`<img src="${src}" alt="" onclick="openLightbox('${src}')">`).join('')}</div>` : ''}
+            ${photos.length ? `<div class="p-photo-grid">${photos.map(src=>`<img src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)">`).join('')}</div>` : ''}
             <div class="p-details-row">
               ${vibes.length ? `<div class="p-section"><div class="p-label">Vibes</div><div style="display:flex;gap:.4rem;margin-top:.2rem;">${vibes.map(v=>`<span style="font-family:'Cormorant',serif;font-size:1.5rem;line-height:1;color:${vibeMap[v]||'#888'};border:1px solid ${vibeMap[v]||'#888'}44;padding:.2rem .6rem;">${symMap[v]||v}</span>`).join('')}</div></div>` : ''}
               ${g.age ? `<div class="p-section"><div class="p-label">Age</div><div class="p-value">${g.age}</div></div>` : ''}
@@ -2190,8 +2190,9 @@ async function rejectGuest(id) {
 }
 
 async function removeGuest(id) {
-  const { data: g } = await sb.from('guests').select('name').eq('id',id).single();
-  if (!window.confirm(`Remove ${g?.name||'this guest'}?`)) return;
+  const { data: g, error } = await sb.from('guests').select('name').eq('id',id).single();
+  if (error || !g) return;
+  if (!window.confirm(`Remove ${g.name}?`)) return;
   await sb.from('guests').delete().eq('id',id);
   renderAdmin(); renderRoster();
 }
