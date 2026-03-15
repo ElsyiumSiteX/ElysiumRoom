@@ -610,7 +610,8 @@
     .vibe-filter-btn:hover { border-color: var(--gold-dim); color: var(--cream); }
     .vibe-filter-btn.vf-up   { color: #e05050; border-color: rgba(224,80,80,0.5); background: rgba(224,80,80,0.07); }
     .vibe-filter-btn.vf-down { color: #5bc8f5; border-color: rgba(91,200,245,0.5); background: rgba(91,200,245,0.07); }
-    .vibe-filter-btn.vf-dash { color: #d4b84a; border-color: rgba(212,184,74,0.5); background: rgba(212,184,74,0.07); }
+    .vibe-filter-btn.vf-dash  { color: #d4b84a; border-color: rgba(212,184,74,0.5); background: rgba(212,184,74,0.07); }
+    .vibe-filter-btn.vf-verse { color: #b97fdb; border-color: rgba(185,127,219,0.5); background: rgba(185,127,219,0.07); }
     .vibe-filter-clear { font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); background: none; border: none; cursor: pointer; padding: 0.3rem 0.4rem; transition: color 0.2s; }
     .vibe-filter-clear:hover { color: var(--gold-dim); }
     .vibe-filter-count { font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-left: auto; }
@@ -981,12 +982,18 @@ const saveNote = debounce(async function saveNote(id, text) {
 // ══ VIBE FILTER ════════════════════════════════════════════════════
 function getFilteredGuests() {
   if (!activeVibeFilter) return allGuests;
+  if (activeVibeFilter === 'verse') {
+    return allGuests.filter(g => {
+      const v = g.vibes || [];
+      return v.includes('up') && v.includes('down');
+    });
+  }
   return allGuests.filter(g => (g.vibes || []).includes(activeVibeFilter));
 }
 
 function vibeFilterBarHTML() {
   const filtered = getFilteredGuests();
-  const vibes = [{key:'up',sym:'↑'},{key:'down',sym:'↓'},{key:'dash',sym:'—'}];
+  const vibes = [{key:'up',sym:'↑'},{key:'down',sym:'↓'},{key:'verse',sym:'↕'},{key:'dash',sym:'—'}];
   return `<div class="vibe-filter" id="vibeFilterBar">
     ${vibes.map(v => `<button class="vibe-filter-btn${activeVibeFilter===v.key?' vf-'+v.key:''}" onclick="setVibeFilter('${v.key}')">${v.sym}</button>`).join('')}
     ${activeVibeFilter ? `<button class="vibe-filter-clear" onclick="setVibeFilter(null)">✕ clear</button>` : ''}
