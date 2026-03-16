@@ -1475,6 +1475,7 @@ async function init() {
       }
     } catch {}
   }
+  subscribeConfigChanges();
   renderRoster();
   renderRsvp();
 }
@@ -1533,7 +1534,21 @@ function editProfile() {
 }
 
 // ══ CHAT ════════════════════════════════════════════════════════════
-let chatChannel = null;
+let chatChannel   = null;
+let configChannel = null;
+
+function subscribeConfigChanges() {
+  if (configChannel) return;
+  configChannel = sb.channel('public:config')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'config', filter: 'key=eq.confirmRound' }, payload => {
+      const newRound = parseInt(payload.new?.value, 10) || 0;
+      if (newRound > CONFIG.confirmRound) {
+        CONFIG.confirmRound = newRound;
+        checkConfirmOverlay();
+      }
+    })
+    .subscribe();
+}
 
 async function renderChat() {
   const el = document.getElementById('chatContent');
