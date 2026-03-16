@@ -1886,7 +1886,7 @@ async function renderRsvp() {
       <div class="age-wrap">
         <select id="rAge" class="age-select">
           <option value="">— select —</option>
-          ${Array.from({length:48},(_,i)=>`<option value="${i+18}">${i+18}</option>`).join('')}
+          ${Array.from({length:13},(_,i)=>`<option value="${i+18}">${i+18}</option>`).join('')}
         </select>
       </div>
     </div>
@@ -2163,7 +2163,7 @@ async function renderAccount() {
       <div class="age-wrap">
         <select id="eAge" class="age-select">
           <option value="">— select —</option>
-          ${Array.from({length:48},(_,i)=>`<option value="${i+18}" ${g.age==i+18?'selected':''}>${i+18}</option>`).join('')}
+          ${Array.from({length:13},(_,i)=>`<option value="${i+18}" ${g.age==i+18?'selected':''}>${i+18}</option>`).join('')}
         </select>
       </div>
     </div>
