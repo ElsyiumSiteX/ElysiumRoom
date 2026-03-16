@@ -1045,9 +1045,9 @@ function checkConfirmOverlay() {
   if (CONFIG.confirmRound < 1) return;
   if ((confirmResponses[currentGuest.id] || 0) >= CONFIG.confirmRound) return;
   // Need to verify guest is approved — fetch status
-  sb.from('guests').select('status').eq('id', currentGuest.id).single().then(({ data: g }) => {
-    if (g?.status === 'approved') showConfirmOverlay();
-  });
+  sb.from('guests').select('status').eq('id', currentGuest.id).single()
+    .then(({ data: g }) => { if (g?.status === 'approved') showConfirmOverlay(); })
+    .catch(() => {});
 }
 
 function showConfirmOverlay() {
@@ -1107,9 +1107,10 @@ async function saveWlOrder() {
 
 async function moveWlGuest(id, dir) {
   const ids = (adminCachedData?.wl || []).map(g => g.id);
-  if (!wlOrder.length) wlOrder = ids;
-  // ensure all current guests are represented
+  if (!wlOrder.length) wlOrder = [...ids];
+  // add any new guests not yet in order, then prune stale IDs
   for (const gid of ids) { if (!wlOrder.includes(gid)) wlOrder.push(gid); }
+  wlOrder = wlOrder.filter(gid => ids.includes(gid));
   const idx = wlOrder.indexOf(id);
   if (idx === -1) return;
   const next = idx + dir;
@@ -1915,9 +1916,15 @@ function _updateModalNav(animClass) {
   if (!list.length) { if (prevBtn) prevBtn.disabled = true; if (nextBtn) nextBtn.disabled = true; return; }
   const idx = list.findIndex(g => g.id === _pendingModalId);
   currentModalGuestId = _pendingModalId;
-  if (prevBtn) prevBtn.disabled = idx <= 0;
-  if (nextBtn) nextBtn.disabled = idx >= list.length - 1;
-  if (posEl)   posEl.textContent = list.length > 1 ? `${idx + 1} / ${list.length}` : '';
+  if (idx === -1) {
+    if (prevBtn) prevBtn.disabled = true;
+    if (nextBtn) nextBtn.disabled = true;
+    if (posEl)   posEl.textContent = '';
+  } else {
+    if (prevBtn) prevBtn.disabled = idx <= 0;
+    if (nextBtn) nextBtn.disabled = idx >= list.length - 1;
+    if (posEl)   posEl.textContent = list.length > 1 ? `${idx + 1} / ${list.length}` : '';
+  }
   if (animClass) {
     const inner = document.getElementById('modalInner');
     inner.classList.remove('modal-anim-next', 'modal-anim-prev');
@@ -2426,8 +2433,22 @@ async function renderAccount() {
 
   let wlPosition = null;
   if (g.status === 'waitlisted') {
-    const { data: wlAll } = await sb.from('guests').select('id').eq('status','waitlisted').order('created_at');
-    wlPosition = (wlAll||[]).findIndex(r => r.id === g.id) + 1;
+    const [{ data: wlAll }, { data: wlOrderCfg }] = await Promise.all([
+      sb.from('guests').select('id').eq('status','waitlisted').order('created_at'),
+      sb.from('config').select('value').eq('key','wl_order').single(),
+    ]);
+    const ids = (wlAll||[]).map(r => r.id);
+    let ordered = ids;
+    if (wlOrderCfg?.value) {
+      try {
+        const saved = JSON.parse(wlOrderCfg.value);
+        ordered = [...ids].sort((a,b) => {
+          const ai = saved.indexOf(a); const bi = saved.indexOf(b);
+          return (ai===-1?Infinity:ai) - (bi===-1?Infinity:bi);
+        });
+      } catch(e) {}
+    }
+    wlPosition = ordered.indexOf(g.id) + 1 || null;
   }
 
   el.innerHTML = `
