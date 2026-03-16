@@ -687,7 +687,15 @@
     .waitlist-status-block { background: rgba(212,184,74,0.06); border: 1px solid rgba(212,184,74,0.22); border-radius: 3px; padding: 1.4rem; margin-bottom: 1.8rem; text-align: center; }
     .wl-status-pos { font-family: 'Cinzel', serif; font-size: 2.2rem; font-weight: 700; color: var(--gold); line-height: 1; margin-bottom: 0.4rem; }
     .wl-status-label { font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); }
-    .wl-pos { font-family: 'Cinzel', serif; font-size: 1.2rem; font-weight: 700; color: var(--gold-dim); min-width: 2.2rem; text-align: center; padding-right: 0.6rem; align-self: center; }
+    .wl-reorder { display: flex; flex-direction: column; align-items: center; gap: 0.1rem; flex-shrink: 0; }
+    .wl-pos { font-family: 'Cinzel', serif; font-size: 1rem; font-weight: 700; color: var(--gold-dim); text-align: center; line-height: 1; }
+    .wl-arrow { background: none; border: 1px solid var(--border-dim); color: var(--muted); font-size: 0.7rem; width: 1.6rem; height: 1.4rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; padding: 0; }
+    .wl-arrow:hover:not([disabled]) { border-color: var(--gold-dim); color: var(--gold); }
+    .wl-arrow[disabled] { opacity: 0.2; cursor: default; }
+    .prior-events-row { display: inline-flex; align-items: center; gap: 0.45rem; margin-top: 0.25rem; }
+    .prior-label { font-family: 'Cinzel', serif; font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+    .prior-select { background: var(--black-card); border: 1px solid var(--border-dim); color: var(--cream); font-family: 'Cormorant', serif; font-size: 0.85rem; padding: 0.1rem 0.35rem; outline: none; cursor: pointer; transition: border-color 0.15s; }
+    .prior-select:focus, .prior-select:hover { border-color: rgba(212,184,74,0.45); }
     .wl-msg-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; background: rgba(212,184,74,0.03); border-top: 1px solid var(--border-dim); }
     .wl-msg-input { flex: 1; background: var(--black-card); border: 1px solid var(--border-dim); color: var(--cream); font-family: 'Cormorant', serif; font-size: 1rem; padding: 0.45rem 0.75rem; outline: none; transition: border-color 0.2s; min-width: 0; }
     .wl-msg-input:focus { border-color: rgba(212,184,74,0.45); }
@@ -990,9 +998,10 @@ let selectedVibes = [];
 let selectedPrep  = null;
 let allGuests       = [];
 let activeVibeFilter = null;
-let adminData       = { notes: {}, flagged: {} };
+let adminData       = { notes: {}, flagged: {}, priorEvents: {} };
 let doorCheckins    = {};
 let wlMessages        = {}; // { [guestId]: personalMessageString }
+let wlOrder           = []; // ordered array of waitlist guest IDs
 let confirmResponses  = {}; // { [guestId]: roundNumber } — last round they confirmed
 let socialData      = { fires: {}, saved: {} };
 let adminTab        = 'overview';
@@ -1004,10 +1013,11 @@ let _touchX = 0, _touchY = 0;
 
 // ══ SOCIAL ═════════════════════════════════════════════════════════
 async function loadSocialData() {
-  const [socialRes, wlMsgRes, confirmRes] = await Promise.all([
+  const [socialRes, wlMsgRes, confirmRes, wlOrderRes] = await Promise.all([
     sb.from('config').select('value').eq('key','social').single(),
     sb.from('config').select('value').eq('key','wl_messages').single(),
     sb.from('config').select('value').eq('key','confirm_responses').single(),
+    sb.from('config').select('value').eq('key','wl_order').single(),
   ]);
   if (socialRes.data?.value) {
     try {
@@ -1023,6 +1033,9 @@ async function loadSocialData() {
   }
   if (confirmRes.data?.value) {
     try { confirmResponses = JSON.parse(confirmRes.data.value) || {}; } catch(e) {}
+  }
+  if (wlOrderRes.data?.value) {
+    try { wlOrder = JSON.parse(wlOrderRes.data.value) || []; } catch(e) {}
   }
 }
 
@@ -1086,6 +1099,31 @@ async function clearWlPersonalMessage(id) {
   delete wlMessages[id];
   await sb.from('config').upsert({ key: 'wl_messages', value: JSON.stringify(wlMessages) }, { onConflict: 'key' });
   if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
+}
+
+async function saveWlOrder() {
+  await sb.from('config').upsert({ key: 'wl_order', value: JSON.stringify(wlOrder) }, { onConflict: 'key' });
+}
+
+async function moveWlGuest(id, dir) {
+  const ids = (adminCachedData?.wl || []).map(g => g.id);
+  if (!wlOrder.length) wlOrder = ids;
+  // ensure all current guests are represented
+  for (const gid of ids) { if (!wlOrder.includes(gid)) wlOrder.push(gid); }
+  const idx = wlOrder.indexOf(id);
+  if (idx === -1) return;
+  const next = idx + dir;
+  if (next < 0 || next >= wlOrder.length) return;
+  [wlOrder[idx], wlOrder[next]] = [wlOrder[next], wlOrder[idx]];
+  await saveWlOrder();
+  if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
+}
+
+async function savePriorEvents(id, val) {
+  const n = parseInt(val, 10);
+  if (n > 0) adminData.priorEvents[id] = n;
+  else delete adminData.priorEvents[id];
+  await saveAdminData();
 }
 
 async function saveSocialData() {
@@ -1312,8 +1350,9 @@ async function loadAdminData() {
   if (data?.value) {
     try {
       const parsed = JSON.parse(data.value);
-      adminData.notes   = parsed.notes   || {};
-      adminData.flagged = parsed.flagged || {};
+      adminData.notes       = parsed.notes       || {};
+      adminData.flagged     = parsed.flagged     || {};
+      adminData.priorEvents = parsed.priorEvents || {};
     } catch(e) {}
   }
 }
@@ -2904,14 +2943,24 @@ function buildAdminHTML(el) {
       <button class="btn btn-ghost" onclick="setAdminTab('settings')">Go to Settings to enable →</button>
     </div>` : `
     <div class="pending-list">
-      ${!wlList.length ? `<div class="empty-state">No one on the waitlist.</div>` :
-        wlList.map((g, idx) => {
+      ${!wlList.length ? `<div class="empty-state">No one on the waitlist.</div>` : (() => {
+        const orderedWl = wlOrder.length
+          ? [...wlList].sort((a,b) => {
+              const ai = wlOrder.indexOf(a.id); const bi = wlOrder.indexOf(b.id);
+              return (ai===-1?Infinity:ai) - (bi===-1?Infinity:bi);
+            })
+          : wlList;
+        return orderedWl.map((g, idx) => {
           const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
           const existingMsg = wlMessages[g.id] || '';
           return `
           <div class="pending-item">
             <div class="p-header">
-              <div class="wl-pos">#${idx+1}</div>
+              <div class="wl-reorder">
+                <button class="wl-arrow" onclick="moveWlGuest('${g.id}',-1)" ${idx===0?'disabled':''}  title="Move up">↑</button>
+                <div class="wl-pos">#${idx+1}</div>
+                <button class="wl-arrow" onclick="moveWlGuest('${g.id}',1)" ${idx===orderedWl.length-1?'disabled':''} title="Move down">↓</button>
+              </div>
               ${thumb?`<img class="p-thumb" src="${thumb}" alt="" />`:`<div class="p-thumb-ph">${esc((g.name||'?').charAt(0).toUpperCase())}</div>`}
               <div class="p-info">
                 <div class="p-name">${esc(g.name)}</div>
@@ -2929,7 +2978,8 @@ function buildAdminHTML(el) {
               <button class="btn btn-danger btn-sm" data-action="remove-waitlisted" data-id="${g.id}">Remove</button>
             </div>
           </div>`;
-        }).join('')}
+        }).join('');
+      })()}
     </div>`}
 
     <hr class="div" />
@@ -2951,6 +3001,13 @@ function buildAdminHTML(el) {
               🔥 ${firesRcvd} rcvd · ${firesGiven} sent${mutuals?` · <span style="color:#e05050">${mutuals} mutual</span>`:''}
               ${savesRcvd ? `&ensp;★ ${savesRcvd} saved` : ''}
             </div>` : '';
+          const priorCount = adminData.priorEvents[g.id] || 0;
+          const priorLine = `<div class="prior-events-row">
+            <span class="prior-label">Prior events</span>
+            <select class="prior-select" onchange="savePriorEvents('${g.id}',this.value)">
+              ${[0,1,2,3,4,5,6,7,8,9,10].map(n=>`<option value="${n}"${n===priorCount?' selected':''}>${n===0?'—':n}</option>`).join('')}
+            </select>
+          </div>`;
           return `
           <div class="approved-item">
             ${thumb?`<img class="p-thumb" src="${thumb}" alt="" />`:`<div class="p-thumb-ph">${esc((g.name||'?').charAt(0).toUpperCase())}</div>`}
@@ -2959,6 +3016,7 @@ function buildAdminHTML(el) {
               <span style="color:var(--gold-dim);font-size:.8rem"> · ${esc(g.role||'')}</span>
               <span style="color:var(--muted);font-size:.72rem"> · PIN: ${esc(g.pin)}</span>
               ${socialLine}
+              ${priorLine}
             </div>
             <div style="display:flex;gap:0.5rem;align-items:center;">
               ${isArrived ? `<span class="checkin-badge">✓ Here</span>` : ''}
@@ -3159,6 +3217,8 @@ async function promoteFromWaitlist(id) {
     adminCachedData.appr = [...adminCachedData.appr, {...g, status:'approved'}]
       .sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
   }
+  wlOrder = wlOrder.filter(x => x !== id);
+  await saveWlOrder();
   _adminRebuild(); renderRoster();
 }
 
@@ -3168,6 +3228,8 @@ async function removeWaitlisted(id) {
   if (!window.confirm(`Remove ${g.name} from the waitlist?`)) return;
   await sb.from('guests').delete().eq('id',id);
   if (adminCachedData) adminCachedData.wl = adminCachedData.wl.filter(x => x.id !== id);
+  wlOrder = wlOrder.filter(x => x !== id);
+  await saveWlOrder();
   _adminRebuild();
 }
 
