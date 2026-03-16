@@ -1565,14 +1565,14 @@ async function renderRoster() {
         ${annImgs.length ? `<div class="announce-imgs">${annImgs.map(src=>`<img src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)" />`).join('')}</div>` : ''}
       </div>
     </div>` : ''}
-    <div class="stats-row">
+    <div class="stats-row" ${CONFIG.waitlistEnabled ? 'style="grid-template-columns:repeat(3,1fr)"' : ''}>
       <div class="stat"><div class="stat-num" id="statA">—</div><div class="stat-label">Confirmed</div></div>
       <div class="stat">
         ${CONFIG.waitlistEnabled
           ? `<div class="stat-num" style="color:var(--gold-dim);" id="statW">—</div><div class="stat-label">Waitlist</div>`
           : `<div class="stat-num blue" id="statP">—</div><div class="stat-label">Pending</div>`}
       </div>
-      <div class="stat"><div class="stat-num purple" id="statR">—</div><div class="stat-label">Remaining</div></div>
+      ${!CONFIG.waitlistEnabled ? `<div class="stat"><div class="stat-num purple" id="statR">—</div><div class="stat-label">Remaining</div></div>` : ''}
       <div class="stat"><div class="stat-num dim" id="statC">${CONFIG.capacity}</div><div class="stat-label">Capacity</div></div>
     </div>
     <div class="cap-wrap">
@@ -1596,11 +1596,11 @@ async function renderRoster() {
   const pct = CONFIG.capacity > 0 ? Math.min(100, Math.round(approved / CONFIG.capacity * 100)) : 0;
 
   document.getElementById('statA').textContent = approved;
-  document.getElementById('statR').textContent = rem;
   if (CONFIG.waitlistEnabled) {
     document.getElementById('statW').textContent = waitlisted || 0;
   } else {
     document.getElementById('statP').textContent = pending || 0;
+    document.getElementById('statR').textContent = rem;
   }
   document.getElementById('capText').textContent = `${approved} / ${CONFIG.capacity}`;
   const fill = document.getElementById('capFill');
@@ -1836,7 +1836,7 @@ async function renderRsvp() {
 
     <div class="form-group">
       <label>Last Tested <span class="req">*</span></label>
-      <input type="text" id="rTested" placeholder="e.g. March 2025" />
+      <input type="text" id="rTested" placeholder="e.g. March 2026" />
     </div>
 
     <div class="form-group">
@@ -2087,7 +2087,7 @@ async function renderAccount() {
 
     <div class="form-group">
       <label>Last Tested <span class="req">*</span></label>
-      <input type="text" id="eTested" value="${g.last_tested||''}" placeholder="e.g. March 2025" />
+      <input type="text" id="eTested" value="${g.last_tested||''}" placeholder="e.g. March 2026" />
     </div>
 
     <div class="form-group">
