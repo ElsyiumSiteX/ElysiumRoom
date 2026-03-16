@@ -534,6 +534,8 @@
     .ci-fire  { filter:drop-shadow(0 0 5px rgba(224,80,80,0.9)); }
     .ci-saved { filter:drop-shadow(0 0 4px rgba(200,168,75,0.8)); }
     .roster-card.mutual-fire-card { box-shadow:0 0 0 1px rgba(224,80,80,0.3), 0 0 28px rgba(224,80,80,0.1); }
+    .roster-card.host-card { box-shadow:0 0 0 1px rgba(200,168,75,0.4), 0 0 32px rgba(200,168,75,0.12); border-top-color:rgba(200,168,75,0.5) !important; }
+    .host-badge { position:absolute; top:0.55rem; right:0.55rem; font-family:'Cinzel',serif; font-size:0.5rem; letter-spacing:0.24em; text-transform:uppercase; color:rgba(200,168,75,0.85); background:rgba(8,6,4,0.62); border:1px solid rgba(200,168,75,0.32); padding:0.18rem 0.5rem; z-index:3; backdrop-filter:blur(6px); pointer-events:none; }
 
     .modal-interact { border-top:1px solid var(--border-dim); padding:1.5rem; }
     .mutual-reveal { font-family:'Cormorant',serif; font-size:1.05rem; font-style:italic; color:#e05050; text-align:center; letter-spacing:0.06em; padding-bottom:1rem; animation:fadeUp 0.4s ease; }
@@ -761,6 +763,7 @@
     eventDateISO:       "",
     waitlistEnabled:    false,
     eventPhase:         'pre',
+    hostName:           'Nico',
   };
 </script>
 <!-- ════════════════════════════════════════════════════════════════ -->
@@ -1176,8 +1179,10 @@ function rosterCardsHTML(list) {
     const photos = g.photos || [];
     const primary = photos[0] || null;
     const vibes = g.vibes || [];
+    const isHost = CONFIG.hostName && g.name.trim().toLowerCase() === CONFIG.hostName.trim().toLowerCase();
     return `
-    <div class="roster-card" data-guest-id="${g.id}" onclick="openModal('${g.id}')" style="animation-delay:${i*0.05}s">
+    <div class="roster-card${isHost?' host-card':''}" data-guest-id="${g.id}" onclick="openModal('${g.id}')" style="animation-delay:${i*0.05}s">
+      ${isHost ? `<div class="host-badge">Host</div>` : ''}
       ${primary ? `<img src="${primary}" alt="" loading="lazy" />` : `<div class="no-photo"><div class="no-photo-initial">${esc((g.name||'?').charAt(0).toUpperCase())}</div></div>`}
       <div class="roster-overlay">
         <div class="roster-name">${esc(g.name)}</div>
@@ -2349,7 +2354,11 @@ async function saveProfile() {
 // ══ ADMIN ══════════════════════════════════════════════════════════
 function filterGuests(q) {
   adminSearchQ = q;
-  if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
+  if (adminCachedData) {
+    buildAdminHTML(document.getElementById('adminContent'));
+    const input = document.getElementById('guestSearch');
+    if (input) { input.focus(); input.setSelectionRange(q.length, q.length); }
+  }
 }
 
 function sortGuests(val) {
@@ -2698,6 +2707,7 @@ function buildAdminHTML(el) {
     <div class="section-label">Event Settings</div>
     <div class="settings-grid">
       <div class="form-group"><label>Event Name</label><input type="text" id="sName" value="${esc(CONFIG.eventName||'')}" /></div>
+      <div class="form-group"><label>Host Name <span style="opacity:.45;font-size:.8em">(shown as Host badge on roster)</span></label><input type="text" id="sHostName" value="${esc(CONFIG.hostName||'')}" placeholder="e.g. Nico" /></div>
       <div class="form-group"><label>Capacity</label><input type="number" id="sCap" value="${CONFIG.capacity}" min="1" /></div>
       <div class="form-group"><label>Date / Time <span style="opacity:.45;font-size:.8em">(display)</span></label><input type="text" id="sDate" value="${esc(CONFIG.eventDate||'')}" /></div>
       <div class="form-group"><label>Countdown Target</label><input type="datetime-local" id="sDateISO" value="${esc(CONFIG.eventDateISO||'')}" /></div>
@@ -2943,6 +2953,7 @@ function togglePrep(val, btn) {
 
 async function saveSettings() {
   const n   = document.getElementById('sName').value.trim();
+  const hn  = document.getElementById('sHostName').value.trim();
   const c   = parseInt(document.getElementById('sCap').value, 10);
   const dt  = document.getElementById('sDate').value.trim();
   const lc  = document.getElementById('sLoc').value.trim();
@@ -2958,6 +2969,7 @@ async function saveSettings() {
   }
 
   if (n)                           CONFIG.eventName        = n;
+  CONFIG.hostName = hn;
   if (!isNaN(c) && c > 0)          CONFIG.capacity         = c;
   if (dt)                          CONFIG.eventDate        = dt;
   if (lc)                          CONFIG.eventLocation    = lc;
@@ -2974,6 +2986,7 @@ async function saveSettings() {
     { key: 'eventDateISO',     value: CONFIG.eventDateISO },
     { key: 'waitlistEnabled',  value: String(CONFIG.waitlistEnabled) },
     { key: 'eventPhase',       value: CONFIG.eventPhase },
+    { key: 'hostName',         value: CONFIG.hostName },
   ];
 
   const btn = document.querySelector('#adminContent .btn-solid');
