@@ -549,6 +549,19 @@
     .interact-hint { font-family:'Cormorant',serif; font-size:0.75rem; font-style:italic; color:rgba(180,168,148,0.55); text-align:center; margin-top:0.75rem; letter-spacing:0.03em; }
     #modalBox.mutual-glow { border-color:rgba(224,80,80,0.35); box-shadow:0 0 0 1px rgba(224,80,80,0.18), 0 0 60px rgba(224,80,80,0.1); }
 
+    /* ── MODAL SWIPE NAV ── */
+    .modal-nav-btn { display:none; position:absolute; top:0; width:44px; bottom:0; background:none; border:none; cursor:pointer; z-index:12; color:rgba(255,255,255,0.25); font-size:1.8rem; font-family:serif; line-height:1; padding:0; transition:color 0.2s, background 0.2s; }
+    .modal-nav-btn:hover { color:rgba(255,255,255,0.65); background:rgba(0,0,0,0.18); }
+    .modal-nav-btn:disabled { opacity:0.12; cursor:default; pointer-events:none; }
+    .modal-nav-prev { left:0; }
+    .modal-nav-next { right:0; }
+    @media (hover:hover) and (pointer:fine) { .modal-nav-btn { display:flex; align-items:center; justify-content:center; } }
+    .modal-nav-pos { position:absolute; top:0.6rem; left:50%; transform:translateX(-50%); font-family:'Cinzel',serif; font-size:0.6rem; letter-spacing:0.22em; color:rgba(255,255,255,0.2); z-index:12; pointer-events:none; white-space:nowrap; }
+    @keyframes modalSlideNext { from { opacity:0; transform:translateX(22px); } to { opacity:1; transform:none; } }
+    @keyframes modalSlidePrev { from { opacity:0; transform:translateX(-22px); } to { opacity:1; transform:none; } }
+    .modal-anim-next { animation:modalSlideNext 0.2s ease; }
+    .modal-anim-prev { animation:modalSlidePrev 0.2s ease; }
+
     .connections-section { margin-top:3rem; padding-top:2.5rem; border-top:1px solid var(--border-dim); }
     .connections-subsection { margin-bottom:2.2rem; }
     .connections-label { font-family:'Cinzel',serif; font-size:0.72rem; letter-spacing:0.24em; text-transform:uppercase; color:var(--gold-dim); margin-bottom:1.2rem; }
@@ -797,6 +810,9 @@
 <div class="modal-backdrop" id="modalBackdrop" onclick="closeModal(event)">
   <div class="modal" id="modalBox">
     <button class="modal-close" onclick="closeModalDirect()" aria-label="Close">×</button>
+    <button id="modalPrev" class="modal-nav-btn modal-nav-prev" onclick="modalNav(-1)" aria-label="Previous guest">‹</button>
+    <button id="modalNext" class="modal-nav-btn modal-nav-next" onclick="modalNav(1)" aria-label="Next guest">›</button>
+    <div id="modalNavPos" class="modal-nav-pos"></div>
     <div id="modalInner"></div>
   </div>
 </div>
@@ -836,6 +852,8 @@ let adminTab        = 'overview';
 let adminCachedData = null;
 let adminSearchQ    = '';
 let adminSortBy     = 'date';
+let currentModalGuestId = null;
+let _touchX = 0, _touchY = 0;
 
 // ══ SOCIAL ═════════════════════════════════════════════════════════
 async function loadSocialData() {
@@ -1653,8 +1671,46 @@ async function renderRoster() {
 }
 
 // ══ MODAL ══════════════════════════════════════════════════════════
-async function openModal(id) {
-  const { data: g } = await sb.from('guests').select('*').eq('id', id).single();
+function _updateModalNav(animClass) {
+  currentModalGuestId = null; // set below after guard
+  const list = allGuests.length ? getFilteredGuests() : [];
+  const prevBtn = document.getElementById('modalPrev');
+  const nextBtn = document.getElementById('modalNext');
+  const posEl   = document.getElementById('modalNavPos');
+  if (!list.length) { if (prevBtn) prevBtn.disabled = true; if (nextBtn) nextBtn.disabled = true; return; }
+  const idx = list.findIndex(g => g.id === _pendingModalId);
+  currentModalGuestId = _pendingModalId;
+  if (prevBtn) prevBtn.disabled = idx <= 0;
+  if (nextBtn) nextBtn.disabled = idx >= list.length - 1;
+  if (posEl)   posEl.textContent = list.length > 1 ? `${idx + 1} / ${list.length}` : '';
+  if (animClass) {
+    const inner = document.getElementById('modalInner');
+    inner.classList.remove('modal-anim-next', 'modal-anim-prev');
+    void inner.offsetWidth; // reflow
+    inner.classList.add(animClass);
+  }
+}
+
+let _pendingModalId = null;
+
+function modalNav(dir) {
+  const list = allGuests.length ? getFilteredGuests() : [];
+  if (!list.length || !currentModalGuestId) return;
+  const idx = list.findIndex(g => g.id === currentModalGuestId);
+  if (idx === -1) return;
+  const next = idx + dir;
+  if (next < 0 || next >= list.length) return;
+  openModal(list[next].id, dir > 0 ? 'modal-anim-next' : 'modal-anim-prev');
+}
+
+async function openModal(id, animClass) {
+  _pendingModalId = id;
+  // Use cached roster data when available — avoids DB fetch on every swipe
+  let g = allGuests.find(x => x.id === id) || null;
+  if (!g) {
+    const { data } = await sb.from('guests').select('*').eq('id', id).single();
+    g = data;
+  }
   if (!g) return;
   const photos = g.photos || [];
   const p0 = photos[0]||null, p1 = photos[1]||null, p2 = photos[2]||null;
@@ -1696,6 +1752,7 @@ async function openModal(id) {
   const mutual = currentGuest && !isPreview && currentGuest.id !== id && isMutualFire(id);
   document.getElementById('modalBox').classList.toggle('mutual-glow', !!mutual);
   document.getElementById('modalBackdrop').classList.add('open');
+  _updateModalNav(animClass || null);
   lockScroll();
 }
 
@@ -1703,9 +1760,29 @@ function closeModal(e) { if (e.target === document.getElementById('modalBackdrop
 function closeModalDirect() {
   document.getElementById('modalBackdrop').classList.remove('open');
   document.getElementById('modalBox').classList.remove('mutual-glow');
+  currentModalGuestId = null;
   unlockScroll();
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModalDirect(); closeLightbox(); } });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModalDirect(); closeLightbox(); }
+  if (document.getElementById('modalBackdrop').classList.contains('open')) {
+    if (e.key === 'ArrowRight') modalNav(1);
+    if (e.key === 'ArrowLeft')  modalNav(-1);
+  }
+});
+
+// Touch swipe on modal — horizontal-dominant only to avoid scroll conflicts
+document.getElementById('modalBox').addEventListener('touchstart', e => {
+  _touchX = e.changedTouches[0].clientX;
+  _touchY = e.changedTouches[0].clientY;
+}, { passive: true });
+document.getElementById('modalBox').addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - _touchX;
+  const dy = e.changedTouches[0].clientY - _touchY;
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 48) {
+    dx < 0 ? modalNav(1) : modalNav(-1);
+  }
+}, { passive: true });
 
 let _scrollY = 0;
 function lockScroll() {
