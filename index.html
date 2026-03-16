@@ -847,7 +847,6 @@
   <button onclick="showView('chat',this)">Chat</button>
   <button onclick="showView('account',this)">My Profile</button>
   <button onclick="showView('admin',this)">Admin</button>
-  <button id="doorNavBtn" style="display:none" onclick="showView('door',this)">Door</button>
 </nav>
 
 <main>
@@ -1156,63 +1155,13 @@ async function resetCheckins() {
   if (!window.confirm('Reset all check-ins for this event?')) return;
   doorCheckins = {};
   await saveCheckins();
-  renderDoor();
+  if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
 }
 
 async function renderDoor() {
-  if (!adminIn) return;
-  const el = document.getElementById('doorContent');
-  el.innerHTML = `<div class="empty-state">Loading…</div>`;
-  await loadCheckins();
-  const { data: guests, error } = await sb.from('guests').select('*').eq('status','approved').order('name');
-  if (error || !guests || !guests.length) {
-    el.innerHTML = `<div class="empty-state">No approved guests yet.</div>`; return;
-  }
-  const arrivedCount = guests.filter(g => doorCheckins[g.id]).length;
-  const sorted = [...guests].sort((a,b) => {
-    const ai = !!doorCheckins[a.id], bi = !!doorCheckins[b.id];
-    if (ai === bi) return (a.name||'').localeCompare(b.name||'');
-    return ai ? 1 : -1;
-  });
-  const vibeMap = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
-  const symMap  = {up:'↑',down:'↓',dash:'—'};
-  el.innerHTML = `
-    <div class="door-stats">
-      <div class="door-stat-cell">
-        <div class="door-stat-val arrived-col" id="doorHere">${arrivedCount}</div>
-        <div class="stat-label">Here</div>
-      </div>
-      <div class="door-stat-cell">
-        <div class="door-stat-val pending-col" id="doorNotYet">${guests.length - arrivedCount}</div>
-        <div class="stat-label">Not Yet</div>
-      </div>
-      <div class="door-stat-cell">
-        <div class="door-stat-val dim">${guests.length}</div>
-        <div class="stat-label">Total</div>
-      </div>
-    </div>
-    <div class="door-guest-list">
-      ${sorted.map(g => {
-        const thumb   = g.photos&&g.photos[0] ? g.photos[0] : null;
-        const arrived = !!doorCheckins[g.id];
-        const vibes   = g.vibes || [];
-        const vStr    = vibes.map(v=>`<span style="color:${vibeMap[v]||'#888'}">${symMap[v]||v}</span>`).join(' ');
-        return `
-        <div class="door-guest-row${arrived?' arrived':''}" data-id="${g.id}">
-          ${thumb ? `<img class="p-thumb" src="${thumb}" alt="" />` : `<div class="p-thumb-ph">${esc((g.name||'?').charAt(0).toUpperCase())}</div>`}
-          <div class="door-guest-info">
-            <div class="door-guest-name">${esc(g.name)}</div>
-            <div class="door-guest-meta">${esc(g.role||'')}${vStr?' &ensp;'+vStr:''}</div>
-          </div>
-          <button class="door-checkin-btn${arrived?' arrived':''}" data-id="${g.id}" onclick="toggleCheckin('${g.id}')">
-            ${arrived ? '✓ Here' : 'Check In'}
-          </button>
-        </div>`;
-      }).join('')}
-    </div>
-    <div style="margin-top:2.5rem;text-align:center;">
-      <button class="btn btn-ghost" onclick="resetCheckins()">Reset All Check-ins</button>
-    </div>`;
+  // Door is now the Door tab inside the admin dashboard.
+  setAdminTab('door');
+  showView('admin', null);
 }
 
 // ══ ADMIN DATA (notes & flags) ══════════════════════════════════════
@@ -2840,6 +2789,44 @@ function buildAdminHTML(el) {
     </div>
   ` : '';
 
+  const tabDoor = adminTab === 'door' ? (() => {
+    const vibeMap = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
+    const symMap  = {up:'↑',down:'↓',dash:'—'};
+    const sorted  = [...apprList].sort((a,b) => {
+      const ai = !!doorCheckins[a.id], bi = !!doorCheckins[b.id];
+      if (ai === bi) return (a.name||'').localeCompare(b.name||'');
+      return ai ? 1 : -1;
+    });
+    const here = sorted.filter(g => doorCheckins[g.id]).length;
+    return `
+      <div class="door-stats">
+        <div class="door-stat-cell"><div class="door-stat-val arrived-col" id="doorHere">${here}</div><div class="stat-label">Here</div></div>
+        <div class="door-stat-cell"><div class="door-stat-val pending-col" id="doorNotYet">${sorted.length - here}</div><div class="stat-label">Not Yet</div></div>
+        <div class="door-stat-cell"><div class="door-stat-val dim">${sorted.length}</div><div class="stat-label">Total</div></div>
+      </div>
+      <div class="door-guest-list">
+        ${sorted.map(g => {
+          const thumb   = g.photos&&g.photos[0] ? g.photos[0] : null;
+          const arrived = !!doorCheckins[g.id];
+          const vStr    = (g.vibes||[]).map(v=>`<span style="color:${vibeMap[v]||'#888'}">${symMap[v]||v}</span>`).join(' ');
+          return `
+          <div class="door-guest-row${arrived?' arrived':''}" data-id="${g.id}">
+            ${thumb ? `<img class="p-thumb" src="${thumb}" alt="" />` : `<div class="p-thumb-ph">${esc((g.name||'?').charAt(0).toUpperCase())}</div>`}
+            <div class="door-guest-info">
+              <div class="door-guest-name">${esc(g.name)}</div>
+              <div class="door-guest-meta">${esc(g.role||'')}${vStr?' &ensp;'+vStr:''}</div>
+            </div>
+            <button class="door-checkin-btn${arrived?' arrived':''}" data-id="${g.id}" onclick="toggleCheckin('${g.id}')">
+              ${arrived ? '✓ Here' : 'Check In'}
+            </button>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="margin-top:2.5rem;text-align:center;">
+        <button class="btn btn-ghost" onclick="resetCheckins()">Reset All Check-ins</button>
+      </div>`;
+  })() : '';
+
   const tabSettings = adminTab === 'settings' ? `
     <div class="section-label">Event Settings</div>
     <div class="settings-grid">
@@ -2880,17 +2867,17 @@ function buildAdminHTML(el) {
       <button class="admin-tab-btn ${adminTab==='guests'?'active':''}" onclick="setAdminTab('guests')">
         Guests${pendList.length ? `<span class="admin-tab-count">${pendList.length}</span>` : ''}
       </button>
+      <button class="admin-tab-btn ${adminTab==='door'?'active':''}" onclick="setAdminTab('door')">Door</button>
       <button class="admin-tab-btn ${adminTab==='announce'?'active':''}" onclick="setAdminTab('announce')">Announce</button>
       <button class="admin-tab-btn ${adminTab==='settings'?'active':''}" onclick="setAdminTab('settings')">Settings</button>
     </div>
-    ${tabOverview}${tabGuests}${tabAnnounce}${tabSettings}
+    ${tabOverview}${tabGuests}${tabDoor}${tabAnnounce}${tabSettings}
   `;
 }
 
 function adminLogin() {
   if (document.getElementById('adminPass').value === CONFIG.adminPassword) {
     adminIn=true;
-    document.getElementById('doorNavBtn').style.display = '';
     renderAdmin();
   } else {
     document.getElementById('adminMsg').innerHTML=`<div class="msg msg-error">Incorrect password.</div>`;
@@ -2900,7 +2887,6 @@ function adminLogin() {
 function adminLogout() {
   adminIn=false;
   adminCachedData=null;
-  document.getElementById('doorNavBtn').style.display = 'none';
   renderAdmin();
 }
 
