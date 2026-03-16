@@ -267,6 +267,10 @@
     .chat-msg-del { font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.12em; background: none; border: none; color: var(--muted2); cursor: pointer; margin-left: auto; transition: color .2s; padding: 0.2rem 0.4rem; }
     .chat-msg-del:hover { color: #cc7070; }
     .chat-msg-body { font-family: 'Cormorant', serif; font-size: 1.2rem; font-weight: 300; font-style: italic; color: var(--cream); line-height: 1.65; opacity: 0.96; }
+    .chat-msg-row { display: flex; gap: 0.75rem; align-items: flex-start; }
+    .chat-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex-shrink: 0; margin-top: 0.1rem; border: 1px solid var(--border-dim); }
+    .chat-avatar-ph { width: 26px; height: 26px; border-radius: 50%; background: var(--black-raise); border: 1px solid var(--border-dim); display: flex; align-items: center; justify-content: center; font-family: 'Cinzel', serif; font-size: 0.55rem; letter-spacing: 0.05em; color: var(--muted); flex-shrink: 0; margin-top: 0.1rem; }
+    .chat-msg-content { flex: 1; min-width: 0; }
     .chat-empty { font-family: 'Cormorant', serif; font-size: 1.1rem; font-style: italic; color: rgba(180,168,148,0.5); text-align: center; padding: 4rem 2rem; }
     .chat-input-wrap { border-top: 1px solid var(--border); padding-top: 1.5rem; display: flex; gap: 0.8rem; align-items: flex-end; }
     .chat-input { flex: 1; font-family: 'Cormorant', serif; font-size: 1.1rem; font-weight: 300; font-style: italic; letter-spacing: 0.04em; background: var(--black-card); border: 1px solid var(--border); padding: 1rem 1.2rem; color: var(--cream); outline: none; resize: none; transition: border-color .3s, box-shadow .3s; min-height: 52px; max-height: 140px; -webkit-appearance: none; }
@@ -1329,13 +1333,22 @@ function msgHtml(m) {
   const mine = currentGuest && m.guest_id === currentGuest.id;
   const time = new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
   const canDel = mine || adminIn;
+  const photo = allGuests.find(g => g.id === m.guest_id)?.photos?.[0] || null;
+  const avatar = photo
+    ? `<img class="chat-avatar" src="${esc(photo)}" alt="" loading="lazy" />`
+    : `<div class="chat-avatar-ph">${esc((m.guest_name||'?').charAt(0).toUpperCase())}</div>`;
   return `<div class="chat-msg${mine?' chat-msg-mine':''}" id="msg-${m.id}">
-    <div class="chat-msg-header">
-      <span class="chat-msg-name${mine?' mine':''}">${esc(m.guest_name)}</span>
-      <span class="chat-msg-time">${time}</span>
-      ${canDel ? `<button class="chat-msg-del" onclick="deleteMessage('${m.id}')">✕</button>` : ''}
+    <div class="chat-msg-row">
+      ${avatar}
+      <div class="chat-msg-content">
+        <div class="chat-msg-header">
+          <span class="chat-msg-name${mine?' mine':''}">${esc(m.guest_name)}</span>
+          <span class="chat-msg-time">${time}</span>
+          ${canDel ? `<button class="chat-msg-del" onclick="deleteMessage('${m.id}')">✕</button>` : ''}
+        </div>
+        <div class="chat-msg-body">${esc(m.content).replace(/\n/g,'<br>')}</div>
+      </div>
     </div>
-    <div class="chat-msg-body">${esc(m.content).replace(/\n/g,'<br>')}</div>
   </div>`;
 }
 
