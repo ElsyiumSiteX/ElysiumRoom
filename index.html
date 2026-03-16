@@ -671,6 +671,18 @@
     .door-checkin-btn { padding:0.75rem 1.5rem; font-family:'Cinzel',serif; font-size:0.72rem; letter-spacing:0.2em; text-transform:uppercase; border:1px solid var(--gold-dim); background:transparent; color:var(--gold); cursor:pointer; transition:all 0.2s; white-space:nowrap; flex-shrink:0; }
     .door-checkin-btn:hover:not(.arrived) { background:var(--gold-glow); }
     .door-checkin-btn.arrived { border-color:rgba(76,175,128,0.4); color:#4caf80; background:rgba(76,175,128,0.07); cursor:pointer; }
+    .door-search-wrap { margin-bottom:1.5rem; }
+    .door-search { width:100%; padding:0.85rem 1.2rem; background:var(--black-card); border:1px solid var(--border-dim); color:var(--cream); font-family:'Cinzel',serif; font-size:0.85rem; letter-spacing:0.1em; outline:none; box-sizing:border-box; }
+    .door-search:focus { border-color:var(--gold-dim); }
+    .door-search::placeholder { color:var(--muted); opacity:1; }
+    .door-section-head { display:flex; align-items:center; justify-content:space-between; padding:0.4rem 0 0.7rem; }
+    .door-section-title { font-family:'Cinzel',serif; font-size:0.68rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); }
+    .door-section-ct { font-family:'Cormorant',serif; font-size:1.05rem; }
+    .door-arrived-hdr { display:flex; align-items:center; justify-content:space-between; padding:1rem 0 0.7rem; cursor:pointer; border-top:1px solid var(--border-dim); margin-top:1.8rem; user-select:none; }
+    .door-arrived-hdr:hover .door-section-title { color:var(--cream); transition:color 0.2s; }
+    .door-chevron { font-size:0.7rem; color:var(--muted); transition:transform 0.2s; display:inline-block; }
+    .door-chevron.up { transform:rotate(180deg); }
+    .door-all-here { text-align:center; padding:2rem; color:var(--muted); font-family:'Cinzel',serif; font-size:0.75rem; letter-spacing:0.15em; background:var(--black-card); border:1px solid var(--border-dim); }
 
     /* ── ADMIN STATS BAR ── */
     .admin-stats-bar { display: flex; border: 1px solid var(--border); background: var(--black-card); margin-bottom: 3rem; }
@@ -1000,6 +1012,7 @@ let allGuests       = [];
 let activeVibeFilter = null;
 let adminData       = { notes: {}, flagged: {}, priorEvents: {} };
 let doorCheckins    = {};
+let doorArrivedCollapsed = false;
 let wlMessages        = {}; // { [guestId]: personalMessageString }
 let wlOrder           = []; // ordered array of waitlist guest IDs
 let confirmResponses  = {}; // { [guestId]: roundNumber } — last round they confirmed
@@ -1319,6 +1332,35 @@ async function toggleCheckin(id) {
     row.classList.toggle('arrived', arrived);
     btn.classList.toggle('arrived', arrived);
     btn.textContent = arrived ? '✓ Here' : 'Check In';
+
+    const expList = document.getElementById('doorExpectedList');
+    const arrList = document.getElementById('doorArrivedList');
+    const arrHdr  = document.getElementById('doorArrivedHdr');
+
+    if (arrived && expList && arrList) {
+      // Move row to arrived section
+      arrList.appendChild(row);
+      if (arrHdr) arrHdr.style.display = '';
+      if (!doorArrivedCollapsed) arrList.style.display = '';
+      // Clear search so the next guest is immediately visible
+      const srch = document.getElementById('doorSearch');
+      if (srch) { srch.value = ''; doorFilter(''); }
+      // Show "everyone here" if expected list is now empty
+      if (expList && !expList.querySelector('.door-guest-row')) {
+        expList.innerHTML = '<div class="door-all-here">Everyone is here</div>';
+      }
+    } else if (!arrived && expList && arrList) {
+      // Remove "everyone here" placeholder if present
+      const placeholder = expList.querySelector('.door-all-here');
+      if (placeholder) placeholder.remove();
+      // Re-insert in alphabetical order
+      const name = row.querySelector('.door-guest-name').textContent;
+      const rows = [...expList.querySelectorAll('.door-guest-row')];
+      const before = rows.find(r => (r.querySelector('.door-guest-name')?.textContent||'') > name);
+      if (before) expList.insertBefore(row, before);
+      else expList.appendChild(row);
+    }
+
     updateDoorStats();
   }
 }
@@ -1326,10 +1368,41 @@ async function toggleCheckin(id) {
 function updateDoorStats() {
   const total    = document.querySelectorAll('.door-guest-row').length;
   const arrivedN = Object.keys(doorCheckins).length;
+  const notYet   = Math.max(0, total - arrivedN);
   const hereEl   = document.getElementById('doorHere');
   const notYetEl = document.getElementById('doorNotYet');
+  const expCt    = document.getElementById('doorExpCt');
+  const arrCt    = document.getElementById('doorArrCt');
   if (hereEl)   hereEl.textContent   = arrivedN;
-  if (notYetEl) notYetEl.textContent = Math.max(0, total - arrivedN);
+  if (notYetEl) notYetEl.textContent = notYet;
+  if (expCt)    expCt.textContent    = notYet;
+  if (arrCt)    arrCt.textContent    = arrivedN;
+}
+
+function doorFilter(q) {
+  const expList = document.getElementById('doorExpectedList');
+  if (!expList) return;
+  const lower = q.toLowerCase().trim();
+  expList.querySelectorAll('.door-guest-row').forEach(row => {
+    const name = (row.querySelector('.door-guest-name')?.textContent || '').toLowerCase();
+    row.style.display = (!lower || name.includes(lower)) ? '' : 'none';
+  });
+}
+
+function doorSearchKey(e) {
+  if (e.key !== 'Enter') return;
+  const expList = document.getElementById('doorExpectedList');
+  if (!expList) return;
+  const visible = [...expList.querySelectorAll('.door-guest-row')].filter(r => r.style.display !== 'none');
+  if (visible.length === 1) toggleCheckin(visible[0].dataset.id);
+}
+
+function doorToggleArrived() {
+  doorArrivedCollapsed = !doorArrivedCollapsed;
+  const list    = document.getElementById('doorArrivedList');
+  const chevron = document.getElementById('doorArrivedChevron');
+  if (list)    list.style.display = doorArrivedCollapsed ? 'none' : '';
+  if (chevron) chevron.classList.toggle('up', doorArrivedCollapsed);
 }
 
 async function resetCheckins() {
@@ -3081,37 +3154,52 @@ function buildAdminHTML(el) {
   ` : '';
 
   const tabDoor = adminTab === 'door' ? (() => {
-    const vibeMap = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
-    const symMap  = {up:'↑',down:'↓',dash:'—'};
-    const sorted  = [...apprList].sort((a,b) => {
-      const ai = !!doorCheckins[a.id], bi = !!doorCheckins[b.id];
-      if (ai === bi) return (a.name||'').localeCompare(b.name||'');
-      return ai ? 1 : -1;
-    });
-    const here = sorted.filter(g => doorCheckins[g.id]).length;
-    return `
-      <div class="door-stats">
-        <div class="door-stat-cell"><div class="door-stat-val arrived-col" id="doorHere">${here}</div><div class="stat-label">Here</div></div>
-        <div class="door-stat-cell"><div class="door-stat-val pending-col" id="doorNotYet">${sorted.length - here}</div><div class="stat-label">Not Yet</div></div>
-        <div class="door-stat-cell"><div class="door-stat-val dim">${sorted.length}</div><div class="stat-label">Total</div></div>
-      </div>
-      <div class="door-guest-list">
-        ${sorted.map(g => {
-          const thumb   = g.photos&&g.photos[0] ? g.photos[0] : null;
-          const arrived = !!doorCheckins[g.id];
-          const vStr    = (g.vibes||[]).map(v=>`<span style="color:${vibeMap[v]||'#888'}">${symMap[v]||v}</span>`).join(' ');
-          return `
-          <div class="door-guest-row${arrived?' arrived':''}" data-id="${g.id}">
+    const vibeMap  = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
+    const symMap   = {up:'↑',down:'↓',dash:'—'};
+    const byName   = (a,b) => (a.name||'').localeCompare(b.name||'');
+    const expected = [...apprList].filter(g => !doorCheckins[g.id]).sort(byName);
+    const arrived  = [...apprList].filter(g =>  doorCheckins[g.id]).sort(byName);
+    const here     = arrived.length;
+    const guestRow = (g, isArrived) => {
+      const thumb = g.photos&&g.photos[0] ? g.photos[0] : null;
+      const vStr  = (g.vibes||[]).map(v=>`<span style="color:${vibeMap[v]||'#888'}">${symMap[v]||v}</span>`).join(' ');
+      return `<div class="door-guest-row${isArrived?' arrived':''}" data-id="${g.id}">
             ${thumb ? `<img class="p-thumb" src="${thumb}" alt="" />` : `<div class="p-thumb-ph">${esc((g.name||'?').charAt(0).toUpperCase())}</div>`}
             <div class="door-guest-info">
               <div class="door-guest-name">${esc(g.name)}</div>
               <div class="door-guest-meta">${esc(g.role||'')}${vStr?' &ensp;'+vStr:''}</div>
             </div>
-            <button class="door-checkin-btn${arrived?' arrived':''}" data-id="${g.id}" onclick="toggleCheckin('${g.id}')">
-              ${arrived ? '✓ Here' : 'Check In'}
+            <button class="door-checkin-btn${isArrived?' arrived':''}" data-id="${g.id}" onclick="toggleCheckin('${g.id}')">
+              ${isArrived ? '✓ Here' : 'Check In'}
             </button>
           </div>`;
-        }).join('')}
+    };
+    return `
+      <div class="door-stats">
+        <div class="door-stat-cell"><div class="door-stat-val arrived-col" id="doorHere">${here}</div><div class="stat-label">Here</div></div>
+        <div class="door-stat-cell"><div class="door-stat-val pending-col" id="doorNotYet">${expected.length}</div><div class="stat-label">Not Yet</div></div>
+        <div class="door-stat-cell"><div class="door-stat-val dim">${apprList.length}</div><div class="stat-label">Total</div></div>
+      </div>
+      <div class="door-search-wrap">
+        <input class="door-search" id="doorSearch" placeholder="Search expected guest…" autocomplete="off"
+          oninput="doorFilter(this.value)" onkeydown="doorSearchKey(event)" />
+      </div>
+      <div class="door-section-head">
+        <span class="door-section-title">Still Expected</span>
+        <span class="door-section-ct pending-col" id="doorExpCt">${expected.length}</span>
+      </div>
+      <div class="door-guest-list" id="doorExpectedList">
+        ${expected.length ? expected.map(g => guestRow(g, false)).join('') : `<div class="door-all-here">Everyone is here</div>`}
+      </div>
+      <div class="door-arrived-hdr" id="doorArrivedHdr" onclick="doorToggleArrived()" style="${here===0?'display:none':''}">
+        <span class="door-section-title">Arrived</span>
+        <span style="display:flex;align-items:center;gap:0.6rem;">
+          <span class="door-section-ct arrived-col" id="doorArrCt">${here}</span>
+          <span class="door-chevron${doorArrivedCollapsed?' up':''}" id="doorArrivedChevron">▾</span>
+        </span>
+      </div>
+      <div class="door-guest-list" id="doorArrivedList" style="${here===0||doorArrivedCollapsed?'display:none':''}">
+        ${arrived.map(g => guestRow(g, true)).join('')}
       </div>
       <div style="margin-top:2.5rem;text-align:center;">
         <button class="btn btn-ghost" onclick="resetCheckins()">Reset All Check-ins</button>
