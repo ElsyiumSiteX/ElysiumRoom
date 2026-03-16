@@ -2110,7 +2110,7 @@ async function submitRsvp() {
   }
   else submitStatus = 'pending';
 
-  const { data, error } = await sb.from('guests').insert({
+  const insertPayload = {
     name,
     role,
     photos,
@@ -2122,7 +2122,18 @@ async function submitRsvp() {
     pin,
     phone:        document.getElementById('rPhone').value.trim() || null,
     status: submitStatus,
-  }).select().single();
+  };
+
+  let { data, error } = await sb.from('guests').insert(insertPayload).select().single();
+
+  // If the phone column doesn't exist yet, retry without it so RSVPs still go through
+  if (error) {
+    console.warn('RSVP insert error:', error.message);
+    if (error.message?.toLowerCase().includes('phone') || error.code === '42703') {
+      const { phone: _drop, ...payloadWithoutPhone } = insertPayload;
+      ({ data, error } = await sb.from('guests').insert(payloadWithoutPhone).select().single());
+    }
+  }
 
   if (error) {
     msgEl.innerHTML=`<div class="msg msg-error">Something went wrong. Please try again.</div>`;
