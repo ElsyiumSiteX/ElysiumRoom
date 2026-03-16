@@ -1082,15 +1082,19 @@ async function toggleFlag(id) {
   }
 }
 
-const saveNote = debounce(async function saveNote(id, text) {
-  const trimmed = text.trim();
-  if (trimmed) { adminData.notes[id] = trimmed; }
-  else { delete adminData.notes[id]; }
+const _persistNote = debounce(async function(id) {
   const ta = document.querySelector(`.a-note-input[data-note-id="${id}"]`);
   if (ta) ta.style.borderColor = 'var(--gold-dim)';
   await saveAdminData();
   if (ta) setTimeout(() => { ta.style.borderColor = ''; }, 1200);
 }, 800);
+
+function saveNote(id, text) {
+  const trimmed = text.trim();
+  if (trimmed) adminData.notes[id] = trimmed;
+  else delete adminData.notes[id];
+  _persistNote(id);
+}
 
 // ══ VIBE FILTER ════════════════════════════════════════════════════
 function getFilteredGuests() {
@@ -1316,7 +1320,8 @@ function renderMessages(msgs) {
   const el = document.getElementById('chatMessages');
   if (!el) return;
   if (!msgs.length) { el.innerHTML = `<div class="chat-empty">No messages yet. Say hello.</div>`; return; }
-  el.innerHTML = msgs.map(m => msgHtml(m)).join('');
+  const guestMap = new Map(allGuests.map(g => [g.id, g]));
+  el.innerHTML = msgs.map(m => msgHtml(m, guestMap)).join('');
   el.scrollTop = el.scrollHeight;
 }
 
@@ -1329,11 +1334,12 @@ function appendMessage(m) {
   if (nearBottom) el.scrollTop = el.scrollHeight;
 }
 
-function msgHtml(m) {
+function msgHtml(m, guestMap) {
   const mine = currentGuest && m.guest_id === currentGuest.id;
   const time = new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
   const canDel = mine || adminIn;
-  const photo = allGuests.find(g => g.id === m.guest_id)?.photos?.[0] || null;
+  const guest = guestMap ? guestMap.get(m.guest_id) : allGuests.find(g => g.id === m.guest_id);
+  const photo = guest?.photos?.[0] || null;
   const avatar = photo
     ? `<img class="chat-avatar" src="${esc(photo)}" alt="" loading="lazy" />`
     : `<div class="chat-avatar-ph">${esc((m.guest_name||'?').charAt(0).toUpperCase())}</div>`;
@@ -1369,7 +1375,8 @@ async function sendMessage() {
 }
 
 async function deleteMessage(id) {
-  await sb.from('messages').delete().eq('id', id);
+  const { error } = await sb.from('messages').delete().eq('id', id);
+  if (error) alert('Could not delete message. Try again.');
 }
 
 // ══ INFO / FAQ ══════════════════════════════════════════════════════
@@ -2557,14 +2564,27 @@ function selectPhase(phase) {
   });
 }
 
+function _adminRebuild() {
+  if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
+}
+
 async function approveGuest(id) {
   await sb.from('guests').update({status:'approved'}).eq('id',id);
-  renderAdmin(); renderRoster();
+  if (adminCachedData) {
+    const g = adminCachedData.pend.find(x => x.id === id);
+    if (g) {
+      adminCachedData.pend = adminCachedData.pend.filter(x => x.id !== id);
+      adminCachedData.appr = [...adminCachedData.appr, {...g, status:'approved'}]
+        .sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+    }
+  }
+  _adminRebuild(); renderRoster();
 }
 
 async function rejectGuest(id) {
   await sb.from('guests').delete().eq('id',id);
-  renderAdmin(); renderRoster();
+  if (adminCachedData) adminCachedData.pend = adminCachedData.pend.filter(x => x.id !== id);
+  _adminRebuild(); renderRoster();
 }
 
 async function removeGuest(id) {
@@ -2572,15 +2592,21 @@ async function removeGuest(id) {
   if (error || !g) return;
   if (!window.confirm(`Remove ${g.name}?`)) return;
   await sb.from('guests').delete().eq('id',id);
-  renderAdmin(); renderRoster();
+  if (adminCachedData) adminCachedData.appr = adminCachedData.appr.filter(x => x.id !== id);
+  _adminRebuild(); renderRoster();
 }
 
 async function promoteFromWaitlist(id) {
-  const { data: g } = await sb.from('guests').select('name').eq('id',id).single();
+  const { data: g } = await sb.from('guests').select('*').eq('id',id).single();
   if (!g) return;
   if (!window.confirm(`Promote ${g.name} to Confirmed? This skips the approval queue.`)) return;
   await sb.from('guests').update({status:'approved'}).eq('id',id);
-  renderAdmin(); renderRoster();
+  if (adminCachedData) {
+    adminCachedData.wl = adminCachedData.wl.filter(x => x.id !== id);
+    adminCachedData.appr = [...adminCachedData.appr, {...g, status:'approved'}]
+      .sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+  }
+  _adminRebuild(); renderRoster();
 }
 
 async function removeWaitlisted(id) {
@@ -2588,20 +2614,22 @@ async function removeWaitlisted(id) {
   if (error || !g) return;
   if (!window.confirm(`Remove ${g.name} from the waitlist?`)) return;
   await sb.from('guests').delete().eq('id',id);
-  renderAdmin();
+  if (adminCachedData) adminCachedData.wl = adminCachedData.wl.filter(x => x.id !== id);
+  _adminRebuild();
 }
 
 // Event delegation for admin buttons
-document.addEventListener('click', function(e) {
+document.addEventListener('click', async function(e) {
   const btn = e.target.closest('[data-action]');
-  if (!btn) return;
-  const action=btn.dataset.action, id=btn.dataset.id;
-  if (action==='approve')          approveGuest(id);
-  if (action==='reject')           rejectGuest(id);
-  if (action==='remove')           removeGuest(id);
-  if (action==='flag')             toggleFlag(id);
-  if (action==='promote-waitlist') promoteFromWaitlist(id);
-  if (action==='remove-waitlisted') removeWaitlisted(id);
+  if (!btn || btn.dataset.busy) return;
+  btn.dataset.busy = '1'; // prevent double-click; btn is destroyed by re-render so no need to unset
+  const action = btn.dataset.action, id = btn.dataset.id;
+  if (action === 'approve')            await approveGuest(id);
+  else if (action === 'reject')        await rejectGuest(id);
+  else if (action === 'remove')        await removeGuest(id);
+  else if (action === 'flag')          await toggleFlag(id);
+  else if (action === 'promote-waitlist')  await promoteFromWaitlist(id);
+  else if (action === 'remove-waitlisted') await removeWaitlisted(id);
 });
 
 // ══ LIGHTBOX ════════════════════════════════════════════════════════
