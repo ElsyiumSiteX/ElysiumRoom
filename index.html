@@ -686,6 +686,17 @@
     .admin-bulk-btn:hover { background:rgba(76,175,128,0.14); border-color:rgba(76,175,128,0.5); }
     .admin-filter-empty { font-family:'Cormorant',serif; font-size:1rem; font-style:italic; color:var(--muted2); padding:1.5rem 0; }
 
+    /* ── SOCIAL PROOF ── */
+    .social-proof { border-top: 1px solid rgba(200,168,75,0.18); border-bottom: 1px solid rgba(200,168,75,0.18); padding: 1.6rem 0 1.8rem; margin-bottom: 2rem; }
+    .sp-stats { display: flex; align-items: center; margin-bottom: 1.4rem; }
+    .sp-stat { flex: 1; text-align: center; }
+    .sp-val { display: block; font-family: 'Cinzel', serif; font-size: 1.05rem; letter-spacing: 0.06em; color: var(--gold); line-height: 1; }
+    .sp-lbl { display: block; font-family: 'Cinzel', serif; font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted2); margin-top: 0.35rem; }
+    .sp-divider { width: 1px; height: 2.2rem; background: var(--border-dim); flex-shrink: 0; }
+    .sp-text { font-family: 'Cormorant', serif; font-size: 1.08rem; font-style: italic; color: var(--muted); line-height: 1.65; text-align: center; margin: 0 0 1.2rem; letter-spacing: 0.02em; }
+    .sp-tags { display: flex; gap: 0.45rem; flex-wrap: wrap; justify-content: center; }
+    .sp-tag { font-family: 'Cinzel', serif; font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(200,168,75,0.5); border: 1px solid rgba(200,168,75,0.15); padding: 0.22em 0.7em; }
+
     /* ── CHECK-IN BADGE ── */
     .checkin-badge { font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: #4caf80; background: rgba(76,175,128,0.08); border: 1px solid rgba(76,175,128,0.28); padding: 0.18em 0.55em; white-space: nowrap; flex-shrink: 0; }
 
@@ -1883,6 +1894,32 @@ async function renderRsvp() {
     <div class="form-group">
       <label>Bio <span style="opacity:.45;font-size:.8em">(optional)</span></label>
       <textarea id="rBio" placeholder="A few words about yourself…"></textarea>
+    </div>
+
+    <div class="social-proof">
+      <div class="sp-stats">
+        <div class="sp-stat">
+          <span class="sp-val">25+</span>
+          <span class="sp-lbl">regulars</span>
+        </div>
+        <div class="sp-divider"></div>
+        <div class="sp-stat">
+          <span class="sp-val">18 – 30s</span>
+          <span class="sp-lbl">college to career</span>
+        </div>
+        <div class="sp-divider"></div>
+        <div class="sp-stat">
+          <span class="sp-val">curated</span>
+          <span class="sp-lbl">invite-only</span>
+        </div>
+      </div>
+      <p class="sp-text">An intentionally small group. Guys get in on energy, aesthetic, and fit —<br>most come back. Discretion is a given.</p>
+      <div class="sp-tags">
+        <span class="sp-tag">sex-positive</span>
+        <span class="sp-tag">friendly</span>
+        <span class="sp-tag">social</span>
+        <span class="sp-tag">discreet</span>
+      </div>
     </div>
 
     <button class="btn btn-solid" onclick="submitRsvp()">${rsvpIsWaitlist ? 'Join Waitlist' : 'Request Admission'}</button>
