@@ -619,6 +619,29 @@
     .connections-card-initial { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-family:'Cormorant',serif; font-size:1.8rem; font-style:italic; color:var(--gold-dim); }
     .connections-card-name { position:absolute; bottom:0; left:0; right:0; background:linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%); font-family:'Cinzel',serif; font-size:0.72rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--cream); padding:0.35rem 0.3rem; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
+    /* ── ATTENDANCE CONFIRMATION OVERLAY ── */
+    #confirmOverlay { position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:9800; display:none; align-items:center; justify-content:center; padding:1.5rem; backdrop-filter:blur(3px); }
+    #confirmOverlay.open { display:flex; animation:fadeIn 0.4s ease; }
+    .confirm-box { background:#09080700; border:1px solid rgba(200,168,75,0.25); border-top:2px solid rgba(200,168,75,0.6); max-width:420px; width:100%; padding:2.8rem 2.6rem 2.4rem; position:relative; animation:fadeUp 0.4s ease; background:linear-gradient(160deg,rgba(15,12,9,0.98) 0%,rgba(10,8,6,0.99) 100%); box-shadow:0 0 80px rgba(0,0,0,0.8), 0 0 40px rgba(200,168,75,0.04); }
+    .confirm-eyebrow { font-family:'Cinzel',serif; font-size:0.6rem; letter-spacing:.38em; text-transform:uppercase; color:rgba(200,168,75,0.5); margin-bottom:1.6rem; }
+    .confirm-heading { font-family:'Cormorant',serif; font-size:1.9rem; font-weight:300; font-style:italic; color:var(--cream); line-height:1.25; margin-bottom:0.6rem; }
+    .confirm-sub { font-family:'Cormorant',serif; font-size:1.05rem; font-style:italic; color:var(--muted); line-height:1.6; margin-bottom:2rem; }
+    .confirm-checks { display:flex; flex-direction:column; gap:0.9rem; margin-bottom:2.2rem; }
+    .confirm-check-row { display:flex; align-items:flex-start; gap:0.85rem; cursor:pointer; }
+    .confirm-check-row input[type=checkbox] { position:absolute; opacity:0; width:0; height:0; }
+    .confirm-box-ui { width:1.1rem; height:1.1rem; flex-shrink:0; border:1px solid rgba(200,168,75,0.35); background:transparent; margin-top:0.18rem; display:flex; align-items:center; justify-content:center; transition:border-color 0.2s, background 0.2s; }
+    .confirm-check-row input:checked ~ .confirm-box-ui { border-color:rgba(200,168,75,0.8); background:rgba(200,168,75,0.12); }
+    .confirm-box-ui::after { content:''; display:none; width:5px; height:9px; border:1px solid var(--gold); border-top:none; border-left:none; transform:rotate(42deg) translateY(-1px); }
+    .confirm-check-row input:checked ~ .confirm-box-ui::after { display:block; }
+    .confirm-check-label { font-family:'Cormorant',serif; font-size:1.05rem; font-style:italic; color:rgba(220,210,195,0.88); line-height:1.5; user-select:none; }
+    .confirm-actions { display:flex; flex-direction:column; gap:0.8rem; align-items:stretch; }
+    .confirm-btn-primary { font-family:'Cinzel',serif; font-size:0.72rem; letter-spacing:.26em; text-transform:uppercase; background:transparent; border:1px solid rgba(200,168,75,0.45); color:var(--gold-dim); padding:1rem 1.5rem; cursor:pointer; transition:all 0.3s; opacity:0.35; pointer-events:none; }
+    .confirm-btn-primary.ready { opacity:1; pointer-events:auto; border-color:rgba(200,168,75,0.7); color:var(--gold); }
+    .confirm-btn-primary.ready:hover { background:rgba(200,168,75,0.07); box-shadow:0 0 30px rgba(200,168,75,0.12); }
+    .confirm-btn-delete { font-family:'Cinzel',serif; font-size:0.58rem; letter-spacing:.2em; text-transform:uppercase; background:none; border:none; color:rgba(180,80,80,0.45); cursor:pointer; padding:0.3rem; transition:color 0.2s; align-self:center; }
+    .confirm-btn-delete:hover { color:rgba(224,80,80,0.75); }
+    @media (max-width:480px) { .confirm-box { padding:2.2rem 1.8rem 2rem; } .confirm-heading { font-size:1.6rem; } }
+
     /* ── CONTACT HOST POPUP ── */
     #contactHostOverlay { position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:9500; display:none; align-items:center; justify-content:center; }
     #contactHostOverlay.open { display:flex; }
@@ -829,6 +852,7 @@
     waitlistEnabled:    false,
     eventPhase:         'pre',
     hostName:           'Nico',
+    confirmRound:       0,
   };
 </script>
 <!-- ════════════════════════════════════════════════════════════════ -->
@@ -870,6 +894,41 @@
 </main>
 
 <!-- LIGHTBOX -->
+<!-- ATTENDANCE CONFIRMATION OVERLAY -->
+<div id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-eyebrow">Elysium Room</div>
+    <div class="confirm-heading">Before we welcome you in.</div>
+    <div class="confirm-sub">A few things to affirm before we hold your place.</div>
+    <div class="confirm-checks">
+      <label class="confirm-check-row">
+        <input type="checkbox" onchange="updateConfirmBtn()" />
+        <span class="confirm-box-ui"></span>
+        <span class="confirm-check-label">I understand this is a curated, invite-only event</span>
+      </label>
+      <label class="confirm-check-row">
+        <input type="checkbox" onchange="updateConfirmBtn()" />
+        <span class="confirm-box-ui"></span>
+        <span class="confirm-check-label">I will arrive during the entry window</span>
+      </label>
+      <label class="confirm-check-row">
+        <input type="checkbox" onchange="updateConfirmBtn()" />
+        <span class="confirm-box-ui"></span>
+        <span class="confirm-check-label">I respect consent and privacy — always</span>
+      </label>
+      <label class="confirm-check-row">
+        <input type="checkbox" onchange="updateConfirmBtn()" />
+        <span class="confirm-box-ui"></span>
+        <span class="confirm-check-label">I will arrive clean and groomed</span>
+      </label>
+    </div>
+    <div class="confirm-actions">
+      <button id="confirmBtn" class="confirm-btn-primary" onclick="submitConfirmAttendance()">Confirm Attendance</button>
+      <button class="confirm-btn-delete" onclick="confirmDeleteProfile()">Delete my RSVP</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONTACT HOST POPUP -->
 <div id="contactHostOverlay" onclick="closeContactHost()">
   <div class="contact-host-box" onclick="event.stopPropagation()">
@@ -933,7 +992,8 @@ let allGuests       = [];
 let activeVibeFilter = null;
 let adminData       = { notes: {}, flagged: {} };
 let doorCheckins    = {};
-let wlMessages      = {}; // { [guestId]: personalMessageString }
+let wlMessages        = {}; // { [guestId]: personalMessageString }
+let confirmResponses  = {}; // { [guestId]: roundNumber } — last round they confirmed
 let socialData      = { fires: {}, saved: {} };
 let adminTab        = 'overview';
 let adminCachedData = null;
@@ -944,9 +1004,10 @@ let _touchX = 0, _touchY = 0;
 
 // ══ SOCIAL ═════════════════════════════════════════════════════════
 async function loadSocialData() {
-  const [socialRes, wlMsgRes] = await Promise.all([
+  const [socialRes, wlMsgRes, confirmRes] = await Promise.all([
     sb.from('config').select('value').eq('key','social').single(),
     sb.from('config').select('value').eq('key','wl_messages').single(),
+    sb.from('config').select('value').eq('key','confirm_responses').single(),
   ]);
   if (socialRes.data?.value) {
     try {
@@ -960,8 +1021,56 @@ async function loadSocialData() {
   if (wlMsgRes.data?.value) {
     try { wlMessages = JSON.parse(wlMsgRes.data.value) || {}; } catch(e) {}
   }
+  if (confirmRes.data?.value) {
+    try { confirmResponses = JSON.parse(confirmRes.data.value) || {}; } catch(e) {}
+  }
 }
 
+// ══ ATTENDANCE CONFIRMATION ═════════════════════════════════════════
+function checkConfirmOverlay() {
+  if (!currentGuest || isPreview) return;
+  if (CONFIG.confirmRound < 1) return;
+  if ((confirmResponses[currentGuest.id] || 0) >= CONFIG.confirmRound) return;
+  // Need to verify guest is approved — fetch status
+  sb.from('guests').select('status').eq('id', currentGuest.id).single().then(({ data: g }) => {
+    if (g?.status === 'approved') showConfirmOverlay();
+  });
+}
+
+function showConfirmOverlay() {
+  // Reset checkboxes
+  document.querySelectorAll('#confirmOverlay input[type=checkbox]').forEach(cb => { cb.checked = false; });
+  updateConfirmBtn();
+  document.getElementById('confirmOverlay').classList.add('open');
+  lockScroll();
+}
+
+function updateConfirmBtn() {
+  const all = [...document.querySelectorAll('#confirmOverlay input[type=checkbox]')];
+  const allChecked = all.length > 0 && all.every(cb => cb.checked);
+  document.getElementById('confirmBtn')?.classList.toggle('ready', allChecked);
+}
+
+async function submitConfirmAttendance() {
+  const btn = document.getElementById('confirmBtn');
+  if (!btn?.classList.contains('ready')) return;
+  btn.textContent = 'Confirming…'; btn.style.opacity = '0.6';
+  confirmResponses[currentGuest.id] = CONFIG.confirmRound;
+  const { error } = await sb.from('config').upsert({ key: 'confirm_responses', value: JSON.stringify(confirmResponses) }, { onConflict: 'key' });
+  if (error) { btn.textContent = 'Confirm Attendance'; btn.style.opacity = ''; alert('Could not save — please try again.'); return; }
+  document.getElementById('confirmOverlay').classList.remove('open');
+  unlockScroll();
+}
+
+async function sendConfirmBlast() {
+  const newRound = CONFIG.confirmRound + 1;
+  const { error } = await sb.from('config').upsert({ key: 'confirmRound', value: String(newRound) }, { onConflict: 'key' });
+  if (error) { alert('Could not send — try again.'); return; }
+  CONFIG.confirmRound = newRound;
+  if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
+}
+
+// ══ WAITLIST MESSAGES ═══════════════════════════════════════════════
 async function saveWlPersonalMessage(id) {
   const input = document.getElementById('wlMsg-' + id);
   if (!input) return;
@@ -1307,6 +1416,7 @@ async function loadConfig() {
     data.forEach(row => {
       if (row.key === 'capacity')             CONFIG.capacity           = parseInt(row.value, 10) || 30;
       else if (row.key === 'waitlistEnabled')  CONFIG.waitlistEnabled  = row.value === 'true';
+      else if (row.key === 'confirmRound')     CONFIG.confirmRound     = parseInt(row.value, 10) || 0;
       else if (row.key === 'announcementImages') {
         try { CONFIG.announcementImages = JSON.parse(row.value) || []; } catch(e) { CONFIG.announcementImages = []; }
       }
@@ -1358,6 +1468,7 @@ async function init() {
           await loadSocialData();
           updateFireBadge();
           showFireToast();
+          checkConfirmOverlay();
         } else {
           localStorage.removeItem('elysium_session');
         }
@@ -1933,6 +2044,7 @@ async function submitPin(target) {
   await loadSocialData();
   updateFireBadge();
   showFireToast();
+  checkConfirmOverlay();
 
   if (target === 'roster') renderRoster();
   else if (target === 'account') renderAccount();
@@ -2212,6 +2324,7 @@ async function submitRsvp() {
   await loadSocialData();
   updateFireBadge();
   showFireToast();
+  checkConfirmOverlay();
 
   const isWaitlisted = submitStatus === 'waitlisted';
   const statusLine = isWaitlisted
@@ -2656,6 +2769,46 @@ function buildAdminHTML(el) {
       return `<div class="section-label" style="margin-bottom:1rem;margin-top:1.4rem;">Matched Pairs</div>
       <div class="hot-guests-list">${pairRows}</div>`;
     })() : ''}
+
+    ${(() => {
+      const confirmedIds = new Set(
+        apprList.filter(g => (confirmResponses[g.id]||0) >= CONFIG.confirmRound && CONFIG.confirmRound > 0).map(g => g.id)
+      );
+      const pendingList  = apprList.filter(g => !confirmedIds.has(g.id));
+      const confirmedList = apprList.filter(g => confirmedIds.has(g.id));
+      const blastLabel = CONFIG.confirmRound > 0
+        ? `Round ${CONFIG.confirmRound} · ${confirmedIds.size} of ${apprList.length} confirmed`
+        : 'Not yet sent';
+      return `
+      <hr style="border:none;border-top:1px solid var(--border-dim);margin:2.5rem 0 2rem;" />
+      <div class="section-label" style="margin-bottom:0.6rem;">Attendance Confirmation</div>
+      <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.2rem;">
+        ${CONFIG.confirmRound > 0
+          ? `${blastLabel}. Sending again resets the round — everyone must re-confirm.`
+          : 'Send a confirmation blast to all approved guests. They will see a check-in overlay on their next login.'}
+      </p>
+      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:${CONFIG.confirmRound > 0 ? '1.6rem' : '0'};">
+        <button class="btn btn-solid btn-sm" onclick="sendConfirmBlast()">
+          ${CONFIG.confirmRound > 0 ? 'Re-Blast Confirmation' : 'Send Confirmation Blast'}
+        </button>
+        ${CONFIG.confirmRound > 0 ? `<span style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);">${blastLabel}</span>` : ''}
+      </div>
+      ${CONFIG.confirmRound > 0 && apprList.length ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:.22em;text-transform:uppercase;color:#4caf80;margin-bottom:0.6rem;">Confirmed ${confirmedList.length ? `(${confirmedList.length})` : ''}</div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            ${confirmedList.length ? confirmedList.map(g=>`<div style="font-family:'Cormorant',serif;font-size:0.95rem;color:var(--cream);opacity:.8;">✓ ${esc(g.name)}</div>`).join('') : `<div style="font-family:'Cormorant',serif;font-style:italic;color:var(--muted);font-size:.9rem;">None yet</div>`}
+          </div>
+        </div>
+        <div>
+          <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:0.6rem;">Pending ${pendingList.length ? `(${pendingList.length})` : ''}</div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            ${pendingList.length ? pendingList.map(g=>`<div style="font-family:'Cormorant',serif;font-size:0.95rem;color:var(--muted);">· ${esc(g.name)}</div>`).join('') : `<div style="font-family:'Cormorant',serif;font-style:italic;color:var(--muted);font-size:.9rem;">All confirmed</div>`}
+          </div>
+        </div>
+      </div>` : ''}`;
+    })()}
   ` : '';
 
   const pendingItemHTML = g => {
