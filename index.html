@@ -714,7 +714,7 @@
     capacity:        30,
     adminPassword:      "elysium2024",
     guestPreviewPin:    "000000",
-    requireApproval:    true,
+    requireApproval:    true, // always on; not user-configurable
     announcementText:   "",
     announcementImages: [],
     eventDateISO:       "",
@@ -1162,7 +1162,6 @@ async function loadConfig() {
   if (!error && data) {
     data.forEach(row => {
       if (row.key === 'capacity')             CONFIG.capacity           = parseInt(row.value, 10) || 30;
-      else if (row.key === 'requireApproval')  CONFIG.requireApproval  = row.value === 'true';
       else if (row.key === 'waitlistEnabled')  CONFIG.waitlistEnabled  = row.value === 'true';
       else if (row.key === 'announcementImages') {
         try { CONFIG.announcementImages = JSON.parse(row.value) || []; } catch(e) { CONFIG.announcementImages = []; }
@@ -1965,7 +1964,7 @@ async function submitRsvp() {
     msgEl.innerHTML=`<div class="msg msg-error">Sorry, the event just reached capacity.</div>`;
     btn.disabled=false; btn.textContent='Request Admission'; return;
   }
-  else submitStatus = CONFIG.requireApproval ? 'pending' : 'approved';
+  else submitStatus = 'pending';
 
   const { data, error } = await sb.from('guests').insert({
     name,
@@ -1996,7 +1995,7 @@ async function submitRsvp() {
   const isWaitlisted = submitStatus === 'waitlisted';
   const statusLine = isWaitlisted
     ? 'You\'re on the waitlist. We\'ll be in touch if a spot opens.'
-    : CONFIG.requireApproval ? 'Your request is under review.' : 'You are confirmed.';
+    : 'Your request is under review.';
 
   document.getElementById('rsvpContent').innerHTML = `
     <h2 class="form-title" style="margin-bottom:1rem;">${isWaitlisted ? 'You\'re on the list.' : `Thank you, ${esc(name)}.`}</h2>
@@ -2502,13 +2501,6 @@ function buildAdminHTML(el) {
 
     <div class="settings-toggles">
       <label class="pill-toggle-wrap">
-        <span class="toggle-label">Require Approval</span>
-        <div class="pill-toggle">
-          <input type="checkbox" id="sRequireApproval" ${CONFIG.requireApproval?'checked':''} />
-          <span class="pill-slider"></span>
-        </div>
-      </label>
-      <label class="pill-toggle-wrap">
         <span class="toggle-label">Enable Waitlist</span>
         <div class="pill-toggle">
           <input type="checkbox" id="sWaitlistEnabled" ${CONFIG.waitlistEnabled?'checked':''} />
@@ -2743,7 +2735,6 @@ async function saveSettings() {
   const lc  = document.getElementById('sLoc').value.trim();
   const gp  = document.getElementById('sGuestPin').value.trim();
   const iso = document.getElementById('sDateISO').value;
-  const reqApproval  = document.getElementById('sRequireApproval').checked;
   const wlEnabled    = document.getElementById('sWaitlistEnabled').checked;
 
   if (gp && (gp.length !== 6 || !/^\d{6}$/.test(gp))) {
@@ -2759,7 +2750,6 @@ async function saveSettings() {
   if (lc)                          CONFIG.eventLocation    = lc;
   if (gp.length === 6)             CONFIG.guestPreviewPin  = gp;
   if (iso)                         CONFIG.eventDateISO     = iso;
-  CONFIG.requireApproval  = reqApproval;
   CONFIG.waitlistEnabled  = wlEnabled;
 
   const updates = [
@@ -2769,7 +2759,6 @@ async function saveSettings() {
     { key: 'capacity',         value: String(CONFIG.capacity) },
     { key: 'guestPreviewPin',  value: CONFIG.guestPreviewPin },
     { key: 'eventDateISO',     value: CONFIG.eventDateISO },
-    { key: 'requireApproval',  value: String(CONFIG.requireApproval) },
     { key: 'waitlistEnabled',  value: String(CONFIG.waitlistEnabled) },
     { key: 'eventPhase',       value: CONFIG.eventPhase },
   ];
