@@ -547,6 +547,8 @@
     .modal-save-btn.saved { color:var(--gold); border-color:rgba(200,168,75,0.35); background:rgba(200,168,75,0.05); }
     .modal-save-btn:hover:not(.saved) { border-color:var(--gold-dim); color:var(--gold-dim); }
     .interact-hint { font-family:'Cormorant',serif; font-size:0.75rem; font-style:italic; color:rgba(180,168,148,0.55); text-align:center; margin-top:0.75rem; letter-spacing:0.03em; }
+    .admin-sms-link { font-family:'Cinzel',serif; font-size:0.65rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold-dim); border:1px solid rgba(200,168,75,0.25); padding:0.1rem 0.5rem; text-decoration:none; transition:color 0.2s, border-color 0.2s; }
+    .admin-sms-link:hover { color:var(--gold); border-color:rgba(200,168,75,0.5); }
     #modalBox.mutual-glow { border-color:rgba(224,80,80,0.35); box-shadow:0 0 0 1px rgba(224,80,80,0.18), 0 0 60px rgba(224,80,80,0.1); }
 
     /* ── MODAL SWIPE NAV ── */
@@ -1924,7 +1926,7 @@ async function renderRsvp() {
     </div>
 
     <div class="form-group">
-      <label>Photos <span style="opacity:.45;font-size:.8em">(up to 3 · optional)</span></label>
+      <label>Photo <span class="req">*</span> <span style="opacity:.45;font-size:.8em">(1 required · up to 3)</span></label>
       <div class="photo-slots">
         <div class="photo-slot slot-primary" id="slot0">
           <input type="file" accept="image/*" onchange="handleSlot(0,this)" />
@@ -1971,6 +1973,11 @@ async function renderRsvp() {
     <div class="form-group">
       <label>Bio <span style="opacity:.45;font-size:.8em">(optional)</span></label>
       <textarea id="rBio" placeholder="A few words about yourself…"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Phone <span style="opacity:.45;font-size:.8em">(optional · private · host use only)</span></label>
+      <input type="tel" id="rPhone" placeholder="For follow-up if needed" autocomplete="tel" />
     </div>
 
     <div class="social-proof">
@@ -2077,6 +2084,7 @@ async function submitRsvp() {
 
   if (!name) { msgEl.innerHTML=`<div class="msg msg-error">Please enter your name.</div>`; return; }
   if (!role) { msgEl.innerHTML=`<div class="msg msg-error">Please enter your role.</div>`; return; }
+  if (!photoSlots[0]) { msgEl.innerHTML=`<div class="msg msg-error">Please add at least one photo.</div>`; return; }
   if (!document.getElementById('rTested').value.trim()) { msgEl.innerHTML=`<div class="msg msg-error">Please enter your last tested date.</div>`; return; }
   if (!selectedPrep) { msgEl.innerHTML=`<div class="msg msg-error">Please select your PrEP status.</div>`; return; }
 
@@ -2107,6 +2115,7 @@ async function submitRsvp() {
     prep:         selectedPrep,
     age:          document.getElementById('rAge').value ? parseInt(document.getElementById('rAge').value) : null,
     pin,
+    phone:        document.getElementById('rPhone').value.trim() || null,
     status: submitStatus,
   }).select().single();
 
@@ -2530,6 +2539,7 @@ function buildAdminHTML(el) {
         <div class="p-info">
           <div class="p-name">${esc(g.name)}</div>
           <div class="p-meta">${esc(g.role||'')} · PIN: ${esc(g.pin)} · Submitted ${new Date(g.created_at).toLocaleString()}</div>
+          ${g.phone ? `<div class="p-meta" style="margin-top:.2rem;">📱 ${esc(g.phone)} &ensp;<a href="sms:${esc(g.phone)}" class="admin-sms-link">Text ↗</a></div>` : ''}
         </div>
       </div>
       ${photos.length ? `<div class="p-photo-grid">${photos.map(src=>`<img src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)">`).join('')}</div>` : ''}
@@ -2604,6 +2614,7 @@ function buildAdminHTML(el) {
               <div class="p-info">
                 <div class="p-name">${esc(g.name)}</div>
                 <div class="p-meta">${esc(g.role||'')} · PIN: ${esc(g.pin)} · Joined ${new Date(g.created_at).toLocaleString()}</div>
+                ${g.phone ? `<div class="p-meta" style="margin-top:.2rem;">📱 ${esc(g.phone)} &ensp;<a href="sms:${esc(g.phone)}" class="admin-sms-link">Text ↗</a></div>` : ''}
               </div>
             </div>
             <div class="p-actions">
