@@ -875,7 +875,8 @@ async function loadSocialData() {
 }
 
 async function saveSocialData() {
-  await sb.from('config').upsert({ key:'social', value:JSON.stringify(socialData) }, { onConflict:'key' });
+  const { error } = await sb.from('config').upsert({ key:'social', value:JSON.stringify(socialData) }, { onConflict:'key' });
+  return error || null;
 }
 
 function firesReceivedCount() {
@@ -919,20 +920,22 @@ function isSaved(id)      { return !!currentGuest && (socialData.saved[currentGu
 
 async function toggleFire(id) {
   if (!currentGuest || isPreview) return;
+  const prev = [...(socialData.fires[currentGuest.id] || [])];
   const list = socialData.fires[currentGuest.id] || [];
   socialData.fires[currentGuest.id] = list.includes(id) ? list.filter(x=>x!==id) : [...list, id];
-  await saveSocialData();
-  refreshModalInteract(id);
-  applyRosterIndicators();
+  refreshModalInteract(id); applyRosterIndicators(); // optimistic
+  const err = await saveSocialData();
+  if (err) { socialData.fires[currentGuest.id] = prev; refreshModalInteract(id); applyRosterIndicators(); alert('Could not save — please try again.'); }
 }
 
 async function toggleSave(id) {
   if (!currentGuest || isPreview) return;
+  const prev = [...(socialData.saved[currentGuest.id] || [])];
   const list = socialData.saved[currentGuest.id] || [];
   socialData.saved[currentGuest.id] = list.includes(id) ? list.filter(x=>x!==id) : [...list, id];
-  await saveSocialData();
-  refreshModalInteract(id);
-  applyRosterIndicators();
+  refreshModalInteract(id); applyRosterIndicators(); // optimistic
+  const err = await saveSocialData();
+  if (err) { socialData.saved[currentGuest.id] = prev; refreshModalInteract(id); applyRosterIndicators(); alert('Could not save — please try again.'); }
 }
 
 function refreshModalInteract(id) {
@@ -1319,6 +1322,7 @@ function hideSessionBar() {
 
 function logout() {
   currentGuest = null; isPreview = false;
+  photoSlots = [null, null, null]; selectedVibes = []; selectedPrep = null;
   localStorage.removeItem('elysium_session');
   if (chatChannel) { sb.removeChannel(chatChannel); chatChannel = null; }
   hideSessionBar();
@@ -1648,10 +1652,12 @@ async function renderRoster() {
 
   allGuests = guests;
 
-  const [{ count: pending }, { count: waitlisted }] = await Promise.all([
+  const [pendRes2, wlRes2] = await Promise.all([
     sb.from('guests').select('*', {count:'exact',head:true}).eq('status','pending'),
     sb.from('guests').select('*', {count:'exact',head:true}).eq('status','waitlisted'),
   ]);
+  const pending = pendRes2.count ?? 0;
+  const waitlisted = wlRes2.count ?? 0;
   const approved = guests.length;
   const rem = Math.max(0, CONFIG.capacity - approved);
   const pct = CONFIG.capacity > 0 ? Math.min(100, Math.round(approved / CONFIG.capacity * 100)) : 0;
@@ -1718,6 +1724,8 @@ async function openModal(id, animClass) {
   let g = allGuests.find(x => x.id === id) || null;
   if (!g) {
     const { data } = await sb.from('guests').select('*').eq('id', id).single();
+    // Bail if user navigated away while we were fetching
+    if (_pendingModalId !== id) return;
     g = data;
   }
   if (!g) return;
@@ -2384,7 +2392,8 @@ async function approveAllPending() {
   const count = adminCachedData.pend.length;
   if (!window.confirm(`Approve all ${count} pending guest${count > 1 ? 's' : ''}?`)) return;
   const ids = adminCachedData.pend.map(g => g.id);
-  await sb.from('guests').update({ status: 'approved' }).in('id', ids);
+  const { error } = await sb.from('guests').update({ status: 'approved' }).in('id', ids);
+  if (error) { alert('Bulk approve failed — please try again.'); return; }
   const toMove = adminCachedData.pend;
   adminCachedData.pend = [];
   adminCachedData.appr = [...adminCachedData.appr, ...toMove.map(g => ({ ...g, status: 'approved' }))]
@@ -2428,12 +2437,22 @@ async function renderAdmin() {
     return;
   }
 
-  const [{ data: pend }, { data: appr }, { data: wl }] = await Promise.all([
-    sb.from('guests').select('*').eq('status','pending').order('created_at'),
-    sb.from('guests').select('*').eq('status','approved').order('created_at'),
-    sb.from('guests').select('*').eq('status','waitlisted').order('created_at'),
-  ]);
-  adminCachedData = { pend: pend||[], appr: appr||[], wl: wl||[] };
+  let pendRes, apprRes, wlRes;
+  try {
+    [pendRes, apprRes, wlRes] = await Promise.all([
+      sb.from('guests').select('*').eq('status','pending').order('created_at'),
+      sb.from('guests').select('*').eq('status','approved').order('created_at'),
+      sb.from('guests').select('*').eq('status','waitlisted').order('created_at'),
+    ]);
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state" style="color:#e05050;">Could not load admin data. Check your connection and refresh.</div>`;
+    return;
+  }
+  if (pendRes.error || apprRes.error || wlRes.error) {
+    el.innerHTML = `<div class="empty-state" style="color:#e05050;">Could not load admin data. Check your connection and refresh.</div>`;
+    return;
+  }
+  adminCachedData = { pend: pendRes.data||[], appr: apprRes.data||[], wl: wlRes.data||[] };
 
   await Promise.all([loadAdminData(), loadSocialData()]);
   buildAdminHTML(el);
@@ -2797,7 +2816,8 @@ function _adminRebuild() {
 }
 
 async function approveGuest(id) {
-  await sb.from('guests').update({status:'approved'}).eq('id',id);
+  const { error } = await sb.from('guests').update({status:'approved'}).eq('id',id);
+  if (error) { alert('Approve failed — please try again.'); return; }
   if (adminCachedData) {
     const g = adminCachedData.pend.find(x => x.id === id);
     if (g) {
@@ -2810,7 +2830,8 @@ async function approveGuest(id) {
 }
 
 async function rejectGuest(id) {
-  await sb.from('guests').delete().eq('id',id);
+  const { error } = await sb.from('guests').delete().eq('id',id);
+  if (error) { alert('Reject failed — please try again.'); return; }
   if (adminCachedData) adminCachedData.pend = adminCachedData.pend.filter(x => x.id !== id);
   _adminRebuild(); renderRoster();
 }
@@ -2828,7 +2849,8 @@ async function promoteFromWaitlist(id) {
   const { data: g } = await sb.from('guests').select('*').eq('id',id).single();
   if (!g) return;
   if (!window.confirm(`Promote ${g.name} to Confirmed? This skips the approval queue.`)) return;
-  await sb.from('guests').update({status:'approved'}).eq('id',id);
+  const { error } = await sb.from('guests').update({status:'approved'}).eq('id',id);
+  if (error) { alert('Promotion failed — please try again.'); return; }
   if (adminCachedData) {
     adminCachedData.wl = adminCachedData.wl.filter(x => x.id !== id);
     adminCachedData.appr = [...adminCachedData.appr, {...g, status:'approved'}]
