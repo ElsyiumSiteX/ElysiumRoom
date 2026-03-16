@@ -671,6 +671,21 @@
     .hot-fires { font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.12em; color: #e05050; }
     .hot-mutual { font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: 0.1em; color: var(--muted2); margin-left: 0.5rem; }
 
+    /* ── ADMIN ENHANCEMENTS ── */
+    .admin-tab-count { display:inline-block; min-width:16px; height:16px; line-height:16px; background:#e05050; color:#fff; font-family:'Cinzel',serif; font-size:0.58rem; letter-spacing:0; padding:0 4px; border-radius:8px; margin-left:0.4rem; vertical-align:middle; text-align:center; }
+    .admin-search-row { display:flex; align-items:center; gap:0.8rem; margin-bottom:2rem; flex-wrap:wrap; }
+    .admin-search-input { flex:1; min-width:160px; background:var(--black-card); border:1px solid var(--border-dim); color:var(--cream); font-family:'Cormorant',serif; font-size:1rem; padding:0.55rem 0.9rem; outline:none; transition:border-color 0.2s; }
+    .admin-search-input:focus { border-color:var(--gold-dim); }
+    .admin-search-input::placeholder { color:var(--muted2); font-style:italic; }
+    .admin-sort-select { background:var(--black-card); border:1px solid var(--border-dim); color:var(--muted); font-family:'Cinzel',serif; font-size:0.7rem; letter-spacing:0.1em; padding:0.55rem 0.8rem; cursor:pointer; outline:none; transition:border-color 0.2s; appearance:none; -webkit-appearance:none; }
+    .admin-sort-select:focus { border-color:var(--gold-dim); }
+    .admin-export-btn { font-family:'Cinzel',serif; font-size:0.7rem; letter-spacing:0.18em; text-transform:uppercase; background:none; border:1px solid var(--border-dim); color:var(--muted); padding:0.55rem 1rem; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+    .admin-export-btn:hover { border-color:var(--gold-dim); color:var(--gold-dim); }
+    .admin-section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+    .admin-bulk-btn { font-family:'Cinzel',serif; font-size:0.68rem; letter-spacing:0.16em; text-transform:uppercase; background:rgba(76,175,128,0.07); border:1px solid rgba(76,175,128,0.28); color:#4caf80; padding:0.38rem 0.9rem; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+    .admin-bulk-btn:hover { background:rgba(76,175,128,0.14); border-color:rgba(76,175,128,0.5); }
+    .admin-filter-empty { font-family:'Cormorant',serif; font-size:1rem; font-style:italic; color:var(--muted2); padding:1.5rem 0; }
+
     /* ── CHECK-IN BADGE ── */
     .checkin-badge { font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: #4caf80; background: rgba(76,175,128,0.08); border: 1px solid rgba(76,175,128,0.28); padding: 0.18em 0.55em; white-space: nowrap; flex-shrink: 0; }
 
@@ -808,6 +823,8 @@ let doorCheckins    = {};
 let socialData      = { fires: {}, saved: {} };
 let adminTab        = 'overview';
 let adminCachedData = null;
+let adminSearchQ    = '';
+let adminSortBy     = 'date';
 
 // ══ SOCIAL ═════════════════════════════════════════════════════════
 async function loadSocialData() {
@@ -2207,6 +2224,49 @@ async function saveProfile() {
 }
 
 // ══ ADMIN ══════════════════════════════════════════════════════════
+function filterGuests(q) {
+  adminSearchQ = q;
+  if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
+}
+
+function sortGuests(val) {
+  adminSortBy = val;
+  if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
+}
+
+async function approveAllPending() {
+  if (!adminCachedData || !adminCachedData.pend.length) return;
+  const count = adminCachedData.pend.length;
+  if (!window.confirm(`Approve all ${count} pending guest${count > 1 ? 's' : ''}?`)) return;
+  const ids = adminCachedData.pend.map(g => g.id);
+  await sb.from('guests').update({ status: 'approved' }).in('id', ids);
+  const toMove = adminCachedData.pend;
+  adminCachedData.pend = [];
+  adminCachedData.appr = [...adminCachedData.appr, ...toMove.map(g => ({ ...g, status: 'approved' }))]
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  _adminRebuild(); renderRoster();
+}
+
+function exportGuestCSV() {
+  if (!adminCachedData) return;
+  const rows = [['Name', 'Role', 'Age', 'PIN', 'Vibes', 'PrEP', 'Bio', 'Fires Received', 'Arrived']];
+  for (const g of adminCachedData.appr) {
+    const firesRcvd = Object.values(socialData.fires).filter(arr => arr.includes(g.id)).length;
+    rows.push([
+      g.name || '', g.role || '', g.age || '', g.pin || '',
+      (g.vibes || []).join(';'), g.prep || '',
+      (g.bio || '').replace(/\n/g, ' '),
+      firesRcvd, doorCheckins[g.id] ? 'Yes' : 'No'
+    ]);
+  }
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'guests.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
 async function renderAdmin() {
   const el = document.getElementById('adminContent');
   if (!adminIn) {
@@ -2280,7 +2340,8 @@ function buildAdminHTML(el) {
       <div class="admin-stat-cell">
         <div class="admin-stat-val">${apprList.length} <span style="font-size:1.2rem;color:var(--muted);">/ ${CONFIG.capacity}</span></div>
         <div class="admin-stat-lbl">Confirmed</div>
-        <div class="admin-cap-track"><div class="admin-cap-fill" style="width:${aPct}%"></div></div>
+        <div class="admin-cap-track"><div class="admin-cap-fill" style="width:${aPct}%;background:${aPct>=90?'linear-gradient(to right,#c84040,#e05050)':aPct>=75?'linear-gradient(to right,#c87c30,#d4984a)':'linear-gradient(to right,var(--gold-dim),var(--gold))'}"></div></div>
+        ${aPct>=90?`<div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.12em;color:#e05050;margin-top:0.3rem;">At capacity</div>`:(aPct>=75?`<div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.12em;color:#d4984a;margin-top:0.3rem;">Nearly full</div>`:'')}
       </div>
       <div class="admin-stat-cell">
         <div class="admin-stat-val">${pendList.length}${pendList.length > 0 ? `<span class="pending-pulse"></span>` : ''}</div>
@@ -2372,10 +2433,37 @@ function buildAdminHTML(el) {
     </div>`;
   };
 
+  // apply search filter + sort to confirmed list
+  const searchQ = adminSearchQ.toLowerCase();
+  const filteredPend = searchQ ? pendList.filter(g=>(g.name||'').toLowerCase().includes(searchQ)) : pendList;
+  let filteredAppr = searchQ ? apprList.filter(g=>(g.name||'').toLowerCase().includes(searchQ)) : [...apprList];
+  if (adminSortBy === 'name') filteredAppr.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  else if (adminSortBy === 'fires') filteredAppr.sort((a,b)=>{
+    const fa = Object.values(socialData.fires).filter(arr=>arr.includes(a.id)).length;
+    const fb = Object.values(socialData.fires).filter(arr=>arr.includes(b.id)).length;
+    return fb - fa;
+  });
+  else if (adminSortBy === 'arrived') filteredAppr.sort((a,b)=>(doorCheckins[b.id]?1:0)-(doorCheckins[a.id]?1:0));
+  // default 'date' keeps original order
+
   const tabGuests = adminTab === 'guests' ? `
-    <div class="section-label">Pending Approval — ${pendList.length}</div>
+    <div class="admin-search-row">
+      <input class="admin-search-input" type="text" id="guestSearch" placeholder="Search guests by name…" oninput="filterGuests(this.value)" value="${esc(adminSearchQ)}" />
+      <select class="admin-sort-select" id="guestSort" onchange="sortGuests(this.value)">
+        <option value="date" ${adminSortBy==='date'?'selected':''}>Date joined</option>
+        <option value="name" ${adminSortBy==='name'?'selected':''}>Name A–Z</option>
+        <option value="fires" ${adminSortBy==='fires'?'selected':''}>Most fired</option>
+        <option value="arrived" ${adminSortBy==='arrived'?'selected':''}>Arrived first</option>
+      </select>
+      <button class="admin-export-btn" onclick="exportGuestCSV()">↓ Export CSV</button>
+    </div>
+
+    <div class="admin-section-header">
+      <div class="section-label" style="margin-bottom:0;">Pending Approval — ${filteredPend.length}${searchQ&&filteredPend.length!==pendList.length?` <span style="font-size:.8em;color:var(--muted)">of ${pendList.length}</span>`:''}</div>
+      ${!searchQ && pendList.length > 1 ? `<button class="admin-bulk-btn" onclick="approveAllPending()">Approve All (${pendList.length})</button>` : ''}
+    </div>
     <div class="pending-list">
-      ${!pendList.length ? `<div class="empty-state">No pending submissions.</div>` : pendList.map(pendingItemHTML).join('')}
+      ${!filteredPend.length ? `<div class="empty-state">${searchQ?`<span class="admin-filter-empty">No matches for "${esc(adminSearchQ)}"</span>`:'No pending submissions.'}</div>` : filteredPend.map(pendingItemHTML).join('')}
     </div>
 
     <hr class="div" />
@@ -2414,10 +2502,10 @@ function buildAdminHTML(el) {
 
     <hr class="div" />
 
-    <div class="section-label">Confirmed — ${apprList.length}</div>
+    <div class="section-label">Confirmed — ${filteredAppr.length}${searchQ&&filteredAppr.length!==apprList.length?` <span style="font-size:.8em;color:var(--muted)">of ${apprList.length}</span>`:''}</div>
     <div class="approved-list">
-      ${!apprList.length ? `<div class="empty-state">No confirmed guests yet.</div>` :
-        apprList.map(g => {
+      ${!filteredAppr.length ? `<div class="empty-state">${searchQ?`<span class="admin-filter-empty">No matches for "${esc(adminSearchQ)}"</span>`:'No confirmed guests yet.'}</div>` :
+        filteredAppr.map(g => {
           const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
           const isFlagged  = !!adminData.flagged[g.id];
           const note       = adminData.notes[g.id] || '';
@@ -2518,7 +2606,7 @@ function buildAdminHTML(el) {
     <div class="admin-tabs">
       <button class="admin-tab-btn ${adminTab==='overview'?'active':''}" onclick="setAdminTab('overview')">Overview</button>
       <button class="admin-tab-btn ${adminTab==='guests'?'active':''}" onclick="setAdminTab('guests')">
-        Guests${pendList.length ? `<span class="admin-tab-badge"></span>` : ''}
+        Guests${pendList.length ? `<span class="admin-tab-count">${pendList.length}</span>` : ''}
       </button>
       <button class="admin-tab-btn ${adminTab==='announce'?'active':''}" onclick="setAdminTab('announce')">Announce</button>
       <button class="admin-tab-btn ${adminTab==='settings'?'active':''}" onclick="setAdminTab('settings')">Settings</button>
