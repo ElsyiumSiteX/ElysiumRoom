@@ -809,6 +809,10 @@
     .admin-export-btn { font-family:'Cinzel',serif; font-size:0.7rem; letter-spacing:0.18em; text-transform:uppercase; background:none; border:1px solid var(--border-dim); color:var(--muted); padding:0.55rem 1rem; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
     .admin-export-btn:hover { border-color:var(--gold-dim); color:var(--gold-dim); }
     .admin-section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+    .admin-collapse-hdr { cursor:pointer; user-select:none; padding:0.25rem 0; }
+    .admin-collapse-hdr:hover .section-label { color:var(--gold-light); transition:color 0.15s; }
+    .admin-collapse-chevron { font-size:0.72rem; color:var(--muted); display:inline-block; transition:transform 0.2s; flex-shrink:0; }
+    .admin-collapse-chevron.open { transform:rotate(180deg); }
     .admin-bulk-btn { font-family:'Cinzel',serif; font-size:0.68rem; letter-spacing:0.16em; text-transform:uppercase; background:rgba(76,175,128,0.07); border:1px solid rgba(76,175,128,0.28); color:#4caf80; padding:0.38rem 0.9rem; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
     .admin-bulk-btn:hover { background:rgba(76,175,128,0.14); border-color:rgba(76,175,128,0.5); }
     .admin-filter-empty { font-family:'Cormorant',serif; font-size:1rem; font-style:italic; color:var(--muted2); padding:1.5rem 0; }
@@ -1019,8 +1023,9 @@ let wlMessages        = {}; // { [guestId]: personalMessageString }
 let wlOrder           = []; // ordered array of waitlist guest IDs
 let confirmResponses  = {}; // { [guestId]: roundNumber } — last round they confirmed
 let socialData      = { fires: {}, saved: {} };
-let adminTab        = 'overview';
+let adminTab        = 'guests';
 let adminCachedData = null;
+let adminSections   = { pending: true, waitlist: false, confirmed: false, analytics: false };
 let adminSearchQ    = '';
 let adminSortBy     = 'date';
 let currentModalGuestId = null;
@@ -2838,128 +2843,6 @@ function buildAdminHTML(el) {
     .slice(0, 5);
 
   // ── tab content ─────────────────────────────────────────────────
-  const tabOverview = adminTab === 'overview' ? `
-    <div class="admin-stats-bar">
-      <div class="admin-stat-cell">
-        <div class="admin-stat-val">${apprList.length} <span style="font-size:1.2rem;color:var(--muted);">/ ${CONFIG.capacity}</span></div>
-        <div class="admin-stat-lbl">Confirmed</div>
-        <div class="admin-cap-track"><div class="admin-cap-fill" style="width:${aPct}%;background:${aPct>=90?'linear-gradient(to right,#c84040,#e05050)':aPct>=75?'linear-gradient(to right,#c87c30,#d4984a)':'linear-gradient(to right,var(--gold-dim),var(--gold))'}"></div></div>
-        ${aPct>=90?`<div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.12em;color:#e05050;margin-top:0.3rem;">At capacity</div>`:(aPct>=75?`<div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.12em;color:#d4984a;margin-top:0.3rem;">Nearly full</div>`:'')}
-      </div>
-      <div class="admin-stat-cell">
-        <div class="admin-stat-val">${pendList.length}${pendList.length > 0 ? `<span class="pending-pulse"></span>` : ''}</div>
-        <div class="admin-stat-lbl">Pending</div>
-      </div>
-      ${CONFIG.waitlistEnabled ? `
-      <div class="admin-stat-cell">
-        <div class="admin-stat-val">${wlList.length}${wlList.length > 0 ? `<span class="pending-pulse wl-pulse"></span>` : ''}</div>
-        <div class="admin-stat-lbl">Waitlist</div>
-      </div>` : ''}
-      <div class="admin-stat-cell">
-        <div class="admin-stat-val arrived-col" style="color:#4caf80;">${arrivedCount}</div>
-        <div class="admin-stat-lbl">Arrived</div>
-      </div>
-    </div>
-
-    ${vibeChips ? `
-    <div class="vibe-breakdown">
-      <span class="vibe-breakdown-label">Vibes</span>
-      ${vibeChips}
-    </div>` : ''}
-
-    <div class="section-label" style="margin-bottom:1rem;">Social Pulse</div>
-    <div class="insights-grid">
-      <div class="insight-cell">
-        <div class="insight-val">${engagementPct}<span style="font-size:1.2rem;color:var(--muted);">%</span></div>
-        <div class="insight-lbl">Engaged</div>
-        <div class="insight-sub">${engagedIds.size} of ${apprList.length} interacted</div>
-      </div>
-      <div class="insight-cell">
-        <div class="insight-val fire-col">${mutualCount}</div>
-        <div class="insight-lbl">Mutual Fires</div>
-        <div class="insight-sub">${totalFires} total fires cast</div>
-      </div>
-      <div class="insight-cell">
-        <div class="insight-val arrived-col">${arrivedCount}</div>
-        <div class="insight-lbl">At the Door</div>
-        <div class="insight-sub">${apprList.length - arrivedCount} still expected</div>
-      </div>
-      <div class="insight-cell">
-        <div class="insight-val" style="color:var(--muted);">${apprList.filter(g=>Object.values(socialData.fires).filter(arr=>arr.includes(g.id)).length===0).length}</div>
-        <div class="insight-lbl">Cold Guests</div>
-        <div class="insight-sub">no fires received yet</div>
-      </div>
-    </div>
-
-    ${hotGuests.length ? `
-    <div class="section-label" style="margin-bottom:1rem;">Most Fired</div>
-    <div class="hot-guests-list">
-      ${hotGuests.map((x,i) => {
-        const mutuals = (socialData.fires[x.g.id]||[]).filter(id=>approvedIds.has(id)&&(socialData.fires[id]||[]).includes(x.g.id)).length;
-        return `<div class="hot-guest-row">
-          <span class="hot-rank">${i+1}</span>
-          <span class="hot-name">${esc(x.g.name)}</span>
-          <span class="hot-fires">🔥 ${x.fr}</span>
-          ${mutuals ? `<span class="hot-mutual">${mutuals} mutual</span>` : ''}
-        </div>`;
-      }).join('')}
-    </div>` : ''}
-
-    ${mutualPairsSeen.size ? (() => {
-      const nameMap = {};
-      apprList.forEach(g => { nameMap[g.id] = g.name; });
-      const pairRows = [...mutualPairsSeen].map(key => {
-        const [a, b] = key.split('|');
-        return `<div class="hot-guest-row" style="gap:.5rem;">
-          <span class="hot-name" style="flex:none">${esc(nameMap[a]||'?')}</span>
-          <span style="color:#e05050;font-size:.85rem;flex:none;">🔥</span>
-          <span class="hot-name" style="flex:none">${esc(nameMap[b]||'?')}</span>
-        </div>`;
-      }).join('');
-      return `<div class="section-label" style="margin-bottom:1rem;margin-top:1.4rem;">Matched Pairs</div>
-      <div class="hot-guests-list">${pairRows}</div>`;
-    })() : ''}
-
-    ${(() => {
-      const confirmedIds = new Set(
-        apprList.filter(g => (confirmResponses[g.id]||0) >= CONFIG.confirmRound && CONFIG.confirmRound > 0).map(g => g.id)
-      );
-      const pendingList  = apprList.filter(g => !confirmedIds.has(g.id));
-      const confirmedList = apprList.filter(g => confirmedIds.has(g.id));
-      const blastLabel = CONFIG.confirmRound > 0
-        ? `Round ${CONFIG.confirmRound} · ${confirmedIds.size} of ${apprList.length} confirmed`
-        : 'Not yet sent';
-      return `
-      <hr style="border:none;border-top:1px solid var(--border-dim);margin:2.5rem 0 2rem;" />
-      <div class="section-label" style="margin-bottom:0.6rem;">Attendance Confirmation</div>
-      <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.2rem;">
-        ${CONFIG.confirmRound > 0
-          ? `${blastLabel}. Sending again resets the round — everyone must re-confirm.`
-          : 'Send a confirmation blast to all approved guests. They will see a check-in overlay on their next login.'}
-      </p>
-      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:${CONFIG.confirmRound > 0 ? '1.6rem' : '0'};">
-        <button class="btn btn-solid btn-sm" onclick="sendConfirmBlast()">
-          ${CONFIG.confirmRound > 0 ? 'Re-Blast Confirmation' : 'Send Confirmation Blast'}
-        </button>
-        ${CONFIG.confirmRound > 0 ? `<span style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);">${blastLabel}</span>` : ''}
-      </div>
-      ${CONFIG.confirmRound > 0 && apprList.length ? `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-        <div>
-          <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:.22em;text-transform:uppercase;color:#4caf80;margin-bottom:0.6rem;">Confirmed ${confirmedList.length ? `(${confirmedList.length})` : ''}</div>
-          <div style="display:flex;flex-direction:column;gap:4px;">
-            ${confirmedList.length ? confirmedList.map(g=>`<div style="font-family:'Cormorant',serif;font-size:0.95rem;color:var(--cream);opacity:.8;">✓ ${esc(g.name)}</div>`).join('') : `<div style="font-family:'Cormorant',serif;font-style:italic;color:var(--muted);font-size:.9rem;">None yet</div>`}
-          </div>
-        </div>
-        <div>
-          <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:0.6rem;">Pending ${pendingList.length ? `(${pendingList.length})` : ''}</div>
-          <div style="display:flex;flex-direction:column;gap:4px;">
-            ${pendingList.length ? pendingList.map(g=>`<div style="font-family:'Cormorant',serif;font-size:0.95rem;color:var(--muted);">· ${esc(g.name)}</div>`).join('') : `<div style="font-family:'Cormorant',serif;font-style:italic;color:var(--muted);font-size:.9rem;">All confirmed</div>`}
-          </div>
-        </div>
-      </div>` : ''}`;
-    })()}
-  ` : '';
 
   const pendingItemHTML = g => {
     const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
@@ -2992,20 +2875,40 @@ function buildAdminHTML(el) {
     </div>`;
   };
 
-  // apply search filter + sort to confirmed list
-  const searchQ = adminSearchQ.toLowerCase();
-  const filteredPend = searchQ ? pendList.filter(g=>(g.name||'').toLowerCase().includes(searchQ)) : pendList;
-  let filteredAppr = searchQ ? apprList.filter(g=>(g.name||'').toLowerCase().includes(searchQ)) : [...apprList];
-  if (adminSortBy === 'name') filteredAppr.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-  else if (adminSortBy === 'fires') filteredAppr.sort((a,b)=>{
-    const fa = Object.values(socialData.fires).filter(arr=>arr.includes(a.id)).length;
-    const fb = Object.values(socialData.fires).filter(arr=>arr.includes(b.id)).length;
-    return fb - fa;
-  });
-  else if (adminSortBy === 'arrived') filteredAppr.sort((a,b)=>(doorCheckins[b.id]?1:0)-(doorCheckins[a.id]?1:0));
-  // default 'date' keeps original order
+  const tabGuests = adminTab === 'guests' ? (() => {
+    const searchQ = adminSearchQ.toLowerCase();
+    const filteredPend = searchQ ? pendList.filter(g=>(g.name||'').toLowerCase().includes(searchQ)) : pendList;
+    let filteredAppr = searchQ ? apprList.filter(g=>(g.name||'').toLowerCase().includes(searchQ)) : [...apprList];
+    if (adminSortBy === 'name') filteredAppr.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    else if (adminSortBy === 'fires') filteredAppr.sort((a,b)=>{
+      const fa = Object.values(socialData.fires).filter(arr=>arr.includes(a.id)).length;
+      const fb = Object.values(socialData.fires).filter(arr=>arr.includes(b.id)).length;
+      return fb - fa;
+    });
+    else if (adminSortBy === 'arrived') filteredAppr.sort((a,b)=>(doorCheckins[b.id]?1:0)-(doorCheckins[a.id]?1:0));
+    return `
+    <div class="admin-stats-bar">
+      <div class="admin-stat-cell">
+        <div class="admin-stat-val">${apprList.length} <span style="font-size:1.2rem;color:var(--muted);">/ ${CONFIG.capacity}</span></div>
+        <div class="admin-stat-lbl">Confirmed</div>
+        <div class="admin-cap-track"><div class="admin-cap-fill" style="width:${aPct}%;background:${aPct>=90?'linear-gradient(to right,#c84040,#e05050)':aPct>=75?'linear-gradient(to right,#c87c30,#d4984a)':'linear-gradient(to right,var(--gold-dim),var(--gold))'}"></div></div>
+        ${aPct>=90?`<div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.12em;color:#e05050;margin-top:0.3rem;">At capacity</div>`:(aPct>=75?`<div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.12em;color:#d4984a;margin-top:0.3rem;">Nearly full</div>`:'')}
+      </div>
+      <div class="admin-stat-cell">
+        <div class="admin-stat-val">${pendList.length}${pendList.length > 0 ? `<span class="pending-pulse"></span>` : ''}</div>
+        <div class="admin-stat-lbl">Pending</div>
+      </div>
+      ${CONFIG.waitlistEnabled ? `
+      <div class="admin-stat-cell">
+        <div class="admin-stat-val">${wlList.length}${wlList.length > 0 ? `<span class="pending-pulse wl-pulse"></span>` : ''}</div>
+        <div class="admin-stat-lbl">Waitlist</div>
+      </div>` : ''}
+      <div class="admin-stat-cell">
+        <div class="admin-stat-val arrived-col" style="color:#4caf80;">${arrivedCount}</div>
+        <div class="admin-stat-lbl">Arrived</div>
+      </div>
+    </div>
 
-  const tabGuests = adminTab === 'guests' ? `
     <div class="admin-search-row">
       <input class="admin-search-input" type="text" id="guestSearch" placeholder="Search guests by name…" oninput="filterGuests(this.value)" value="${esc(adminSearchQ)}" />
       <select class="admin-sort-select" id="guestSort" onchange="sortGuests(this.value)">
@@ -3018,24 +2921,30 @@ function buildAdminHTML(el) {
       <button class="admin-export-btn" onclick="purgeGhostFireData()" title="Remove fire/save entries for guests no longer in the database" style="color:rgba(224,80,80,0.7);border-color:rgba(224,80,80,0.25);">✕ Clean Ghost Data</button>
     </div>
 
-    <div class="admin-section-header">
-      <div class="section-label" style="margin-bottom:0;">Pending Approval — ${filteredPend.length}${searchQ&&filteredPend.length!==pendList.length?` <span style="font-size:.8em;color:var(--muted)">of ${pendList.length}</span>`:''}</div>
-      ${!searchQ && pendList.length > 1 ? `<button class="admin-bulk-btn" onclick="approveAllPending()">Approve All (${pendList.length})</button>` : ''}
+    <div class="admin-section-header admin-collapse-hdr" onclick="toggleAdminSection('pending')">
+      <div style="display:flex;align-items:center;gap:0.7rem;flex-wrap:wrap;">
+        <div class="section-label" style="margin:0;">Pending Approval — ${filteredPend.length}${searchQ&&filteredPend.length!==pendList.length?` <span style="font-size:.8em;color:var(--muted)">of ${pendList.length}</span>`:''}</div>
+        ${!searchQ && pendList.length > 1 ? `<button class="admin-bulk-btn" onclick="event.stopPropagation();approveAllPending()">Approve All (${pendList.length})</button>` : ''}
+      </div>
+      <span class="admin-collapse-chevron${adminSections.pending?' open':''}">▾</span>
     </div>
-    <div class="pending-list">
+    ${adminSections.pending ? `<div class="pending-list" style="margin-top:1rem;">
       ${!filteredPend.length ? `<div class="empty-state">${searchQ?`<span class="admin-filter-empty">No matches for "${esc(adminSearchQ)}"</span>`:'No pending submissions.'}</div>` : filteredPend.map(pendingItemHTML).join('')}
-    </div>
+    </div>` : ''}
 
     <hr class="div" />
 
-    <div class="section-label">Waitlist — ${wlList.length}</div>
-    <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">
+    <div class="admin-section-header admin-collapse-hdr" onclick="toggleAdminSection('waitlist')">
+      <div class="section-label" style="margin:0;">Waitlist — ${wlList.length}</div>
+      <span class="admin-collapse-chevron${adminSections.waitlist?' open':''}">▾</span>
+    </div>
+    ${adminSections.waitlist ? `<p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin:0.8rem 0 1.5rem;">
       ${CONFIG.waitlistEnabled
         ? 'Guests held here when the event reached capacity. Promote moves them directly to Confirmed — no separate approval step.'
         : 'Waitlist is currently off. When enabled, guests who apply after capacity is reached are queued here instead of being turned away.'}
     </p>
     ${!CONFIG.waitlistEnabled ? `
-    <div style="margin-bottom:3rem;">
+    <div style="margin-bottom:2rem;">
       <button class="btn btn-ghost" onclick="setAdminTab('settings')">Go to Settings to enable →</button>
     </div>` : `
     <div class="pending-list">
@@ -3076,12 +2985,15 @@ function buildAdminHTML(el) {
           </div>`;
         }).join('');
       })()}
-    </div>`}
+    </div>`}` : ''}
 
     <hr class="div" />
 
-    <div class="section-label">Confirmed — ${filteredAppr.length}${searchQ&&filteredAppr.length!==apprList.length?` <span style="font-size:.8em;color:var(--muted)">of ${apprList.length}</span>`:''}</div>
-    <div class="approved-list">
+    <div class="admin-section-header admin-collapse-hdr" onclick="toggleAdminSection('confirmed')">
+      <div class="section-label" style="margin:0;">Confirmed — ${filteredAppr.length}${searchQ&&filteredAppr.length!==apprList.length?` <span style="font-size:.8em;color:var(--muted)">of ${apprList.length}</span>`:''}</div>
+      <span class="admin-collapse-chevron${adminSections.confirmed?' open':''}">▾</span>
+    </div>
+    ${adminSections.confirmed ? `<div class="approved-list" style="margin-top:1rem;">
       ${!filteredAppr.length ? `<div class="empty-state">${searchQ?`<span class="admin-filter-empty">No matches for "${esc(adminSearchQ)}"</span>`:'No confirmed guests yet.'}</div>` :
         filteredAppr.map(g => {
           const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
@@ -3122,8 +3034,108 @@ function buildAdminHTML(el) {
             <textarea class="a-note-input" rows="1" placeholder="Private note…" data-note-id="${g.id}" onblur="saveNote(this.dataset.noteId, this.value)">${esc(note)}</textarea>
           </div>`;
         }).join('')}
+    </div>` : ''}
+
+    <hr class="div" />
+
+    <div class="admin-section-header admin-collapse-hdr" onclick="toggleAdminSection('analytics')">
+      <div class="section-label" style="margin:0;">Analytics</div>
+      <span class="admin-collapse-chevron${adminSections.analytics?' open':''}">▾</span>
     </div>
-  ` : '';
+    ${adminSections.analytics ? `
+    ${vibeChips ? `<div class="vibe-breakdown" style="margin-top:1rem;"><span class="vibe-breakdown-label">Vibes</span>${vibeChips}</div>` : ''}
+    <div class="section-label" style="margin-bottom:1rem;margin-top:1.4rem;">Social Pulse</div>
+    <div class="insights-grid">
+      <div class="insight-cell">
+        <div class="insight-val">${engagementPct}<span style="font-size:1.2rem;color:var(--muted);">%</span></div>
+        <div class="insight-lbl">Engaged</div>
+        <div class="insight-sub">${engagedIds.size} of ${apprList.length} interacted</div>
+      </div>
+      <div class="insight-cell">
+        <div class="insight-val fire-col">${mutualCount}</div>
+        <div class="insight-lbl">Mutual Fires</div>
+        <div class="insight-sub">${totalFires} total fires cast</div>
+      </div>
+      <div class="insight-cell">
+        <div class="insight-val arrived-col">${arrivedCount}</div>
+        <div class="insight-lbl">At the Door</div>
+        <div class="insight-sub">${apprList.length - arrivedCount} still expected</div>
+      </div>
+      <div class="insight-cell">
+        <div class="insight-val" style="color:var(--muted);">${apprList.filter(g=>Object.values(socialData.fires).filter(arr=>arr.includes(g.id)).length===0).length}</div>
+        <div class="insight-lbl">Cold Guests</div>
+        <div class="insight-sub">no fires received yet</div>
+      </div>
+    </div>
+    ${hotGuests.length ? `
+    <div class="section-label" style="margin-bottom:1rem;margin-top:1.4rem;">Most Fired</div>
+    <div class="hot-guests-list">
+      ${hotGuests.map((x,i) => {
+        const mutuals = (socialData.fires[x.g.id]||[]).filter(id=>approvedIds.has(id)&&(socialData.fires[id]||[]).includes(x.g.id)).length;
+        return `<div class="hot-guest-row">
+          <span class="hot-rank">${i+1}</span>
+          <span class="hot-name">${esc(x.g.name)}</span>
+          <span class="hot-fires">🔥 ${x.fr}</span>
+          ${mutuals ? `<span class="hot-mutual">${mutuals} mutual</span>` : ''}
+        </div>`;
+      }).join('')}
+    </div>` : ''}
+    ${mutualPairsSeen.size ? (() => {
+      const nameMap = {};
+      apprList.forEach(g => { nameMap[g.id] = g.name; });
+      const pairRows = [...mutualPairsSeen].map(key => {
+        const [a, b] = key.split('|');
+        return `<div class="hot-guest-row" style="gap:.5rem;">
+          <span class="hot-name" style="flex:none">${esc(nameMap[a]||'?')}</span>
+          <span style="color:#e05050;font-size:.85rem;flex:none;">🔥</span>
+          <span class="hot-name" style="flex:none">${esc(nameMap[b]||'?')}</span>
+        </div>`;
+      }).join('');
+      return `<div class="section-label" style="margin-bottom:1rem;margin-top:1.4rem;">Matched Pairs</div>
+      <div class="hot-guests-list">${pairRows}</div>`;
+    })() : ''}
+    ${(() => {
+      const confirmedIds = new Set(
+        apprList.filter(g => (confirmResponses[g.id]||0) >= CONFIG.confirmRound && CONFIG.confirmRound > 0).map(g => g.id)
+      );
+      const pendingList  = apprList.filter(g => !confirmedIds.has(g.id));
+      const confirmedList = apprList.filter(g => confirmedIds.has(g.id));
+      const blastLabel = CONFIG.confirmRound > 0
+        ? `Round ${CONFIG.confirmRound} · ${confirmedIds.size} of ${apprList.length} confirmed`
+        : 'Not yet sent';
+      return `
+      <hr style="border:none;border-top:1px solid var(--border-dim);margin:2.5rem 0 2rem;" />
+      <div class="section-label" style="margin-bottom:0.6rem;">Attendance Confirmation</div>
+      <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.2rem;">
+        ${CONFIG.confirmRound > 0
+          ? `${blastLabel}. Sending again resets the round — everyone must re-confirm.`
+          : 'Send a confirmation blast to all approved guests. They will see a check-in overlay on their next login.'}
+      </p>
+      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:${CONFIG.confirmRound > 0 ? '1.6rem' : '0'};">
+        <button class="btn btn-solid btn-sm" onclick="sendConfirmBlast()">
+          ${CONFIG.confirmRound > 0 ? 'Re-Blast Confirmation' : 'Send Confirmation Blast'}
+        </button>
+        ${CONFIG.confirmRound > 0 ? `<span style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);">${blastLabel}</span>` : ''}
+      </div>
+      ${CONFIG.confirmRound > 0 && apprList.length ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:.22em;text-transform:uppercase;color:#4caf80;margin-bottom:0.6rem;">Confirmed ${confirmedList.length ? `(${confirmedList.length})` : ''}</div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            ${confirmedList.length ? confirmedList.map(g=>`<div style="font-family:'Cormorant',serif;font-size:0.95rem;color:var(--cream);opacity:.8;">✓ ${esc(g.name)}</div>`).join('') : `<div style="font-family:'Cormorant',serif;font-style:italic;color:var(--muted);font-size:.9rem;">None yet</div>`}
+          </div>
+        </div>
+        <div>
+          <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:0.6rem;">Pending ${pendingList.length ? `(${pendingList.length})` : ''}</div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            ${pendingList.length ? pendingList.map(g=>`<div style="font-family:'Cormorant',serif;font-size:0.95rem;color:var(--muted);">· ${esc(g.name)}</div>`).join('') : `<div style="font-family:'Cormorant',serif;font-style:italic;color:var(--muted);font-size:.9rem;">All confirmed</div>`}
+          </div>
+        </div>
+      </div>` : ''}`;
+    })()}
+    ` : ''}
+    `;
+  })() : '';
 
   const tabAnnounce = adminTab === 'announce' ? `
     <div class="section-label">Announcement</div>
@@ -3244,7 +3256,6 @@ function buildAdminHTML(el) {
 
   el.innerHTML = `
     <div class="admin-tabs">
-      <button class="admin-tab-btn ${adminTab==='overview'?'active':''}" onclick="setAdminTab('overview')">Overview</button>
       <button class="admin-tab-btn ${adminTab==='guests'?'active':''}" onclick="setAdminTab('guests')">
         Guests${pendList.length ? `<span class="admin-tab-count">${pendList.length}</span>` : ''}
       </button>
@@ -3252,7 +3263,7 @@ function buildAdminHTML(el) {
       <button class="admin-tab-btn ${adminTab==='announce'?'active':''}" onclick="setAdminTab('announce')">Announce</button>
       <button class="admin-tab-btn ${adminTab==='settings'?'active':''}" onclick="setAdminTab('settings')">Settings</button>
     </div>
-    ${tabOverview}${tabGuests}${tabDoor}${tabAnnounce}${tabSettings}
+    ${tabGuests}${tabDoor}${tabAnnounce}${tabSettings}
   `;
 }
 
@@ -3273,6 +3284,11 @@ function adminLogout() {
 
 function setAdminTab(tab) {
   adminTab = tab;
+  if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
+}
+
+function toggleAdminSection(name) {
+  adminSections[name] = !adminSections[name];
   if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
 }
 
