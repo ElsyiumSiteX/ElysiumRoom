@@ -1303,7 +1303,7 @@ function rosterCardsHTML(list) {
             return `<span style="font-family:'Cormorant',serif;font-size:1.4rem;line-height:1;color:${map[v]||'#888'};">${sym[v]||v}</span>`;
           }).join('')}
         </div>` : ''}
-        ${(g.bio || photos.length > 1) ? `<div class="roster-bio-hint">Tap to view profile</div>` : ''}
+        <div class="roster-bio-hint">Tap to view profile</div>
       </div>
     </div>`;
   }).join('')}</div>`;
