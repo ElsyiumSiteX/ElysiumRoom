@@ -534,8 +534,10 @@
     .ci-fire  { filter:drop-shadow(0 0 5px rgba(224,80,80,0.9)); }
     .ci-saved { filter:drop-shadow(0 0 4px rgba(200,168,75,0.8)); }
     .roster-card.mutual-fire-card { box-shadow:0 0 0 1px rgba(224,80,80,0.3), 0 0 28px rgba(224,80,80,0.1); }
-    .roster-card.host-card { box-shadow:0 0 0 1px rgba(200,168,75,0.4), 0 0 32px rgba(200,168,75,0.12); border-top-color:rgba(200,168,75,0.5) !important; }
-    .host-badge { position:absolute; top:0.55rem; right:0.55rem; font-family:'Cinzel',serif; font-size:0.5rem; letter-spacing:0.24em; text-transform:uppercase; color:rgba(200,168,75,0.85); background:rgba(8,6,4,0.62); border:1px solid rgba(200,168,75,0.32); padding:0.18rem 0.5rem; z-index:3; backdrop-filter:blur(6px); pointer-events:none; }
+    .roster-card.host-card { box-shadow:0 0 0 1px rgba(200,168,75,0.7), 0 0 28px rgba(200,168,75,0.28), 0 0 72px rgba(200,168,75,0.1); border-color:rgba(200,168,75,0.55) !important; border-top-color:rgba(200,168,75,0.85) !important; }
+    .roster-card.host-card img { filter:brightness(0.88) contrast(1.1) saturate(0.9) !important; }
+    @media (hover:hover) { .roster-card.host-card:hover { box-shadow:0 24px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(200,168,75,0.9), 0 0 48px rgba(200,168,75,0.35) !important; } }
+    .host-badge { position:absolute; top:0; left:0; right:0; font-family:'Cinzel',serif; font-size:0.55rem; letter-spacing:0.32em; text-transform:uppercase; color:rgba(200,168,75,0.95); background:linear-gradient(to bottom, rgba(8,6,4,0.82) 0%, rgba(8,6,4,0) 100%); padding:0.55rem 0.5rem 1.2rem; z-index:3; text-align:center; pointer-events:none; text-shadow:0 0 12px rgba(200,168,75,0.6); }
 
     .modal-interact { border-top:1px solid var(--border-dim); padding:1.5rem; }
     .mutual-reveal { font-family:'Cormorant',serif; font-size:1.05rem; font-style:italic; color:#e05050; text-align:center; letter-spacing:0.06em; padding-bottom:1rem; animation:fadeUp 0.4s ease; }
@@ -2110,7 +2112,7 @@ async function submitRsvp() {
   }
   else submitStatus = 'pending';
 
-  const { data, error } = await sb.from('guests').insert({
+  const insertPayload = {
     name,
     role,
     photos,
@@ -2122,7 +2124,18 @@ async function submitRsvp() {
     pin,
     phone:        document.getElementById('rPhone').value.trim() || null,
     status: submitStatus,
-  }).select().single();
+  };
+
+  let { data, error } = await sb.from('guests').insert(insertPayload).select().single();
+
+  // If the phone column doesn't exist yet, retry without it so RSVPs still go through
+  if (error) {
+    console.warn('RSVP insert error:', error.message);
+    if (error.message?.toLowerCase().includes('phone') || error.code === '42703') {
+      const { phone: _drop, ...payloadWithoutPhone } = insertPayload;
+      ({ data, error } = await sb.from('guests').insert(payloadWithoutPhone).select().single());
+    }
+  }
 
   if (error) {
     msgEl.innerHTML=`<div class="msg msg-error">Something went wrong. Please try again.</div>`;
