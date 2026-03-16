@@ -578,6 +578,18 @@
     .connections-card-initial { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-family:'Cormorant',serif; font-size:1.8rem; font-style:italic; color:var(--gold-dim); }
     .connections-card-name { position:absolute; bottom:0; left:0; right:0; background:linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%); font-family:'Cinzel',serif; font-size:0.72rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--cream); padding:0.35rem 0.3rem; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
+    /* ── CONTACT HOST POPUP ── */
+    #contactHostOverlay { position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:9500; display:none; align-items:center; justify-content:center; }
+    #contactHostOverlay.open { display:flex; }
+    .contact-host-box { background:#0e0c0a; border:1px solid rgba(200,168,75,0.28); padding:2.4rem 2.8rem 2.2rem; max-width:320px; width:90%; position:relative; animation:fadeUp 0.22s ease; }
+    .contact-host-close { position:absolute; top:0.7rem; right:0.9rem; background:none; border:none; color:var(--muted); font-size:1.1rem; cursor:pointer; line-height:1; padding:0.2rem; }
+    .contact-host-close:hover { color:var(--cream); }
+    .contact-host-title { font-family:'Cinzel',serif; font-size:0.68rem; letter-spacing:.32em; text-transform:uppercase; color:var(--gold-dim); margin-bottom:1.8rem; }
+    .contact-host-row { margin-bottom:1.2rem; }
+    .contact-host-platform { font-family:'Cinzel',serif; font-size:0.6rem; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); margin-bottom:0.25rem; }
+    .contact-host-handle { font-family:'Cormorant',serif; font-size:1.15rem; font-style:italic; color:var(--cream); letter-spacing:.02em; }
+    .contact-host-btn { font-family:'Cinzel',serif; font-size:0.6rem; letter-spacing:.2em; text-transform:uppercase; color:var(--gold-dim); border:1px solid rgba(200,168,75,0.22); background:none; padding:0.55rem 1.4rem; cursor:pointer; transition:color .2s, border-color .2s; margin-top:1.8rem; width:100%; }
+    .contact-host-btn:hover { color:var(--gold); border-color:rgba(200,168,75,0.5); }
     /* ── DOOR CHECK-IN ── */
     .door-stats { display:flex; border:1px solid var(--border); margin-bottom:2rem; }
     .door-stat-cell { flex:1; padding:1.4rem 1.8rem; background:var(--black-card); border-right:1px solid var(--border-dim); text-align:center; }
@@ -808,6 +820,23 @@
 </main>
 
 <!-- LIGHTBOX -->
+<!-- CONTACT HOST POPUP -->
+<div id="contactHostOverlay" onclick="closeContactHost()">
+  <div class="contact-host-box" onclick="event.stopPropagation()">
+    <button class="contact-host-close" onclick="closeContactHost()">✕</button>
+    <div class="contact-host-title">Contact Host</div>
+    <div class="contact-host-row">
+      <div class="contact-host-platform">Snapchat</div>
+      <div class="contact-host-handle">@nico_a2366</div>
+    </div>
+    <div class="contact-host-row">
+      <div class="contact-host-platform">Instagram</div>
+      <div class="contact-host-handle">@nick.aranda.nick</div>
+    </div>
+    <button class="contact-host-btn" onclick="closeContactHost()">Done</button>
+  </div>
+</div>
+
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
   <button class="lightbox-close" onclick="closeLightbox()">Close</button>
   <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()" />
@@ -1002,14 +1031,19 @@ async function renderConnections(container) {
     </div>`;
   }
 
+  // Only show IDs that were actually found in the DB (deleted guests are silently dropped)
+  const resolvedMutuals = mutualIds.filter(id => gMap[id]);
+  const resolvedSaved   = mySaved.filter(id => gMap[id]);
+  if (!resolvedMutuals.length && !resolvedSaved.length) return;
+
   let html = `<div class="connections-section">`;
-  if (mutualIds.length) {
-    html += `<div class="connections-subsection"><div class="connections-label">🔥 Mutual</div>
-      <div class="connections-mini-grid">${mutualIds.map(id=>miniCard(gMap[id])).join('')}</div></div>`;
+  if (resolvedMutuals.length) {
+    html += `<div class="connections-subsection"><div class="connections-label">🔥 Mutual <span style="opacity:.45;font-size:.85em">${resolvedMutuals.length}</span></div>
+      <div class="connections-mini-grid">${resolvedMutuals.map(id=>miniCard(gMap[id])).join('')}</div></div>`;
   }
-  if (mySaved.length) {
+  if (resolvedSaved.length) {
     html += `<div class="connections-subsection"><div class="connections-label">★ Saved</div>
-      <div class="connections-mini-grid">${mySaved.map(id=>miniCard(gMap[id])).join('')}</div></div>`;
+      <div class="connections-mini-grid">${resolvedSaved.map(id=>miniCard(gMap[id])).join('')}</div></div>`;
   }
   html += `</div>`;
   container.insertAdjacentHTML('beforeend', html);
@@ -2210,7 +2244,10 @@ async function renderAccount() {
 
   el.innerHTML = `
     <h2 class="form-title">My Profile</h2>
-    <p class="form-sub" style="margin-bottom:1.5rem;">${esc(g.name)} &ensp;·&ensp; <span style="color:var(--gold-dim)">PIN: ${g.pin}</span>${g.status==='waitlisted'?`<span class="wl-badge">Waitlist</span>`:''}</p>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:1.5rem;">
+      <p class="form-sub" style="margin-bottom:0;">${esc(g.name)} &ensp;·&ensp; <span style="color:var(--gold-dim)">PIN: ${g.pin}</span>${g.status==='waitlisted'?`<span class="wl-badge">Waitlist</span>`:''}</p>
+      <button onclick="openContactHost()" style="font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:.2em;text-transform:uppercase;background:none;border:1px solid rgba(200,168,75,0.22);color:var(--gold-dim);padding:.3rem .9rem;cursor:pointer;white-space:nowrap;transition:color .2s,border-color .2s;" onmouseover="this.style.color='var(--gold)';this.style.borderColor='rgba(200,168,75,0.5)'" onmouseout="this.style.color='var(--gold-dim)';this.style.borderColor='rgba(200,168,75,0.22)'">Contact Host</button>
+    </div>
     ${g.status==='waitlisted' ? `
     <div class="waitlist-status-block">
       <div class="wl-status-pos">#${wlPosition||'—'}</div>
@@ -2278,6 +2315,11 @@ async function renderAccount() {
           ${Array.from({length:13},(_,i)=>`<option value="${i+18}" ${g.age==i+18?'selected':''}>${i+18}</option>`).join('')}
         </select>
       </div>
+    </div>
+
+    <div class="form-group">
+      <label>Phone <span style="opacity:.45;font-size:.8em">(optional · private · host use only)</span></label>
+      <input type="tel" id="ePhone" value="${esc(g.phone||'')}" placeholder="For host follow-up if needed" autocomplete="tel" />
     </div>
 
     <div class="form-group">
@@ -2360,6 +2402,7 @@ async function saveProfile() {
     last_tested:  document.getElementById('eTested').value.trim(),
     prep:         selectedPrep,
     age:          document.getElementById('eAge').value ? parseInt(document.getElementById('eAge').value) : null,
+    phone:        document.getElementById('ePhone')?.value.trim() || null,
   }).eq('id', currentGuest.id);
 
   if (error) {
@@ -2883,6 +2926,15 @@ document.addEventListener('click', async function(e) {
 });
 
 // ══ LIGHTBOX ════════════════════════════════════════════════════════
+function openContactHost() {
+  document.getElementById('contactHostOverlay').classList.add('open');
+  lockScroll();
+}
+function closeContactHost() {
+  document.getElementById('contactHostOverlay').classList.remove('open');
+  unlockScroll();
+}
+
 function openLightbox(src) {
   document.getElementById('lightboxImg').src = src;
   document.getElementById('lightbox').classList.add('open');
