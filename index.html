@@ -665,6 +665,15 @@
     .wl-status-pos { font-family: 'Cinzel', serif; font-size: 2.2rem; font-weight: 700; color: var(--gold); line-height: 1; margin-bottom: 0.4rem; }
     .wl-status-label { font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); }
     .wl-pos { font-family: 'Cinzel', serif; font-size: 1.2rem; font-weight: 700; color: var(--gold-dim); min-width: 2.2rem; text-align: center; padding-right: 0.6rem; align-self: center; }
+    .wl-message-compose { background: rgba(212,184,74,0.04); border: 1px solid rgba(212,184,74,0.22); padding: 1.4rem; margin-bottom: 2rem; }
+    .wl-compose-label { font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.26em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 0.4rem; }
+    .wl-compose-sub { font-family: 'Cormorant', serif; font-size: 0.95rem; font-style: italic; color: var(--muted); margin-bottom: 1rem; line-height: 1.5; }
+    .wl-compose-textarea { width: 100%; min-height: 80px; background: var(--black-card); border: 1px solid var(--border-dim); color: var(--cream); font-family: 'Cormorant', serif; font-size: 1rem; padding: 0.7rem 0.9rem; outline: none; resize: vertical; box-sizing: border-box; transition: border-color 0.2s; line-height: 1.5; }
+    .wl-compose-textarea:focus { border-color: rgba(212,184,74,0.4); }
+    .wl-compose-actions { display: flex; align-items: center; gap: 0.8rem; margin-top: 0.9rem; flex-wrap: wrap; }
+    .wl-compose-live { font-family: 'Cormorant', serif; font-size: 0.9rem; font-style: italic; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+    .wl-guest-message { margin-top: 1rem; padding: 0.9rem 1.1rem; border: 1px solid rgba(212,184,74,0.22); background: rgba(212,184,74,0.04); font-family: 'Cormorant', serif; font-size: 1.05rem; font-style: italic; color: var(--cream); line-height: 1.6; }
+    .wl-guest-message-label { font-family: 'Cinzel', serif; font-size: 0.6rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 0.45rem; }
     .settings-toggles { display: flex; gap: 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
     .toggle-row { display: flex; align-items: center; gap: 0.6rem; font-family: 'Cinzel', serif; font-size: 0.78rem; letter-spacing: 0.1em; color: var(--muted); cursor: pointer; user-select: none; }
     .toggle-row input[type=checkbox] { width: 1rem; height: 1rem; accent-color: var(--gold); cursor: pointer; }
@@ -819,6 +828,7 @@
     waitlistEnabled:    false,
     eventPhase:         'pre',
     hostName:           'Nico',
+    wlMessage:          '',
   };
 </script>
 <!-- ════════════════════════════════════════════════════════════════ -->
@@ -944,6 +954,21 @@ async function loadSocialData() {
       for (const id in socialData.saved) socialData.saved[id] = [...new Set(socialData.saved[id])];
     } catch(e) {}
   }
+}
+
+async function saveWlMessage() {
+  const msg = (document.getElementById('wlMsgInput')?.value || '').trim();
+  CONFIG.wlMessage = msg;
+  const { error } = await sb.from('config').upsert({ key: 'wlMessage', value: msg }, { onConflict: 'key' });
+  if (error) { alert('Could not save — try again.'); return; }
+  if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
+}
+
+async function clearWlMessage() {
+  if (!window.confirm('Clear the waitlist message?')) return;
+  CONFIG.wlMessage = '';
+  await sb.from('config').upsert({ key: 'wlMessage', value: '' }, { onConflict: 'key' });
+  if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
 }
 
 async function saveSocialData() {
@@ -2240,6 +2265,11 @@ async function renderAccount() {
     <div class="waitlist-status-block">
       <div class="wl-status-pos">#${wlPosition||'—'}</div>
       <div class="wl-status-label">Your position on the waitlist</div>
+      ${CONFIG.wlMessage ? `
+      <div class="wl-guest-message">
+        <div class="wl-guest-message-label">From the host</div>
+        ${esc(CONFIG.wlMessage)}
+      </div>` : ''}
     </div>` : ''}
     <div id="accountMsg"></div>
 
@@ -2697,6 +2727,16 @@ function buildAdminHTML(el) {
     <div style="margin-bottom:3rem;">
       <button class="btn btn-ghost" onclick="setAdminTab('settings')">Go to Settings to enable →</button>
     </div>` : `
+    <div class="wl-message-compose">
+      <div class="wl-compose-label">Message to Waitlist</div>
+      <div class="wl-compose-sub">Visible to all waitlisted guests on their profile page. Use it to update them on timing, status, or anything else.</div>
+      <textarea id="wlMsgInput" class="wl-compose-textarea" placeholder="e.g. &quot;Spots are opening up — stay tuned.&quot;">${esc(CONFIG.wlMessage||'')}</textarea>
+      <div class="wl-compose-actions">
+        <button class="btn btn-solid btn-sm" onclick="saveWlMessage()">Send to Waitlist</button>
+        ${CONFIG.wlMessage ? `<button class="btn btn-ghost btn-sm" onclick="clearWlMessage()">Clear Message</button>` : ''}
+        ${CONFIG.wlMessage ? `<span class="wl-compose-live">Live now ·&ensp;<em>${esc(CONFIG.wlMessage)}</em></span>` : ''}
+      </div>
+    </div>
     <div class="pending-list">
       ${!wlList.length ? `<div class="empty-state">No one on the waitlist.</div>` :
         wlList.map((g, idx) => {
