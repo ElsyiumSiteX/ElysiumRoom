@@ -1565,11 +1565,12 @@ async function renderRoster() {
         ${annImgs.length ? `<div class="announce-imgs">${annImgs.map(src=>`<img src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)" />`).join('')}</div>` : ''}
       </div>
     </div>` : ''}
-    <div class="stats-row">
+    <div class="stats-row" ${CONFIG.waitlistEnabled ? 'style="grid-template-columns:repeat(5,1fr)"' : ''}>
       <div class="stat"><div class="stat-num" id="statA">—</div><div class="stat-label">Confirmed</div></div>
       <div class="stat"><div class="stat-num blue" id="statP">—</div><div class="stat-label">Pending</div></div>
       <div class="stat"><div class="stat-num purple" id="statR">—</div><div class="stat-label">Remaining</div></div>
       <div class="stat"><div class="stat-num dim" id="statC">${CONFIG.capacity}</div><div class="stat-label">Capacity</div></div>
+      ${CONFIG.waitlistEnabled ? `<div class="stat"><div class="stat-num" style="color:var(--gold-dim);" id="statW">—</div><div class="stat-label">Waitlist</div></div>` : ''}
     </div>
     <div class="cap-wrap">
       <div class="cap-header"><span class="cap-label">Capacity</span><span class="cap-count" id="capText"></span></div>
@@ -1583,7 +1584,10 @@ async function renderRoster() {
 
   allGuests = guests;
 
-  const { count: pending } = await sb.from('guests').select('*', {count:'exact',head:true}).eq('status','pending');
+  const [{ count: pending }, { count: waitlisted }] = await Promise.all([
+    sb.from('guests').select('*', {count:'exact',head:true}).eq('status','pending'),
+    sb.from('guests').select('*', {count:'exact',head:true}).eq('status','waitlisted'),
+  ]);
   const approved = guests.length;
   const rem = Math.max(0, CONFIG.capacity - approved);
   const pct = CONFIG.capacity > 0 ? Math.min(100, Math.round(approved / CONFIG.capacity * 100)) : 0;
@@ -1591,6 +1595,7 @@ async function renderRoster() {
   document.getElementById('statA').textContent   = approved;
   document.getElementById('statP').textContent   = pending || 0;
   document.getElementById('statR').textContent   = rem;
+  if (CONFIG.waitlistEnabled) { const wEl = document.getElementById('statW'); if (wEl) wEl.textContent = waitlisted || 0; }
   document.getElementById('capText').textContent = `${approved} / ${CONFIG.capacity}`;
   const fill = document.getElementById('capFill');
   fill.style.width = pct + '%';
@@ -2364,8 +2369,17 @@ function buildAdminHTML(el) {
     <hr class="div" />
 
     <div class="section-label">Waitlist — ${wlList.length}</div>
+    <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">
+      ${CONFIG.waitlistEnabled
+        ? 'Guests held here when the event reached capacity. Promote moves them directly to Confirmed — no separate approval step.'
+        : 'Waitlist is currently off. When enabled, guests who apply after capacity is reached are queued here instead of being turned away.'}
+    </p>
+    ${!CONFIG.waitlistEnabled ? `
+    <div style="margin-bottom:3rem;">
+      <button class="btn btn-ghost" onclick="setAdminTab('settings')">Go to Settings to enable →</button>
+    </div>` : `
     <div class="pending-list">
-      ${!wlList.length ? `<div class="empty-state">${CONFIG.waitlistEnabled ? 'No one on the waitlist.' : 'Waitlist is disabled. Enable it in Settings.'}</div>` :
+      ${!wlList.length ? `<div class="empty-state">No one on the waitlist.</div>` :
         wlList.map((g, idx) => {
           const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
           return `
@@ -2379,12 +2393,12 @@ function buildAdminHTML(el) {
               </div>
             </div>
             <div class="p-actions">
-              <button class="btn btn-blue btn-sm" data-action="promote-waitlist" data-id="${g.id}">Promote</button>
+              <button class="btn btn-blue btn-sm" data-action="promote-waitlist" data-id="${g.id}">Promote to Confirmed</button>
               <button class="btn btn-danger btn-sm" data-action="remove-waitlisted" data-id="${g.id}">Remove</button>
             </div>
           </div>`;
         }).join('')}
-    </div>
+    </div>`}
 
     <hr class="div" />
 
@@ -2556,7 +2570,9 @@ async function removeGuest(id) {
 }
 
 async function promoteFromWaitlist(id) {
-  // Promoting from waitlist is an explicit admin decision — go straight to approved.
+  const { data: g } = await sb.from('guests').select('name').eq('id',id).single();
+  if (!g) return;
+  if (!window.confirm(`Promote ${g.name} to Confirmed? This skips the approval queue.`)) return;
   await sb.from('guests').update({status:'approved'}).eq('id',id);
   renderAdmin(); renderRoster();
 }
