@@ -1531,8 +1531,8 @@ function rosterCardsHTML(list) {
             return `<span style="font-family:'Cormorant',serif;font-size:1.4rem;line-height:1;color:${map[v]||'#888'};">${sym[v]||v}</span>`;
           }).join('')}
         </div>` : ''}
-        ${g.age ? `<div class="roster-age-line">${esc(g.age)}</div>` : ''}
-        ${g.bio ? `<div class="roster-snippet">${esc(g.bio)}</div>` : ''}
+        ${adminIn && g.age ? `<div class="roster-age-line">${esc(g.age)}</div>` : ''}
+        ${adminIn && g.bio ? `<div class="roster-snippet">${esc(g.bio)}</div>` : ''}
         <div class="roster-bio-hint">Tap to view profile</div>
       </div>
     </div>`;
