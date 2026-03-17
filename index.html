@@ -1952,6 +1952,7 @@ async function init() {
           showSessionBar(g.name);
           await loadSocialData();
           updateFireBadge();
+          checkUnreadChat();
           showFireToast();
           checkConfirmOverlay();
           checkRecruiterBanner();
@@ -1994,6 +1995,14 @@ function showChatBadge() {
 
 function hideChatBadge() {
   document.querySelector('[onclick="showView(\'chat\',this)"] .nav-badge')?.remove();
+  localStorage.setItem('elysium_chat_seen', new Date().toISOString());
+}
+
+async function checkUnreadChat() {
+  const lastSeen = localStorage.getItem('elysium_chat_seen');
+  if (!lastSeen) return;
+  const { data } = await sb.from('messages').select('created_at').order('created_at', { ascending: false }).limit(1).single();
+  if (data && new Date(data.created_at) > new Date(lastSeen)) showChatBadge();
 }
 
 function showSessionBar(name) {
@@ -2639,6 +2648,7 @@ async function submitPin(target) {
   showSessionBar(data.name);
   await loadSocialData();
   updateFireBadge();
+  checkUnreadChat();
   showFireToast();
   checkConfirmOverlay();
   checkRecruiterBanner();
@@ -2956,6 +2966,7 @@ async function submitRsvp() {
   showSessionBar(data.name);
   await loadSocialData();
   updateFireBadge();
+  checkUnreadChat();
   showFireToast();
   checkConfirmOverlay();
   checkRecruiterBanner();
