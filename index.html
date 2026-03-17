@@ -943,6 +943,25 @@
     .admin-chip:hover { border-color: var(--gold-dim); color: var(--gold-dim); }
     .admin-chip.active { border-color: var(--gold); color: var(--gold); background: rgba(200,168,75,0.06); }
 
+    /* ── AWARD BANNERS ── */
+    #awardBanner { position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:9650; display:none; align-items:center; justify-content:center; padding:1.5rem; backdrop-filter:blur(4px); }
+    #awardBanner.open { display:flex; animation:fadeIn 0.4s ease; }
+    .award-banner-box { background:linear-gradient(160deg,rgba(15,12,9,0.98) 0%,rgba(10,8,6,0.99) 100%); border:1px solid rgba(200,168,75,0.3); border-top:2px solid rgba(200,168,75,0.65); max-width:380px; width:100%; padding:2.6rem 2.4rem 2rem; position:relative; animation:fadeUp 0.4s ease; box-shadow:0 0 80px rgba(0,0,0,0.8), 0 0 60px rgba(200,168,75,0.06); text-align:center; }
+    .award-banner-close { position:absolute; top:0.8rem; right:1rem; background:none; border:none; color:var(--muted); font-size:1.1rem; cursor:pointer; padding:0.25rem 0.5rem; transition:color .2s; }
+    .award-banner-close:hover { color:var(--cream); }
+    .award-banner-emoji { font-size:3rem; margin-bottom:1rem; line-height:1.2; }
+    .award-banner-title { font-family:'Cormorant',serif; font-size:1.7rem; font-weight:300; font-style:italic; color:var(--cream); line-height:1.25; margin-bottom:0.6rem; }
+    .award-banner-sub { font-family:'Cormorant',serif; font-size:1.05rem; font-style:italic; color:var(--muted); line-height:1.6; margin-bottom:1.5rem; }
+    .award-banner-dismiss { font-family:'Cinzel',serif; font-size:0.58rem; letter-spacing:.2em; text-transform:uppercase; background:none; border:1px solid rgba(200,168,75,0.3); color:var(--gold-dim); padding:.55rem 1.4rem; cursor:pointer; transition:all .2s; }
+    .award-banner-dismiss:hover { border-color:rgba(200,168,75,0.6); color:var(--gold); }
+
+    /* ── TROPHY ROW (profile modal) ── */
+    .trophy-row { display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap; padding:1rem 1.5rem 0.6rem; border-top:1px solid var(--border-dim); }
+    .trophy-item { position:relative; font-size:1.2rem; line-height:1; cursor:default; padding:0.3rem; transition:transform 0.15s; }
+    .trophy-item:hover { transform:scale(1.3); }
+    .trophy-tooltip { position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); white-space:nowrap; background:rgba(10,8,6,0.95); border:1px solid var(--border); padding:0.35rem 0.7rem; font-family:'Cormorant',serif; font-size:0.85rem; font-style:italic; color:var(--cream); pointer-events:none; opacity:0; transition:opacity 0.2s; z-index:15; }
+    .trophy-item:hover .trophy-tooltip { opacity:1; }
+
     /* ── PHOTO WATERMARK ── */
     /* Invisible during normal viewing; becomes legible in screenshots */
     .roster-card::after,
@@ -1089,6 +1108,17 @@
       <div class="contact-host-handle">@nick.aranda.nick</div>
     </div>
     <button class="contact-host-btn" onclick="closeContactHost()">Done</button>
+  </div>
+</div>
+
+<!-- AWARD BANNER -->
+<div id="awardBanner">
+  <div class="award-banner-box">
+    <button class="award-banner-close" onclick="dismissAwardBanner()">✕</button>
+    <div class="award-banner-emoji" id="awardEmoji"></div>
+    <div class="award-banner-title" id="awardTitle"></div>
+    <div class="award-banner-sub" id="awardSub"></div>
+    <button class="award-banner-dismiss" onclick="dismissAwardBanner()">Got it</button>
   </div>
 </div>
 
@@ -1396,6 +1426,110 @@ function showFireToast() {
   setTimeout(() => { document.getElementById('fireToast')?.remove(); }, 7000);
 }
 
+// ══ AWARDS ══════════════════════════════════════════════════════════
+// Each award: { key, emoji, title, subtitle, test(guestId) → bool }
+const AWARDS = [
+  {
+    key: 'picky_princess',
+    emoji: '👸',
+    title: "Picky Princess",
+    subtitle: "Only one fire? Maybe two? You've got taste — or commitment issues.",
+    test(id) {
+      // Only triggers ≤10 days before event
+      if (!CONFIG.eventDateISO) return false;
+      const days = (new Date(CONFIG.eventDateISO) - Date.now()) / 864e5;
+      if (days > 10 || days < -30) return false;
+      return (socialData.fires[id]||[]).length <= 1;
+    }
+  },
+  {
+    key: 'in_heat',
+    emoji: '🥵',
+    title: "You're in Heat",
+    subtitle: "More than 5 fires sent. Someone came hungry tonight.",
+    test(id) { return (socialData.fires[id]||[]).length > 5; }
+  },
+  {
+    key: 'big_night',
+    emoji: '🥵🥵',
+    title: "A Big Night Ahead",
+    subtitle: "5+ mutuals? Clear your schedule. Actually, clear the room.",
+    test(id) {
+      const myFires = socialData.fires[id]||[];
+      const mutuals = myFires.filter(tid => (socialData.fires[tid]||[]).includes(id));
+      return mutuals.length >= 5;
+    }
+  },
+  {
+    key: 'star',
+    emoji: '🤩',
+    title: "You're a Star",
+    subtitle: "3 or more people fired at you. You didn't even have to try.",
+    test(id) {
+      const rcvd = Object.values(socialData.fires).filter(arr => arr.includes(id)).length;
+      return rcvd >= 3;
+    }
+  },
+];
+
+function getAwardsForGuest(id) {
+  return AWARDS.filter(a => a.test(id));
+}
+
+let _awardQueue = [];
+let _awardDismissKey = '';
+
+function checkAwardBanners() {
+  if (!currentGuest || isPreview) return;
+  // Don't compete with other overlays
+  if (document.getElementById('confirmOverlay')?.classList.contains('open')) return;
+  if (document.getElementById('recruiterBanner')?.classList.contains('open')) return;
+  if (document.getElementById('postEventOverlay')?.classList.contains('open')) return;
+
+  const earned = getAwardsForGuest(currentGuest.id);
+  const storageKey = 'elysium_awards_' + currentGuest.id;
+  const dismissed = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  const unseen = earned.filter(a => !dismissed.includes(a.key));
+
+  if (!unseen.length) return;
+
+  _awardQueue = unseen;
+  _showNextAward();
+}
+
+function _showNextAward() {
+  if (!_awardQueue.length) return;
+  const award = _awardQueue[0];
+  _awardDismissKey = award.key;
+
+  document.getElementById('awardEmoji').textContent = award.emoji;
+  document.getElementById('awardTitle').textContent = award.title;
+  document.getElementById('awardSub').textContent = award.subtitle;
+  document.getElementById('awardBanner').classList.add('open');
+  lockScroll();
+}
+
+function dismissAwardBanner() {
+  document.getElementById('awardBanner').classList.remove('open');
+  unlockScroll();
+
+  // Mark as permanently dismissed
+  if (_awardDismissKey && currentGuest) {
+    const storageKey = 'elysium_awards_' + currentGuest.id;
+    const dismissed = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    if (!dismissed.includes(_awardDismissKey)) {
+      dismissed.push(_awardDismissKey);
+      localStorage.setItem(storageKey, JSON.stringify(dismissed));
+    }
+  }
+
+  // Show next award in queue if any
+  _awardQueue.shift();
+  if (_awardQueue.length) {
+    setTimeout(_showNextAward, 600);
+  }
+}
+
 function isFired(id)      { return !!currentGuest && (socialData.fires[currentGuest.id]||[]).includes(id); }
 function isMutualFire(id) { return isFired(id) && (socialData.fires[id]||[]).includes(currentGuest.id); }
 function isSaved(id)      { return !!currentGuest && (socialData.saved[currentGuest.id]||[]).includes(id); }
@@ -1433,11 +1567,11 @@ function modalInteractHTML(id) {
   const mutual = isMutualFire(id);
   const saved  = isSaved(id);
   return `
-    ${mutual ? `<div class="mutual-reveal">🔥 Mutual — you're both in</div>` : ''}
+    ${mutual ? `<div class="mutual-reveal">💕 haha: y'all should like fuck 💦</div>` : ''}
     <div class="modal-interact-btns">
       <button class="modal-fire-btn${fired?' fired':''}${mutual?' mutual':''}" onclick="toggleFire('${esc(id)}')">
         <span class="fire-icon">🔥</span>
-        <span>${mutual ? 'Matched' : fired ? 'Fired' : 'Fire'}</span>
+        <span>${mutual ? 'Mutual 💕' : fired ? 'Fire Sent' : 'Send Fire'}</span>
       </button>
       <button class="modal-save-btn${saved?' saved':''}" onclick="toggleSave('${esc(id)}')" title="${saved?'Remove from saved':'Save'}">
         ${saved ? '★' : '☆'}
@@ -1784,6 +1918,7 @@ async function init() {
           checkConfirmOverlay();
           checkRecruiterBanner();
           setTimeout(checkPostEventOverlay, 1200);
+          setTimeout(checkAwardBanners, 2400);
         } else {
           localStorage.removeItem(SESSION_KEY);
         }
@@ -2282,6 +2417,13 @@ async function openModal(id, animClass) {
       ${g.bio ? `<hr class="modal-divider" /><div class="modal-bio-label">About</div><div class="modal-bio">${esc(g.bio).replace(/\n/g,'<br>')}</div>` : ''}
       ${(currentGuest && !isPreview && currentGuest.id !== id) ? `<div class="modal-interact" id="modalInteract">${modalInteractHTML(id)}</div>` : ''}
     </div>
+    ${(() => {
+      const awards = getAwardsForGuest(id);
+      if (!awards.length) return '';
+      return `<div class="trophy-row">${awards.map(a =>
+        `<div class="trophy-item" title="${esc(a.title)}"><span>${a.emoji}</span><div class="trophy-tooltip">${esc(a.title)}</div></div>`
+      ).join('')}</div>`;
+    })()}
     <div class="modal-return-row">
       <button class="modal-return-btn" onclick="closeModalDirect()">← Return to Roster</button>
     </div>`;
@@ -2437,6 +2579,7 @@ async function submitPin(target) {
   checkConfirmOverlay();
   checkRecruiterBanner();
   setTimeout(checkPostEventOverlay, 1200);
+  setTimeout(checkAwardBanners, 2400);
 
   if (target === 'roster') renderRoster();
   else if (target === 'account') renderAccount();
@@ -2748,6 +2891,7 @@ async function submitRsvp() {
   checkConfirmOverlay();
   checkRecruiterBanner();
   setTimeout(checkPostEventOverlay, 1200);
+  setTimeout(checkAwardBanners, 2400);
 
   const isWaitlisted = submitStatus === 'waitlisted';
   const statusLine = isWaitlisted
