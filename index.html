@@ -1063,7 +1063,14 @@
 
 <script>
 // ══ SUPABASE INIT ══════════════════════════════════════════════════
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+// Data client — always uses the anon role so RLS policies are unaffected
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: { persistSession: false }
+});
+// Auth-only client — used exclusively for admin sign-in/out/session checks
+const sbAuth = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: { persistSession: true, storageKey: 'elysium-admin-auth' }
+});
 
 function debounce(fn, ms) {
   let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
@@ -1659,7 +1666,7 @@ async function init() {
   await loadConfig();
 
   // Restore admin session if one exists (Supabase Auth persists in localStorage)
-  const { data: { session: adminSession } } = await sb.auth.getSession();
+  const { data: { session: adminSession } } = await sbAuth.auth.getSession();
   if (adminSession) adminIn = true;
 
   // Restore guest session from localStorage, validate guest still exists in DB
@@ -3546,7 +3553,7 @@ async function adminLogin() {
   const pass = document.getElementById('adminPass').value;
   const btn  = document.querySelector('#adminContent .btn-solid');
   if (btn) { btn.disabled = true; btn.textContent = 'Entering…'; }
-  const { error } = await sb.auth.signInWithPassword({ email: ADMIN_EMAIL, password: pass });
+  const { error } = await sbAuth.auth.signInWithPassword({ email: ADMIN_EMAIL, password: pass });
   if (btn) { btn.disabled = false; btn.textContent = 'Enter'; }
   if (error) {
     document.getElementById('adminMsg').innerHTML = `<div class="msg msg-error">Incorrect password.</div>`;
@@ -3557,7 +3564,7 @@ async function adminLogin() {
 }
 
 async function adminLogout() {
-  await sb.auth.signOut();
+  await sbAuth.auth.signOut();
   adminIn = false;
   adminCachedData = null;
   renderAdmin();
