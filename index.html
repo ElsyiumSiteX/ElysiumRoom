@@ -946,12 +946,16 @@
     /* ── AWARD BANNERS ── */
     #awardBanner { position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:9650; display:none; align-items:center; justify-content:center; padding:1.5rem; backdrop-filter:blur(4px); }
     #awardBanner.open { display:flex; animation:fadeIn 0.4s ease; }
-    .award-banner-box { background:linear-gradient(160deg,rgba(15,12,9,0.98) 0%,rgba(10,8,6,0.99) 100%); border:1px solid rgba(200,168,75,0.3); border-top:2px solid rgba(200,168,75,0.65); max-width:380px; width:100%; padding:2.6rem 2.4rem 2rem; position:relative; animation:fadeUp 0.4s ease; box-shadow:0 0 80px rgba(0,0,0,0.8), 0 0 60px rgba(200,168,75,0.06); text-align:center; }
+    .award-banner-box { background:linear-gradient(160deg,rgba(15,12,9,0.98) 0%,rgba(10,8,6,0.99) 100%); border:1px solid rgba(200,168,75,0.3); border-top:2px solid rgba(200,168,75,0.65); max-width:400px; width:100%; padding:2.6rem 2.4rem 2rem; position:relative; animation:fadeUp 0.4s ease; box-shadow:0 0 80px rgba(0,0,0,0.8), 0 0 60px rgba(200,168,75,0.06); text-align:center; }
     .award-banner-close { position:absolute; top:0.8rem; right:1rem; background:none; border:none; color:var(--muted); font-size:1.1rem; cursor:pointer; padding:0.25rem 0.5rem; transition:color .2s; }
     .award-banner-close:hover { color:var(--cream); }
-    .award-banner-emoji { font-size:3rem; margin-bottom:1rem; line-height:1.2; }
-    .award-banner-title { font-family:'Cormorant',serif; font-size:1.7rem; font-weight:300; font-style:italic; color:var(--cream); line-height:1.25; margin-bottom:0.6rem; }
-    .award-banner-sub { font-family:'Cormorant',serif; font-size:1.05rem; font-style:italic; color:var(--muted); line-height:1.6; margin-bottom:1.5rem; }
+    .award-banner-heading { font-family:'Cormorant',serif; font-size:1.7rem; font-weight:300; font-style:italic; color:var(--cream); line-height:1.25; margin-bottom:1.2rem; }
+    .award-banner-list { display:flex; flex-direction:column; gap:0.9rem; margin-bottom:1.5rem; }
+    .award-banner-item { display:flex; align-items:center; gap:0.9rem; text-align:left; }
+    .award-banner-item-emoji { font-size:1.8rem; flex-shrink:0; line-height:1; }
+    .award-banner-item-text { display:flex; flex-direction:column; gap:0.15rem; }
+    .award-banner-item-title { font-family:'Cormorant',serif; font-size:1.1rem; font-weight:400; color:var(--cream); line-height:1.25; }
+    .award-banner-item-sub { font-family:'Cormorant',serif; font-size:0.9rem; font-style:italic; color:var(--muted); line-height:1.4; }
     .award-banner-dismiss { font-family:'Cinzel',serif; font-size:0.58rem; letter-spacing:.2em; text-transform:uppercase; background:none; border:1px solid rgba(200,168,75,0.3); color:var(--gold-dim); padding:.55rem 1.4rem; cursor:pointer; transition:all .2s; }
     .award-banner-dismiss:hover { border-color:rgba(200,168,75,0.6); color:var(--gold); }
 
@@ -1115,9 +1119,8 @@
 <div id="awardBanner">
   <div class="award-banner-box">
     <button class="award-banner-close" onclick="dismissAwardBanner()">✕</button>
-    <div class="award-banner-emoji" id="awardEmoji"></div>
-    <div class="award-banner-title" id="awardTitle"></div>
-    <div class="award-banner-sub" id="awardSub"></div>
+    <div class="award-banner-heading" id="awardHeading"></div>
+    <div class="award-banner-list" id="awardList"></div>
     <button class="award-banner-dismiss" onclick="dismissAwardBanner()">Got it</button>
   </div>
 </div>
@@ -1476,8 +1479,7 @@ function getAwardsForGuest(id) {
   return AWARDS.filter(a => a.test(id));
 }
 
-let _awardQueue = [];
-let _awardDismissKey = '';
+let _awardUnseen = [];
 
 function checkAwardBanners() {
   if (!currentGuest || isPreview) return;
@@ -1493,18 +1495,24 @@ function checkAwardBanners() {
 
   if (!unseen.length) return;
 
-  _awardQueue = unseen;
-  _showNextAward();
-}
+  _awardUnseen = unseen;
 
-function _showNextAward() {
-  if (!_awardQueue.length) return;
-  const award = _awardQueue[0];
-  _awardDismissKey = award.key;
+  // Build heading
+  const heading = document.getElementById('awardHeading');
+  heading.textContent = unseen.length === 1 ? 'You earned a new trophy' : 'You earned new trophies';
 
-  document.getElementById('awardEmoji').textContent = award.emoji;
-  document.getElementById('awardTitle').textContent = award.title;
-  document.getElementById('awardSub').textContent = award.subtitle;
+  // Build consolidated list
+  const list = document.getElementById('awardList');
+  list.innerHTML = unseen.map(a =>
+    `<div class="award-banner-item">
+      <span class="award-banner-item-emoji">${a.emoji}</span>
+      <div class="award-banner-item-text">
+        <div class="award-banner-item-title">${a.title}</div>
+        <div class="award-banner-item-sub">${a.subtitle}</div>
+      </div>
+    </div>`
+  ).join('');
+
   document.getElementById('awardBanner').classList.add('open');
   lockScroll();
 }
@@ -1513,20 +1521,15 @@ function dismissAwardBanner() {
   document.getElementById('awardBanner').classList.remove('open');
   unlockScroll();
 
-  // Mark as permanently dismissed
-  if (_awardDismissKey && currentGuest) {
+  // Mark all as permanently dismissed
+  if (_awardUnseen.length && currentGuest) {
     const storageKey = 'elysium_awards_' + currentGuest.id;
     const dismissed = JSON.parse(localStorage.getItem(storageKey) || '[]');
-    if (!dismissed.includes(_awardDismissKey)) {
-      dismissed.push(_awardDismissKey);
-      localStorage.setItem(storageKey, JSON.stringify(dismissed));
-    }
-  }
-
-  // Show next award in queue if any
-  _awardQueue.shift();
-  if (_awardQueue.length) {
-    setTimeout(_showNextAward, 600);
+    _awardUnseen.forEach(a => {
+      if (!dismissed.includes(a.key)) dismissed.push(a.key);
+    });
+    localStorage.setItem(storageKey, JSON.stringify(dismissed));
+    _awardUnseen = [];
   }
 }
 
