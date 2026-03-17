@@ -650,6 +650,39 @@
     /* ── CONTACT HOST POPUP ── */
     #contactHostOverlay { position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:9500; display:none; align-items:center; justify-content:center; }
     #contactHostOverlay.open { display:flex; }
+
+    /* ── STAR RECRUITER BANNER ── */
+    #recruiterBanner { position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:9600; display:none; align-items:center; justify-content:center; padding:1.5rem; backdrop-filter:blur(4px); }
+    #recruiterBanner.open { display:flex; animation:fadeIn 0.4s ease; }
+    .rec-banner-box { background:linear-gradient(160deg,rgba(15,12,9,0.98) 0%,rgba(10,8,6,0.99) 100%); border:1px solid rgba(212,184,74,0.3); border-top:2px solid rgba(212,184,74,0.65); max-width:400px; width:100%; padding:2.4rem 2.2rem 2rem; position:relative; animation:fadeUp 0.4s ease; box-shadow:0 0 80px rgba(0,0,0,0.8), 0 0 60px rgba(212,184,74,0.06); }
+    .rec-banner-close { position:absolute; top:1rem; right:1rem; background:none; border:none; color:var(--muted); font-size:1rem; cursor:pointer; padding:0.25rem 0.5rem; transition:color .2s; }
+    .rec-banner-close:hover { color:var(--cream); }
+    .rec-banner-eyebrow { font-family:'Cinzel',serif; font-size:0.6rem; letter-spacing:.38em; text-transform:uppercase; color:rgba(212,184,74,0.6); margin-bottom:1.2rem; }
+    .rec-banner-heading { font-family:'Cormorant',serif; font-size:1.8rem; font-weight:300; font-style:italic; color:var(--cream); line-height:1.2; margin-bottom:0.8rem; }
+    .rec-banner-body { font-family:'Cormorant',serif; font-size:1.05rem; font-style:italic; color:var(--muted); line-height:1.65; margin-bottom:1.8rem; }
+    .rec-banner-body em { color:rgba(212,184,74,0.75); font-style:normal; }
+    .rec-banner-actions { display:flex; flex-direction:column; gap:0.7rem; }
+    .rec-banner-copy { font-family:'Cinzel',serif; font-size:0.7rem; letter-spacing:.22em; text-transform:uppercase; background:transparent; border:1px solid rgba(212,184,74,0.5); color:var(--gold); padding:.85rem 1.4rem; cursor:pointer; transition:all .25s; }
+    .rec-banner-copy:hover { background:rgba(212,184,74,0.07); box-shadow:0 0 24px rgba(212,184,74,0.12); }
+    .rec-banner-later { font-family:'Cinzel',serif; font-size:0.58rem; letter-spacing:.2em; text-transform:uppercase; background:none; border:none; color:var(--muted); cursor:pointer; padding:.35rem; transition:color .2s; text-align:center; }
+    .rec-banner-later:hover { color:var(--cream); }
+    /* star recruiter profile badge */
+    .rec-profile-badge { background:rgba(212,184,74,0.06); border:1px solid rgba(212,184,74,0.25); padding:1.2rem 1.4rem; margin-bottom:1.6rem; }
+    .rec-profile-top { display:flex; align-items:center; gap:0.6rem; margin-bottom:0.5rem; }
+    .rec-profile-star { font-size:1rem; color:var(--gold-dim); }
+    .rec-profile-title { font-family:'Cinzel',serif; font-size:0.68rem; letter-spacing:.22em; text-transform:uppercase; color:var(--gold-dim); }
+    .rec-profile-private { font-family:'Cormorant',serif; font-size:.82rem; font-style:italic; color:var(--muted); margin-bottom:.8rem; }
+    .rec-profile-body { font-family:'Cormorant',serif; font-size:1rem; font-style:italic; color:rgba(220,210,195,0.75); line-height:1.55; margin-bottom:1rem; }
+    .rec-profile-tally { font-family:'Cinzel',serif; font-size:.68rem; letter-spacing:.15em; text-transform:uppercase; color:var(--muted); margin-bottom:1rem; }
+    .rec-profile-tally span { color:var(--gold-dim); }
+    .rec-copy-btn { font-family:'Cinzel',serif; font-size:0.62rem; letter-spacing:.2em; text-transform:uppercase; background:transparent; border:1px solid rgba(212,184,74,0.35); color:var(--gold-dim); padding:.55rem 1.1rem; cursor:pointer; transition:all .2s; }
+    .rec-copy-btn:hover { border-color:rgba(212,184,74,0.6); color:var(--gold); }
+    /* ref invite note on RSVP form */
+    .ref-invite-note { font-family:'Cormorant',serif; font-size:.9rem; font-style:italic; color:rgba(212,184,74,0.65); margin-top:.4rem; }
+    /* admin star button */
+    .a-star-btn { background:none; border:none; font-size:0.95rem; cursor:pointer; color:var(--muted); transition:color .2s, text-shadow .2s; padding:.15rem .3rem; line-height:1; }
+    .a-star-btn:hover { color:var(--gold-dim); }
+    .a-star-btn.active { color:var(--gold); text-shadow:0 0 8px rgba(212,184,74,0.55); }
     .contact-host-box { background:#0e0c0a; border:1px solid rgba(200,168,75,0.28); padding:2.4rem 2.8rem 2.2rem; max-width:320px; width:90%; position:relative; animation:fadeUp 0.22s ease; }
     .contact-host-close { position:absolute; top:0.7rem; right:0.9rem; background:none; border:none; color:var(--muted); font-size:1.1rem; cursor:pointer; line-height:1; padding:0.2rem; }
     .contact-host-close:hover { color:var(--cream); }
@@ -889,6 +922,7 @@
     announcementText:   "",
     announcementImages: [],
     infoImages:         {},
+    recruiters:         [],
     eventDateISO:       "",
     waitlistEnabled:    false,
     eventPhase:         'pre',
@@ -972,6 +1006,19 @@
 </div>
 
 <!-- CONTACT HOST POPUP -->
+<div id="recruiterBanner">
+  <div class="rec-banner-box">
+    <button class="rec-banner-close" onclick="dismissRecruiterBanner()">✕</button>
+    <div class="rec-banner-eyebrow" id="recBannerEyebrow">✦ Star Recruiter</div>
+    <div class="rec-banner-heading" id="recBannerHeading">You've been selected.</div>
+    <div class="rec-banner-body" id="recBannerBody"></div>
+    <div class="rec-banner-actions">
+      <button class="rec-banner-copy" onclick="copyRecruiterLink(this);dismissRecruiterBanner()">Copy Your Invite Link</button>
+      <button class="rec-banner-later" onclick="dismissRecruiterBanner()">Got it</button>
+    </div>
+  </div>
+</div>
+
 <div id="contactHostOverlay" onclick="closeContactHost()">
   <div class="contact-host-box" onclick="event.stopPropagation()">
     <button class="contact-host-close" onclick="closeContactHost()">✕</button>
@@ -1568,6 +1615,9 @@ async function loadConfig() {
       else if (row.key === 'infoImages') {
         try { CONFIG.infoImages = JSON.parse(row.value) || {}; } catch(e) { CONFIG.infoImages = {}; }
       }
+      else if (row.key === 'recruiters') {
+        try { CONFIG.recruiters = JSON.parse(row.value) || []; } catch(e) { CONFIG.recruiters = []; }
+      }
       else if (row.key === 'eventDateISO')     CONFIG.eventDateISO = row.value;
       else if (row.key === 'eventPhase')       CONFIG.eventPhase   = row.value;
       else if (CONFIG.hasOwnProperty(row.key)) CONFIG[row.key] = row.value;
@@ -1617,6 +1667,7 @@ async function init() {
           updateFireBadge();
           showFireToast();
           checkConfirmOverlay();
+          checkRecruiterBanner();
         } else {
           localStorage.removeItem(SESSION_KEY);
         }
@@ -2217,6 +2268,7 @@ async function submitPin(target) {
   updateFireBadge();
   showFireToast();
   checkConfirmOverlay();
+  checkRecruiterBanner();
 
   if (target === 'roster') renderRoster();
   else if (target === 'account') renderAccount();
@@ -2378,6 +2430,23 @@ async function renderRsvp() {
       slot.dataset.dragInit = '1';
     }
   });
+
+  // Pre-fill referred_by from ?ref=PIN recruiter link
+  const refPin = new URLSearchParams(location.search).get('ref');
+  if (refPin) {
+    sb.from('guests').select('name').eq('pin', refPin).eq('status','approved').single()
+      .then(({ data: refGuest }) => {
+        if (!refGuest) return;
+        const refEl = document.getElementById('rReferredBy');
+        if (refEl && !refEl.value) {
+          refEl.value = refGuest.name;
+          const note = document.createElement('div');
+          note.className = 'ref-invite-note';
+          note.textContent = `✦ Invited by ${refGuest.name}`;
+          refEl.parentNode.appendChild(note);
+        }
+      }).catch(() => {});
+  }
 }
 
 function toggleVibe(v, btn) {
@@ -2509,6 +2578,7 @@ async function submitRsvp() {
   updateFireBadge();
   showFireToast();
   checkConfirmOverlay();
+  checkRecruiterBanner();
 
   const isWaitlisted = submitStatus === 'waitlisted';
   const statusLine = isWaitlisted
@@ -2554,6 +2624,13 @@ async function renderAccount() {
   selectedVibes = [...(g.vibes||[])];
   selectedPrep  = g.prep || null;
 
+  // Fetch referral count if recruiter
+  let refCount = 0;
+  if (isRecruiter(g.id)) {
+    const { count } = await sb.from('guests').select('*',{count:'exact',head:true}).ilike('referred_by', g.name);
+    refCount = count || 0;
+  }
+
   let wlPosition = null;
   if (g.status === 'waitlisted') {
     const [{ data: wlAll }, { data: wlOrderCfg }] = await Promise.all([
@@ -2596,6 +2673,18 @@ async function renderAccount() {
       ${esc(wlMessages[g.id])}
     </div>` : ''}
     <div id="accountMsg"></div>
+
+    ${isRecruiter(g.id) ? `
+    <div class="rec-profile-badge">
+      <div class="rec-profile-top">
+        <span class="rec-profile-star">★</span>
+        <span class="rec-profile-title">Star Recruiter</span>
+      </div>
+      <div class="rec-profile-private">Visible to you and the host only.</div>
+      <div class="rec-profile-body">You've been chosen to help grow the room. Invite up to 2 of your most trusted, attractive friends — people who match the energy. Use your personal link below.</div>
+      <div class="rec-profile-tally">Friends referred so far: <span>${refCount}</span></div>
+      <button class="rec-copy-btn" onclick="copyRecruiterLink(this)">Copy Invite Link</button>
+    </div>` : ''}
 
     <div class="form-group">
       <label>Role <span class="req">*</span></label>
@@ -3095,6 +3184,7 @@ function buildAdminHTML(el) {
             <div style="display:flex;gap:0.5rem;align-items:center;">
               ${isArrived ? `<span class="checkin-badge">✓ Here</span>` : ''}
               <button class="a-expand-btn${adminExpandOpen.has(g.id)?' open':''}" onclick="toggleGuestExpand('${g.id}')" title="View full profile">${adminExpandOpen.has(g.id)?'▾':'▸'}</button>
+              <button class="a-star-btn${(CONFIG.recruiters||[]).includes(g.id)?' active':''}" onclick="toggleRecruiter('${esc(g.id)}')" title="${(CONFIG.recruiters||[]).includes(g.id)?'Star Recruiter — click to remove':'Mark as Star Recruiter'}">★</button>
               <button class="a-flag-btn ${isFlagged?'flagged':''}" data-action="flag" data-id="${g.id}" title="${isFlagged?'Flagged — click to unflag':'Flag guest'}">⚑</button>
               <button class="a-revert-toggle${adminRevertOpen.has(g.id)?' active':''}" onclick="toggleRevertPanel('${g.id}')" title="Move back to waitlist or pending review">↩</button>
               <button class="btn btn-danger btn-sm" data-action="remove" data-id="${g.id}">Remove</button>
@@ -3114,6 +3204,7 @@ function buildAdminHTML(el) {
                   ${g.last_tested ? `<div class="p-section"><div class="p-label">Last Tested</div><div class="p-value">${esc(g.last_tested)}</div></div>` : ''}
                   ${g.prep ? `<div class="p-section"><div class="p-label">PrEP</div><div class="p-value">${g.prep==='yes'?'Yes':'No'}</div></div>` : ''}
                   ${g.referred_by ? `<div class="p-section"><div class="p-label">Referred by</div><div class="p-value">${esc(g.referred_by)}</div></div>` : ''}
+                ${(CONFIG.recruiters||[]).includes(g.id) ? `<div class="p-section"><div class="p-label">Role</div><div class="p-value" style="color:var(--gold-dim);">★ Star Recruiter</div></div>` : ''}
                 </div>
                 ${g.bio ? `<div class="p-section" style="margin-top:0.6rem;"><div class="p-label">About</div><div class="p-bio">${esc(g.bio).replace(/\n/g,'<br>')}</div></div>` : ''}
                 ${!hasData ? `<div style="font-family:'Cormorant',serif;font-style:italic;color:var(--muted);font-size:.95rem;">No additional profile data.</div>` : ''}
@@ -3714,6 +3805,65 @@ async function saveInfoImages() {
   flash.textContent = 'Info images saved.';
   btn.parentNode.insertBefore(flash, btn);
   setTimeout(() => flash.remove(), 3000);
+}
+
+// ══ STAR RECRUITER ══════════════════════════════════════════════════
+function isRecruiter(id) { return (CONFIG.recruiters||[]).includes(id); }
+
+function checkRecruiterBanner() {
+  if (!currentGuest || isPreview || !isRecruiter(currentGuest.id)) return;
+  const key = `rec_seen_${currentGuest.id}`;
+  const seen = JSON.parse(localStorage.getItem(key)||'[]');
+  const daysLeft = CONFIG.eventDateISO
+    ? (new Date(CONFIG.eventDateISO) - Date.now()) / 864e5 : Infinity;
+  const round = !seen.includes(1) ? 1 : (daysLeft <= 5 && daysLeft > 0 && !seen.includes(2)) ? 2 : 0;
+  if (!round) return;
+
+  const banner = document.getElementById('recruiterBanner');
+  banner.dataset.round = round;
+  if (round === 1) {
+    document.getElementById('recBannerHeading').textContent = 'You\'ve been selected.';
+    document.getElementById('recBannerBody').innerHTML =
+      `You're one of the most magnetic people in this room — and we'd love for you to bring the energy forward. <em>Invite up to 2 of your most trusted, attractive FWBs or friends.</em> Curate wisely. They'll thank you.`;
+  } else {
+    document.getElementById('recBannerHeading').textContent = 'Event coming up — bring your people.';
+    document.getElementById('recBannerBody').innerHTML =
+      `5 days out and your invites still have time to get approved. <em>Share your personal link with up to 2 trusted, sexy friends.</em> It's not too late.`;
+  }
+  banner.classList.add('open');
+  lockScroll();
+}
+
+function dismissRecruiterBanner() {
+  const banner = document.getElementById('recruiterBanner');
+  const round = parseInt(banner.dataset.round||'1');
+  const key = `rec_seen_${currentGuest.id}`;
+  const seen = JSON.parse(localStorage.getItem(key)||'[]');
+  if (!seen.includes(round)) seen.push(round);
+  localStorage.setItem(key, JSON.stringify(seen));
+  banner.classList.remove('open');
+  unlockScroll();
+}
+
+function copyRecruiterLink(btn) {
+  const url = `${location.origin}${location.pathname}?ref=${currentGuest.pin}`;
+  navigator.clipboard.writeText(url).then(() => {
+    if (!btn) return;
+    const orig = btn.textContent;
+    btn.textContent = 'Copied ✓';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  }).catch(() => {
+    prompt('Copy your invite link:', url);
+  });
+}
+
+async function toggleRecruiter(id) {
+  const list = [...(CONFIG.recruiters||[])];
+  const idx = list.indexOf(id);
+  if (idx >= 0) list.splice(idx, 1); else list.push(id);
+  CONFIG.recruiters = list;
+  await sb.from('config').upsert([{ key: 'recruiters', value: JSON.stringify(list) }], { onConflict: 'key' });
+  _adminRebuild();
 }
 
 // ══ PREP TOGGLE ═════════════════════════════════════════════════════
