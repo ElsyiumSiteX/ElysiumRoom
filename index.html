@@ -3322,6 +3322,17 @@ function buildAdminHTML(el) {
     .sort((a,b) => b.fr - a.fr)
     .slice(0, 5);
 
+  // coldest guests — least social activity (fires rcvd + sent + saves rcvd)
+  const coldGuests = apprList
+    .map(g => {
+      const rcvd = Object.values(socialData.fires).filter(arr=>arr.includes(g.id)).length;
+      const sent = (socialData.fires[g.id]||[]).length;
+      const saved = Object.values(socialData.saved).filter(arr=>arr.includes(g.id)).length;
+      return { g, rcvd, sent, saved, total: rcvd + sent + saved };
+    })
+    .sort((a,b) => a.total - b.total || (a.g.name||'').localeCompare(b.g.name||''))
+    .slice(0, 5);
+
   // ── tab content ─────────────────────────────────────────────────
 
   const pendingItemHTML = g => {
@@ -3722,9 +3733,9 @@ function buildAdminHTML(el) {
         <div class="insight-sub">${apprList.length - arrivedCount} still expected</div>
       </div>
       <div class="insight-cell">
-        <div class="insight-val" style="color:var(--muted);">${apprList.filter(g=>Object.values(socialData.fires).filter(arr=>arr.includes(g.id)).length===0).length}</div>
-        <div class="insight-lbl">Cold Guests</div>
-        <div class="insight-sub">no fires received yet</div>
+        <div class="insight-val" style="color:var(--muted);">${coldGuests.filter(x=>x.total===0).length}</div>
+        <div class="insight-lbl">Zero Activity</div>
+        <div class="insight-sub">${coldGuests.filter(x=>x.total===0).slice(0,3).map(x=>esc(x.g.name.split(' ')[0])).join(', ')||'none'}${coldGuests.filter(x=>x.total===0).length>3?' …':''}</div>
       </div>
     </div>
     ${hotGuests.length ? `
@@ -3754,6 +3765,20 @@ function buildAdminHTML(el) {
       return `<div class="section-label" style="margin-bottom:1rem;margin-top:1.4rem;">Matched Pairs</div>
       <div class="hot-guests-list">${pairRows}</div>`;
     })() : ''}
+    ${coldGuests.length ? `
+    <div class="section-label" style="margin-bottom:1rem;margin-top:1.4rem;">Coldest Guests</div>
+    <div class="hot-guests-list">
+      ${coldGuests.map((x,i) => {
+        const detail = x.total === 0
+          ? 'no activity'
+          : [x.rcvd?`${x.rcvd} rcvd`:'', x.sent?`${x.sent} sent`:'', x.saved?`${x.saved} saved`:''].filter(Boolean).join(' · ');
+        return `<div class="hot-guest-row" style="opacity:${x.total===0?'0.55':'0.75'};">
+          <span class="hot-rank" style="color:var(--muted);">${i+1}</span>
+          <span class="hot-name">${esc(x.g.name)}</span>
+          <span style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:.12em;color:${x.total===0?'rgba(224,80,80,0.7)':'var(--muted)'};text-transform:uppercase;">${detail}</span>
+        </div>`;
+      }).join('')}
+    </div>` : ''}
     ` : ''}
     `;
   })() : '';
