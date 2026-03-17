@@ -2329,7 +2329,9 @@ async function renderRoster() {
   ]);
   const pending = pendRes2.count ?? 0;
   const waitlisted = wlRes2.count ?? 0;
-  const approved = guests.length;
+  // Don't count the host toward capacity so the number reflects guest-only spots
+  const hostInRoster = CONFIG.hostName && guests.some(g => g.name.trim().toLowerCase() === CONFIG.hostName.trim().toLowerCase());
+  const approved = guests.length - (hostInRoster ? 1 : 0);
   const rem = Math.max(0, CONFIG.capacity - approved);
   const pct = CONFIG.capacity > 0 ? Math.min(100, Math.round(approved / CONFIG.capacity * 100)) : 0;
 
@@ -2622,7 +2624,10 @@ async function renderRsvp() {
     return;
   }
 
-  const { count: approvedCount } = await sb.from('guests').select('*',{count:'exact',head:true}).eq('status','approved');
+  const { count: approvedCountRaw } = await sb.from('guests').select('*',{count:'exact',head:true}).eq('status','approved');
+  // Subtract host from capacity count
+  const hostExists = CONFIG.hostName && (await sb.from('guests').select('id',{count:'exact',head:true}).eq('status','approved').ilike('name', CONFIG.hostName.trim())).count > 0;
+  const approvedCount = approvedCountRaw - (hostExists ? 1 : 0);
   const atCapacity = approvedCount >= CONFIG.capacity;
   if (atCapacity && !CONFIG.waitlistEnabled) {
     el.innerHTML = `<div class="full-overlay"><div class="full-title">At Capacity</div><div class="full-sub">All ${CONFIG.capacity} places have been reserved.</div></div>`;
@@ -2860,8 +2865,10 @@ async function submitRsvp() {
   const pin = generatePin();
   const photos = photoSlots.filter(Boolean);
 
-  // Re-check capacity at submit time to avoid race conditions
-  const { count: approvedNow } = await sb.from('guests').select('*',{count:'exact',head:true}).eq('status','approved');
+  // Re-check capacity at submit time to avoid race conditions (host excluded)
+  const { count: approvedNowRaw } = await sb.from('guests').select('*',{count:'exact',head:true}).eq('status','approved');
+  const hostExistsNow = CONFIG.hostName && (await sb.from('guests').select('id',{count:'exact',head:true}).eq('status','approved').ilike('name', CONFIG.hostName.trim())).count > 0;
+  const approvedNow = approvedNowRaw - (hostExistsNow ? 1 : 0);
   const submitAtCapacity = approvedNow >= CONFIG.capacity;
   let submitStatus;
   if (submitAtCapacity && CONFIG.waitlistEnabled) submitStatus = 'waitlisted';
