@@ -782,6 +782,9 @@
     .vibe-filter-btn.vf-down { color: #5bc8f5; border-color: rgba(91,200,245,0.5); background: rgba(91,200,245,0.07); }
     .vibe-filter-btn.vf-dash  { color: #d4b84a; border-color: rgba(212,184,74,0.5); background: rgba(212,184,74,0.07); }
     .vibe-filter-btn.vf-verse { color: #b97fdb; border-color: rgba(185,127,219,0.5); background: rgba(185,127,219,0.07); }
+    .vibe-filter-btn.vf-saved  { color: var(--gold); border-color: rgba(200,168,75,0.5); background: rgba(200,168,75,0.07); }
+    .vibe-filter-btn.vf-mutual { color: #e05050; border-color: rgba(224,80,80,0.5); background: rgba(224,80,80,0.07); }
+    .vibe-filter-sep { width:1px; align-self:stretch; background:var(--border-dim); margin:0 0.15rem; }
     .vibe-filter-clear { font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); background: none; border: none; cursor: pointer; padding: 0.3rem 0.4rem; transition: color 0.2s; }
     .vibe-filter-clear:hover { color: var(--gold-dim); }
     .vibe-filter-count { font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-left: auto; }
@@ -1803,6 +1806,12 @@ function saveNote(id, text) {
 // ══ VIBE FILTER ════════════════════════════════════════════════════
 function getFilteredGuests() {
   if (!activeVibeFilter) return allGuests;
+  if (activeVibeFilter === 'saved' && currentGuest) {
+    return allGuests.filter(g => isSaved(g.id));
+  }
+  if (activeVibeFilter === 'mutual' && currentGuest) {
+    return allGuests.filter(g => isMutualFire(g.id));
+  }
   if (activeVibeFilter === 'verse') {
     return allGuests.filter(g => {
       const v = g.vibes || [];
@@ -1815,8 +1824,14 @@ function getFilteredGuests() {
 function vibeFilterBarHTML() {
   const filtered = getFilteredGuests();
   const vibes = [{key:'up',sym:'↑'},{key:'down',sym:'↓'},{key:'verse',sym:'↕'},{key:'dash',sym:'—'}];
+  const socialBtns = currentGuest ? [
+    {key:'saved',sym:'★',label:'Saved'},
+    {key:'mutual',sym:'🔥',label:'Mutual'}
+  ] : [];
   return `<div class="vibe-filter" id="vibeFilterBar">
     ${vibes.map(v => `<button class="vibe-filter-btn${activeVibeFilter===v.key?' vf-'+v.key:''}" onclick="setVibeFilter('${v.key}')">${v.sym}</button>`).join('')}
+    ${socialBtns.length ? `<span class="vibe-filter-sep"></span>` : ''}
+    ${socialBtns.map(v => `<button class="vibe-filter-btn${activeVibeFilter===v.key?' vf-'+v.key:''}" onclick="setVibeFilter('${v.key}')">${v.sym}</button>`).join('')}
     ${activeVibeFilter ? `<button class="vibe-filter-clear" onclick="setVibeFilter(null)">✕ clear</button>` : ''}
     <span class="vibe-filter-count">${filtered.length}${activeVibeFilter ? ` of ${allGuests.length}` : ' guests'}</span>
   </div>`;
@@ -1825,7 +1840,7 @@ function vibeFilterBarHTML() {
 function rosterCardsHTML(list) {
   if (!list.length) {
     return activeVibeFilter
-      ? `<div class="empty-state">No guests with this vibe.</div>`
+      ? `<div class="empty-state">${activeVibeFilter==='saved'?'You haven\'t saved anyone yet.':activeVibeFilter==='mutual'?'No mutual fires yet.':'No guests with this vibe.'}</div>`
       : `<div class="empty-state">No confirmed guests yet — be among the first.</div>`;
   }
   return `<div class="roster-grid">${list.map((g,i) => {
