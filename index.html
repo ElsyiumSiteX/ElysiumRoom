@@ -95,6 +95,9 @@
     .countdown-sep { display: flex; align-items: center; align-self: center; margin-top: -0.5rem; }
     .countdown-sep-diamond { width: 6px; height: 6px; background: var(--gold-dim); transform: rotate(45deg); opacity: 0.5; box-shadow: 0 0 8px rgba(200,168,75,0.4); }
     .hero-frequency { font-family: 'Cinzel', serif; font-size: 0.6rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--muted); opacity: 0.55; margin-top: 1.2rem; }
+    .hero-frequency .season-active { color: #4caf80; opacity: 1; text-shadow: 0 0 8px rgba(76,175,128,0.45), 0 0 20px rgba(76,175,128,0.2); position: relative; display: inline; }
+    .hero-frequency .season-active::before { content: '❧'; margin-right: 0.35em; font-size: 0.7em; opacity: 0.7; }
+    .hero-frequency .season-active::after  { content: '❧'; margin-left: 0.35em; font-size: 0.7em; opacity: 0.7; transform: scaleX(-1); display: inline-block; }
 
     /* ── NAV ── */
     nav {
@@ -1037,7 +1040,7 @@
     <div class="countdown-sep"><div class="countdown-sep-diamond"></div></div>
     <div class="countdown-unit"><div class="countdown-num" id="cdHours">00</div><div class="countdown-label">Hours</div></div>
   </div>
-  <div class="hero-frequency">Winter &middot; Spring &middot; Early Summer &middot; Late Summer &middot; Autumn</div>
+  <div class="hero-frequency">Winter &middot; <span class="season-active">Spring</span> &middot; Early Summer &middot; Late Summer &middot; Autumn</div>
 </div>
 
 <nav id="mainNav">
