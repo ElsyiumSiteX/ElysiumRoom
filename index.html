@@ -888,6 +888,16 @@
     .phase-btn.phase-live.active { background: rgba(76,175,128,0.1); color: #4caf80; }
     .phase-btn.phase-closed.active { background: rgba(224,80,80,0.07); color: #e05050; }
 
+    /* ── CONFIRM BLAST TOOLBAR ── */
+    .confirm-toolbar { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; padding:0.7rem 1.2rem; background:rgba(76,175,128,0.04); border:1px solid var(--border-dim); margin-bottom:0.8rem; cursor:pointer; user-select:none; transition:background 0.2s; }
+    .confirm-toolbar:hover { background:rgba(76,175,128,0.07); }
+    .confirm-toolbar-summary { font-family:'Cinzel',serif; font-size:0.65rem; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); flex:1; }
+    .confirm-toolbar-chevron { font-size:0.75rem; color:var(--muted); transition:transform 0.2s; }
+    .confirm-toolbar-chevron.open { transform:rotate(180deg); }
+    .confirm-toolbar-body { padding:0.8rem 1.2rem 1rem; border:1px solid var(--border-dim); border-top:none; margin-bottom:0.8rem; background:rgba(76,175,128,0.02); }
+    .approved-item.confirm-yes { border-left:3px solid rgba(76,175,128,0.55); }
+    .approved-item.confirm-no  { border-left:3px solid rgba(200,168,75,0.3); opacity:0.72; }
+
     /* ── POST-EVENT BLAST ── */
     .pe-blast-section { margin-bottom: 3rem; }
     .pe-compose-area { background: var(--black-card); border: 1px solid var(--border-dim); padding: 1.6rem; margin-bottom: 1.5rem; }
@@ -1221,7 +1231,7 @@ let confirmResponses  = {}; // { [guestId]: roundNumber } — last round they co
 let socialData      = { fires: {}, saved: {} };
 let adminTab        = 'guests';
 let adminCachedData = null;
-let adminSections   = { pending: true, waitlist: false, confirmed: false, analytics: false };
+let adminSections   = { pending: true, waitlist: false, confirmed: false, confirmBlast: false, analytics: false };
 let adminRevertOpen = new Set();
 let adminExpandOpen = new Set();
 let adminSearchQ    = '';
@@ -3348,6 +3358,14 @@ function buildAdminHTML(el) {
     const filteredPend = searchQ ? pendList.filter(g=>(g.name||'').toLowerCase().includes(searchQ)) : pendList;
     let filteredAppr = searchQ ? apprList.filter(g=>(g.name||'').toLowerCase().includes(searchQ)) : [...apprList];
     if (adminFilterFlag) filteredAppr = filteredAppr.filter(g => !!adminData.flagged[g.id]);
+    const _confirmIds = new Set(
+      apprList.filter(g => (confirmResponses[g.id]||0) >= CONFIG.confirmRound && CONFIG.confirmRound > 0).map(g => g.id)
+    );
+    const _cCount = _confirmIds.size;
+    const _pCount = apprList.length - _cCount;
+    const _blastLabel = CONFIG.confirmRound > 0
+      ? `Round ${CONFIG.confirmRound} · ${_cCount} of ${apprList.length} confirmed`
+      : 'Not yet sent';
     if (adminSortBy === 'name') filteredAppr.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
     else if (adminSortBy === 'fires') filteredAppr.sort((a,b)=>{
       const fa = Object.values(socialData.fires).filter(arr=>arr.includes(a.id)).length;
@@ -3476,9 +3494,33 @@ function buildAdminHTML(el) {
       <div class="section-label" style="margin:0;">Confirmed — ${filteredAppr.length}${(searchQ||adminFilterFlag)&&filteredAppr.length!==apprList.length?` <span style="font-size:.8em;color:var(--muted)">of ${apprList.length}</span>`:''}</div>
       <span class="admin-collapse-chevron${adminSections.confirmed?' open':''}">▾</span>
     </div>
-    ${adminSections.confirmed ? `<div class="approved-list" style="margin-top:1rem;">
+    ${adminSections.confirmed ? `
+      <div class="confirm-toolbar" onclick="toggleAdminSection('confirmBlast');renderAdmin();" style="margin-top:0.8rem;">
+        <span class="confirm-toolbar-summary">
+          ${CONFIG.confirmRound > 0
+            ? `${_blastLabel}${_pCount > 0 ? ` · <span style="color:var(--gold-dim);">${_pCount} awaiting</span>` : ' · <span style="color:#4caf80;">all confirmed</span>'}`
+            : 'Attendance confirmation · not yet sent'}
+        </span>
+        <button class="btn btn-solid btn-sm" onclick="event.stopPropagation();sendConfirmBlast()" style="flex-shrink:0;">
+          ${CONFIG.confirmRound > 0 ? 'Re-Blast' : 'Send Blast'}
+        </button>
+        <span class="confirm-toolbar-chevron${adminSections.confirmBlast?' open':''}">▾</span>
+      </div>
+      ${adminSections.confirmBlast ? `<div class="confirm-toolbar-body">
+        <p style="font-family:'Cormorant',serif;font-size:0.95rem;font-style:italic;color:var(--muted);margin:0 0 0.6rem;">
+          ${CONFIG.confirmRound > 0
+            ? 'Sending again resets the round — everyone must re-confirm.'
+            : 'Send a confirmation blast to all approved guests. They will see a check-in overlay on their next login.'}
+        </p>
+        ${CONFIG.confirmRound > 0 ? `<div style="display:flex;gap:1.5rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:.2em;text-transform:uppercase;">
+          <span style="color:#4caf80;">✓ Confirmed ${_cCount}</span>
+          <span style="color:var(--gold-dim);">· Awaiting ${_pCount}</span>
+        </div>` : ''}
+      </div>` : ''}
+    <div class="approved-list" style="margin-top:0.5rem;">
       ${!filteredAppr.length ? `<div class="empty-state">${searchQ?`<span class="admin-filter-empty">No matches for "${esc(adminSearchQ)}"</span>`:'No confirmed guests yet.'}</div>` :
         filteredAppr.map(g => {
+          const _isConfirmed = _confirmIds.has(g.id);
           const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
           const isFlagged  = !!adminData.flagged[g.id];
           const note       = adminData.notes[g.id] || '';
@@ -3503,7 +3545,7 @@ function buildAdminHTML(el) {
             </select>
           </div>`;
           return `
-          <div class="approved-item">
+          <div class="approved-item${CONFIG.confirmRound > 0 ? (_isConfirmed ? ' confirm-yes' : ' confirm-no') : ''}">
             ${thumb?`<img class="p-thumb" src="${thumb}" alt="" />`:`<div class="p-thumb-ph">${esc((g.name||'?').charAt(0).toUpperCase())}</div>`}
             <div class="a-name" style="flex:1;">
               ${esc(g.name)}
@@ -3514,6 +3556,7 @@ function buildAdminHTML(el) {
             </div>
             <div style="display:flex;gap:0.5rem;align-items:center;">
               ${isArrived ? `<span class="checkin-badge">✓ Here</span>` : ''}
+              ${CONFIG.confirmRound > 0 ? `<span class="checkin-badge" style="${_isConfirmed ? 'color:#4caf80;border-color:rgba(76,175,128,0.28);background:rgba(76,175,128,0.08);' : 'color:var(--gold-dim);border-color:rgba(200,168,75,0.25);background:rgba(200,168,75,0.06);'}">${_isConfirmed ? '✓ Confirmed' : '· Awaiting'}</span>` : ''}
               <button class="a-expand-btn${adminExpandOpen.has(g.id)?' open':''}" onclick="toggleGuestExpand('${g.id}')" title="View full profile">${adminExpandOpen.has(g.id)?'▾':'▸'}</button>
               <button class="a-star-btn${(CONFIG.recruiters||[]).includes(g.id)?' active':''}" onclick="toggleRecruiter('${esc(g.id)}')" title="${(CONFIG.recruiters||[]).includes(g.id)?'Star Recruiter — click to remove':'Mark as Star Recruiter'}">★</button>
               <button class="a-flag-btn ${isFlagged?'flagged':''}" data-action="flag" data-id="${g.id}" title="${isFlagged?'Flagged — click to unflag':'Flag guest'}">⚑</button>
@@ -3708,45 +3751,6 @@ function buildAdminHTML(el) {
       return `<div class="section-label" style="margin-bottom:1rem;margin-top:1.4rem;">Matched Pairs</div>
       <div class="hot-guests-list">${pairRows}</div>`;
     })() : ''}
-    ${(() => {
-      const confirmedIds = new Set(
-        apprList.filter(g => (confirmResponses[g.id]||0) >= CONFIG.confirmRound && CONFIG.confirmRound > 0).map(g => g.id)
-      );
-      const pendingList  = apprList.filter(g => !confirmedIds.has(g.id));
-      const confirmedList = apprList.filter(g => confirmedIds.has(g.id));
-      const blastLabel = CONFIG.confirmRound > 0
-        ? `Round ${CONFIG.confirmRound} · ${confirmedIds.size} of ${apprList.length} confirmed`
-        : 'Not yet sent';
-      return `
-      <hr style="border:none;border-top:1px solid var(--border-dim);margin:2.5rem 0 2rem;" />
-      <div class="section-label" style="margin-bottom:0.6rem;">Attendance Confirmation</div>
-      <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.2rem;">
-        ${CONFIG.confirmRound > 0
-          ? `${blastLabel}. Sending again resets the round — everyone must re-confirm.`
-          : 'Send a confirmation blast to all approved guests. They will see a check-in overlay on their next login.'}
-      </p>
-      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:${CONFIG.confirmRound > 0 ? '1.6rem' : '0'};">
-        <button class="btn btn-solid btn-sm" onclick="sendConfirmBlast()">
-          ${CONFIG.confirmRound > 0 ? 'Re-Blast Confirmation' : 'Send Confirmation Blast'}
-        </button>
-        ${CONFIG.confirmRound > 0 ? `<span style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);">${blastLabel}</span>` : ''}
-      </div>
-      ${CONFIG.confirmRound > 0 && apprList.length ? `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-        <div>
-          <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:.22em;text-transform:uppercase;color:#4caf80;margin-bottom:0.6rem;">Confirmed ${confirmedList.length ? `(${confirmedList.length})` : ''}</div>
-          <div style="display:flex;flex-direction:column;gap:4px;">
-            ${confirmedList.length ? confirmedList.map(g=>`<div style="font-family:'Cormorant',serif;font-size:0.95rem;color:var(--cream);opacity:.8;">✓ ${esc(g.name)}</div>`).join('') : `<div style="font-family:'Cormorant',serif;font-style:italic;color:var(--muted);font-size:.9rem;">None yet</div>`}
-          </div>
-        </div>
-        <div>
-          <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:0.6rem;">Pending ${pendingList.length ? `(${pendingList.length})` : ''}</div>
-          <div style="display:flex;flex-direction:column;gap:4px;">
-            ${pendingList.length ? pendingList.map(g=>`<div style="font-family:'Cormorant',serif;font-size:0.95rem;color:var(--muted);">· ${esc(g.name)}</div>`).join('') : `<div style="font-family:'Cormorant',serif;font-style:italic;color:var(--muted);font-size:.9rem;">All confirmed</div>`}
-          </div>
-        </div>
-      </div>` : ''}`;
-    })()}
     ` : ''}
     `;
   })() : '';
