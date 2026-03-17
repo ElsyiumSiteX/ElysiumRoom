@@ -3613,13 +3613,13 @@ function buildAdminHTML(el) {
       // Demographics
       const ages = apprList.filter(g => g.age).map(g => g.age);
       const avgAge = ages.length ? Math.round(ages.reduce((s,a) => s+a, 0) / ages.length) : null;
-      const ageRanges = {'18-24':0,'25-30':0,'31-35':0,'36-40':0,'41+':0};
+      const ageRanges = {'18-20':0,'21-23':0,'24-25':0,'26-27':0,'28-30':0};
       for (const a of ages) {
-        if (a <= 24) ageRanges['18-24']++;
-        else if (a <= 30) ageRanges['25-30']++;
-        else if (a <= 35) ageRanges['31-35']++;
-        else if (a <= 40) ageRanges['36-40']++;
-        else ageRanges['41+']++;
+        if (a <= 20) ageRanges['18-20']++;
+        else if (a <= 23) ageRanges['21-23']++;
+        else if (a <= 25) ageRanges['24-25']++;
+        else if (a <= 27) ageRanges['26-27']++;
+        else ageRanges['28-30']++;
       }
       const maxAgeCount = Math.max(...Object.values(ageRanges), 1);
 
