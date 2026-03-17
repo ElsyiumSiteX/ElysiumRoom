@@ -814,6 +814,14 @@
     .admin-collapse-hdr:hover .section-label { color:var(--gold-light); transition:color 0.15s; }
     .admin-collapse-chevron { font-size:0.72rem; color:var(--muted); display:inline-block; transition:transform 0.2s; flex-shrink:0; }
     .admin-collapse-chevron.open { transform:rotate(180deg); }
+    .a-revert-toggle { background:none; border:1px solid var(--border-dim); color:var(--muted); font-size:0.78rem; padding:0.28rem 0.5rem; cursor:pointer; transition:color 0.2s,border-color 0.2s; flex-shrink:0; }
+    .a-revert-toggle:hover, .a-revert-toggle.active { color:var(--gold-dim); border-color:rgba(200,168,75,0.35); }
+    .a-revert-panel { margin-top:0.55rem; padding:0.75rem 0.9rem; background:rgba(200,168,75,0.03); border:1px solid rgba(200,168,75,0.14); display:flex; flex-direction:column; gap:0.55rem; width:100%; box-sizing:border-box; }
+    .a-revert-label { font-family:'Cinzel',serif; font-size:0.6rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--muted); }
+    .a-revert-msg { width:100%; padding:0.5rem 0.7rem; background:var(--black-card); border:1px solid var(--border-dim); color:var(--cream); font-family:'Cormorant',serif; font-size:0.95rem; outline:none; box-sizing:border-box; }
+    .a-revert-msg::placeholder { color:var(--muted); opacity:1; }
+    .a-revert-msg:focus { border-color:var(--gold-dim); }
+    .a-revert-actions { display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; }
     .admin-bulk-btn { font-family:'Cinzel',serif; font-size:0.68rem; letter-spacing:0.16em; text-transform:uppercase; background:rgba(76,175,128,0.07); border:1px solid rgba(76,175,128,0.28); color:#4caf80; padding:0.38rem 0.9rem; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
     .admin-bulk-btn:hover { background:rgba(76,175,128,0.14); border-color:rgba(76,175,128,0.5); }
     .admin-filter-empty { font-family:'Cormorant',serif; font-size:1rem; font-style:italic; color:var(--muted2); padding:1.5rem 0; }
@@ -1028,6 +1036,7 @@ let socialData      = { fires: {}, saved: {} };
 let adminTab        = 'guests';
 let adminCachedData = null;
 let adminSections   = { pending: true, waitlist: false, confirmed: false, analytics: false };
+let adminRevertOpen = new Set();
 let adminSearchQ    = '';
 let adminSortBy     = 'date';
 let currentModalGuestId = null;
@@ -2549,6 +2558,11 @@ async function renderAccount() {
         ${esc(wlMessages[g.id])}
       </div>` : ''}
     </div>` : ''}
+    ${g.status==='pending' && wlMessages[g.id] ? `
+    <div class="wl-guest-message" style="margin-bottom:1.2rem;">
+      <div class="wl-guest-message-label">From the host</div>
+      ${esc(wlMessages[g.id])}
+    </div>` : ''}
     <div id="accountMsg"></div>
 
     <div class="form-group">
@@ -2958,7 +2972,11 @@ function buildAdminHTML(el) {
             })
           : wlList;
         return orderedWl.map((g, idx) => {
-          const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
+          const thumb      = g.photos&&g.photos[0]?g.photos[0]:null;
+          const photos     = g.photos||[];
+          const vibeMap    = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
+          const symMap     = {up:'↑',down:'↓',dash:'—'};
+          const vibes      = g.vibes||[];
           const existingMsg = wlMessages[g.id] || '';
           return `
           <div class="pending-item">
@@ -2971,10 +2989,18 @@ function buildAdminHTML(el) {
               ${thumb?`<img class="p-thumb" src="${thumb}" alt="" />`:`<div class="p-thumb-ph">${esc((g.name||'?').charAt(0).toUpperCase())}</div>`}
               <div class="p-info">
                 <div class="p-name">${esc(g.name)}</div>
-                <div class="p-meta">${esc(g.role||'')} · PIN: ${esc(g.pin)} · Joined ${new Date(g.created_at).toLocaleString()}</div>
+                <div class="p-meta">${esc(g.role||'')} · PIN: ${esc(g.pin)} · Submitted ${new Date(g.created_at).toLocaleString()}</div>
                 ${g.phone ? `<div class="p-meta" style="margin-top:.2rem;">📱 ${esc(g.phone)} &ensp;<a href="sms:${esc(g.phone)}" class="admin-sms-link">Text ↗</a></div>` : ''}
               </div>
             </div>
+            ${photos.length ? `<div class="p-photo-grid">${photos.map(src=>`<img src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)">`).join('')}</div>` : ''}
+            <div class="p-details-row">
+              ${vibes.length ? `<div class="p-section"><div class="p-label">Vibes</div><div style="display:flex;gap:.4rem;margin-top:.2rem;">${vibes.map(v=>`<span style="font-family:'Cormorant',serif;font-size:1.5rem;line-height:1;color:${vibeMap[v]||'#888'};border:1px solid ${vibeMap[v]||'#888'}44;padding:.2rem .6rem;">${symMap[v]||v}</span>`).join('')}</div></div>` : ''}
+              ${g.age ? `<div class="p-section"><div class="p-label">Age</div><div class="p-value">${g.age}</div></div>` : ''}
+              ${g.last_tested ? `<div class="p-section"><div class="p-label">Last Tested</div><div class="p-value">${esc(g.last_tested)}</div></div>` : ''}
+              ${g.prep ? `<div class="p-section"><div class="p-label">PrEP</div><div class="p-value">${g.prep==='yes'?'Yes':'No'}</div></div>` : ''}
+            </div>
+            ${g.bio ? `<div class="p-section"><div class="p-label">About</div><div class="p-bio">${esc(g.bio).replace(/\n/g,'<br>')}</div></div>` : ''}
             <div class="wl-msg-row">
               <input id="wlMsg-${g.id}" class="wl-msg-input" type="text" placeholder="Personal message to ${esc(g.name.split(' ')[0])}…" value="${esc(existingMsg)}" />
               <button class="wl-msg-send" onclick="saveWlPersonalMessage('${g.id}')">Send</button>
@@ -3031,9 +3057,19 @@ function buildAdminHTML(el) {
             <div style="display:flex;gap:0.5rem;align-items:center;">
               ${isArrived ? `<span class="checkin-badge">✓ Here</span>` : ''}
               <button class="a-flag-btn ${isFlagged?'flagged':''}" data-action="flag" data-id="${g.id}" title="${isFlagged?'Flagged — click to unflag':'Flag guest'}">⚑</button>
+              <button class="a-revert-toggle${adminRevertOpen.has(g.id)?' active':''}" onclick="toggleRevertPanel('${g.id}')" title="Move back to waitlist or pending review">↩</button>
               <button class="btn btn-danger btn-sm" data-action="remove" data-id="${g.id}">Remove</button>
             </div>
             <textarea class="a-note-input" rows="1" placeholder="Private note…" data-note-id="${g.id}" onblur="saveNote(this.dataset.noteId, this.value)">${esc(note)}</textarea>
+            ${adminRevertOpen.has(g.id) ? `<div class="a-revert-panel">
+              <div class="a-revert-label">Move ${esc(g.name.split(' ')[0])} back to…</div>
+              <input class="a-revert-msg" id="revertMsg-${g.id}" type="text" placeholder="Message to guest (optional — shown on their profile)" />
+              <div class="a-revert-actions">
+                <button class="btn btn-sm" style="border-color:rgba(212,184,74,0.35);color:var(--gold-dim);" onclick="revertGuest('${g.id}','waitlisted')">→ Waitlist</button>
+                <button class="btn btn-sm" style="border-color:rgba(200,168,75,0.2);color:var(--muted);" onclick="revertGuest('${g.id}','pending')">→ Pending Review</button>
+                <button class="btn btn-ghost btn-sm" onclick="toggleRevertPanel('${g.id}')">Cancel</button>
+              </div>
+            </div>` : ''}
           </div>`;
         }).join('')}
     </div>` : ''}
@@ -3348,6 +3384,37 @@ async function promoteFromWaitlist(id) {
   }
   wlOrder = wlOrder.filter(x => x !== id);
   await saveWlOrder();
+  _adminRebuild(); renderRoster();
+}
+
+function toggleRevertPanel(id) {
+  if (adminRevertOpen.has(id)) adminRevertOpen.delete(id);
+  else adminRevertOpen.add(id);
+  _adminRebuild();
+}
+
+async function revertGuest(id, targetStatus) {
+  const g = adminCachedData?.appr.find(x => x.id === id);
+  if (!g) return;
+  const msgEl = document.getElementById('revertMsg-' + id);
+  const msg = msgEl?.value.trim() || '';
+  const { error } = await sb.from('guests').update({ status: targetStatus }).eq('id', id);
+  if (error) { alert('Could not revert — please try again.'); return; }
+  adminCachedData.appr = adminCachedData.appr.filter(x => x.id !== id);
+  const updated = { ...g, status: targetStatus };
+  if (targetStatus === 'waitlisted') {
+    adminCachedData.wl = [...adminCachedData.wl, updated];
+    wlOrder = [...wlOrder, id];
+    await saveWlOrder();
+  } else {
+    adminCachedData.pend = [...adminCachedData.pend, updated]
+      .sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+  }
+  if (msg) {
+    wlMessages[id] = msg;
+    await sb.from('config').upsert({ key: 'wl_messages', value: JSON.stringify(wlMessages) }, { onConflict: 'key' });
+  }
+  adminRevertOpen.delete(id);
   _adminRebuild(); renderRoster();
 }
 
