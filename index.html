@@ -316,6 +316,7 @@
     .info-acc.open .info-acc-body { grid-template-rows: 1fr; }
     .info-acc-inner { overflow: hidden; }
     .info-acc-pad { padding-bottom: 1.8rem; }
+    .info-acc-img { width:100%; display:block; object-fit:cover; max-height:380px; margin-bottom:1rem; cursor:zoom-in; box-shadow:0 0 28px rgba(224,80,80,0.55), 0 0 72px rgba(224,80,80,0.22), 0 0 4px rgba(224,80,80,0.9); border:1px solid rgba(224,80,80,0.25); }
 
     /* ── INFO STEP TIMELINE ── */
     .info-steps { display: flex; flex-direction: column; gap: 0; margin: 1rem 0 0.5rem; }
@@ -887,6 +888,7 @@
     requireApproval:    true, // always on; not user-configurable
     announcementText:   "",
     announcementImages: [],
+    infoImages:         {},
     eventDateISO:       "",
     waitlistEnabled:    false,
     eventPhase:         'pre',
@@ -1556,6 +1558,9 @@ async function loadConfig() {
       else if (row.key === 'announcementImages') {
         try { CONFIG.announcementImages = JSON.parse(row.value) || []; } catch(e) { CONFIG.announcementImages = []; }
       }
+      else if (row.key === 'infoImages') {
+        try { CONFIG.infoImages = JSON.parse(row.value) || {}; } catch(e) { CONFIG.infoImages = {}; }
+      }
       else if (row.key === 'eventDateISO')     CONFIG.eventDateISO = row.value;
       else if (row.key === 'eventPhase')       CONFIG.eventPhase   = row.value;
       else if (CONFIG.hasOwnProperty(row.key)) CONFIG[row.key] = row.value;
@@ -1901,7 +1906,10 @@ function renderInfo() {
         <span class="info-acc-title">${s.title}</span>
         <span class="info-acc-icon">+</span>
       </button>
-      <div class="info-acc-body"><div class="info-acc-inner">${s.html}</div></div>
+      <div class="info-acc-body"><div class="info-acc-inner">
+        ${CONFIG.infoImages[i] ? `<img class="info-acc-img" src="${CONFIG.infoImages[i]}" alt="" onclick="openLightbox(this.src)" />` : ''}
+        ${s.html}
+      </div></div>
     </div>`).join('');
 
   document.getElementById('infoContent').innerHTML = `
@@ -3237,8 +3245,32 @@ function buildAdminHTML(el) {
         }).join('')}
       </div>
     </div>
-    <div style="display:flex;gap:1rem;margin-bottom:3rem;">
+    <div style="display:flex;gap:1rem;margin-bottom:2.5rem;">
       <button class="btn btn-solid" id="annSaveBtn" onclick="saveAnnouncement()">Save Announcement</button>
+    </div>
+    <hr class="div" />
+    <div class="section-label" style="margin-top:2rem;">Info Page Images</div>
+    <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">One image per section — shown at the top of each info dropdown with a red glow.</p>
+    <div style="display:flex;flex-direction:column;gap:1.2rem;margin-bottom:3rem;">
+      ${INFO_SECTION_TITLES.map((title, i) => {
+        const src = (CONFIG.infoImages||{})[i] || null;
+        return `<div style="display:flex;align-items:center;gap:1rem;">
+          <div style="font-family:'Cinzel',serif;font-size:0.68rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);width:7rem;flex-shrink:0;">${title}</div>
+          <div class="ann-grid-slot" id="infoImgSlot${i}" style="width:80px;height:56px;flex-shrink:0;">
+            ${src
+              ? `<img class="ann-grid-preview" src="${esc(src)}" alt="" onclick="openLightbox(this.src)" style="object-fit:cover;width:100%;height:100%;" />
+                 <button class="slot-remove" onclick="clearInfoSlot(${i})">✕</button>`
+              : `<div class="ann-grid-slot-inner" onclick="triggerInfoSlot(${i})">
+                   <div class="slot-icon" style="font-size:1rem">✦</div>
+                 </div>`}
+            <input type="file" id="infoFile${i}" accept="image/*" style="display:none" onchange="loadInfoSlot(${i},event)" />
+          </div>
+          ${src ? '' : ''}
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:1rem;margin-bottom:3rem;">
+      <button class="btn btn-solid" id="infoImgSaveBtn" onclick="saveInfoImages()">Save Info Images</button>
     </div>
   ` : '';
 
@@ -3507,7 +3539,9 @@ function closeLightbox() {
 }
 
 // ══ ANNOUNCEMENT ════════════════════════════════════════════════════
-let annSlots = [null, null, null, null, null, null]; // pending uploads; null = unchanged
+let annSlots     = [null, null, null, null, null, null]; // pending uploads; null = unchanged
+let infoImgSlots = {}; // { sectionIndex: base64 | '' (cleared) | null (unchanged) }
+const INFO_SECTION_TITLES = ['Time & Entry','The Vibe','Core Rules','Group Play','Pacing','Hygiene','What to Wear','Sexual Health','Guests','RSVP','Contributions'];
 
 function triggerAnnSlot(i) { document.getElementById('annFile'+i).click(); }
 
@@ -3582,6 +3616,83 @@ async function saveAnnouncement() {
   flash.className = 'msg msg-success';
   flash.style.cssText = 'margin-bottom:1rem;';
   flash.textContent = 'Announcement saved.';
+  btn.parentNode.insertBefore(flash, btn);
+  setTimeout(() => flash.remove(), 3000);
+}
+
+function triggerInfoSlot(i) { document.getElementById('infoFile'+i).click(); }
+
+function loadInfoSlot(i, e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 1200; let w = img.width, h = img.height;
+      if (w > max || h > max) { if (w > h) { h = Math.round(h * max / w); w = max; } else { w = Math.round(w * max / h); h = max; } }
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      infoImgSlots[i] = c.toDataURL('image/jpeg', 0.82);
+      const slot = document.getElementById('infoImgSlot'+i);
+      slot.querySelector('.ann-grid-slot-inner')?.remove();
+      slot.querySelector('.ann-grid-preview')?.remove();
+      slot.querySelector('.slot-remove')?.remove();
+      const preview = document.createElement('img');
+      preview.className = 'ann-grid-preview';
+      preview.src = infoImgSlots[i];
+      preview.style.cssText = 'object-fit:cover;width:100%;height:100%;';
+      preview.onclick = () => openLightbox(infoImgSlots[i]);
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'slot-remove';
+      removeBtn.textContent = '✕';
+      removeBtn.onclick = () => clearInfoSlot(i);
+      slot.appendChild(preview);
+      slot.appendChild(removeBtn);
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearInfoSlot(i) {
+  infoImgSlots[i] = '';
+  const slot = document.getElementById('infoImgSlot'+i);
+  slot.querySelector('.ann-grid-preview')?.remove();
+  slot.querySelector('.slot-remove')?.remove();
+  const inner = document.createElement('div');
+  inner.className = 'ann-grid-slot-inner';
+  inner.onclick = () => triggerInfoSlot(i);
+  inner.innerHTML = `<div class="slot-icon" style="font-size:1rem">✦</div>`;
+  slot.appendChild(inner);
+}
+
+async function saveInfoImages() {
+  const images = { ...(CONFIG.infoImages || {}) };
+  for (const [k, v] of Object.entries(infoImgSlots)) {
+    if (v === '') delete images[k];
+    else if (v !== null) images[k] = v;
+  }
+  CONFIG.infoImages = images;
+
+  const btn = document.getElementById('infoImgSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const { error } = await sb.from('config').upsert(
+    [{ key: 'infoImages', value: JSON.stringify(images) }],
+    { onConflict: 'key' }
+  );
+
+  btn.disabled = false; btn.textContent = 'Save Info Images';
+  infoImgSlots = {};
+
+  if (error) { alert('Save failed: ' + error.message); return; }
+
+  renderInfo();
+  const flash = document.createElement('div');
+  flash.className = 'msg msg-success';
+  flash.style.cssText = 'margin-bottom:1rem;';
+  flash.textContent = 'Info images saved.';
   btn.parentNode.insertBefore(flash, btn);
   setTimeout(() => flash.remove(), 3000);
 }
