@@ -119,6 +119,7 @@
 
     /* ── STATS ── */
     .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin-bottom: 1px; border: 1px solid var(--border); }
+    .stats-row-3 { grid-template-columns: repeat(3, 1fr); }
     .stat { background: var(--black-card); padding: 2rem; border-right: 1px solid var(--border-dim); position: relative; }
     .stat:last-child { border-right: none; }
     .stat::before { content: ''; position: absolute; bottom: 0; left: 15%; right: 15%; height: 1px; background: linear-gradient(to right, transparent, var(--gold-dim), transparent); }
@@ -506,7 +507,7 @@
       nav button { padding: 1rem 0.85rem; font-size: 0.78rem; letter-spacing: 0.14em; white-space: nowrap; flex-shrink: 0; }
 
       /* Stats */
-      .stats-row { grid-template-columns: 1fr 1fr; }
+      .stats-row, .stats-row-3 { grid-template-columns: 1fr 1fr; }
       .stat { padding: 1.2rem 1rem; }
       .stat-num { font-size: 2.8rem; }
 
@@ -553,6 +554,7 @@
 
       /* Session bar */
       .session-bar { bottom: 0; right: 0; left: 0; border-left: none; border-right: none; border-bottom: none; justify-content: center; padding: 0.8rem 1rem; }
+      body.session-active { padding-bottom: 58px; }
 
 
       /* Pending items in admin */
@@ -1623,7 +1625,7 @@ async function loadConfig() {
       else if (CONFIG.hasOwnProperty(row.key)) CONFIG[row.key] = row.value;
     });
   }
-  document.getElementById('heroMeta').innerHTML = `${CONFIG.eventDate}&ensp;·&ensp;${CONFIG.eventLocation}`;
+  document.getElementById('heroMeta').innerHTML = `${esc(CONFIG.eventDate)}&ensp;·&ensp;${esc(CONFIG.eventLocation)}`;
   startCountdown();
 }
 
@@ -1711,10 +1713,12 @@ function showSessionBar(name) {
   const bar = document.getElementById('sessionBar');
   document.getElementById('sessionName').textContent = name;
   bar.style.display = 'flex';
+  document.body.classList.add('session-active');
 }
 
 function hideSessionBar() {
   document.getElementById('sessionBar').style.display = 'none';
+  document.body.classList.remove('session-active');
 }
 
 function logout() {
@@ -1754,6 +1758,16 @@ async function renderChat() {
 
   if (!currentGuest || isPreview) {
     el.innerHTML = `<div class="chat-gate">Chat is available to confirmed guests.<br><span style="font-size:.85em;opacity:.6;display:block;margin-bottom:1.5rem;">RSVP and get approved to join the conversation.</span><button class="btn btn-solid" onclick="showView('rsvp',document.querySelector('[onclick=\\'showView(\\'rsvp\\',this)\\']'))">RSVP Now</button></div>`;
+    return;
+  }
+
+  // Verify guest is approved before granting chat access
+  const { data: gStatus } = await sb.from('guests').select('status').eq('id', currentGuest.id).single();
+  if (!gStatus || gStatus.status !== 'approved') {
+    const msg = gStatus?.status === 'waitlisted'
+      ? 'You\'re on the waitlist. Chat opens once you\'re confirmed.'
+      : 'Your RSVP is pending approval. Chat opens once you\'re confirmed.';
+    el.innerHTML = `<div class="chat-gate">${esc(msg)}</div>`;
     return;
   }
 
@@ -1830,7 +1844,10 @@ function msgHtml(m, guestMap) {
 async function sendMessage() {
   const input = document.getElementById('chatInput');
   const content = input.value.trim();
-  if (!content || !currentGuest) return;
+  if (!content || !currentGuest || isPreview) return;
+  // Re-verify approved status before sending
+  const { data: gCheck } = await sb.from('guests').select('status').eq('id', currentGuest.id).single();
+  if (!gCheck || gCheck.status !== 'approved') return;
   const btn = document.querySelector('.chat-send');
   btn.disabled = true;
   input.value = ''; input.style.height = 'auto';
@@ -2013,7 +2030,7 @@ async function renderRoster() {
         ${annImgs.length ? `<div class="announce-imgs">${annImgs.map(src=>`<img src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)" />`).join('')}</div>` : ''}
       </div>
     </div>` : ''}
-    <div class="stats-row" ${CONFIG.waitlistEnabled ? 'style="grid-template-columns:repeat(3,1fr)"' : ''}>
+    <div class="stats-row${CONFIG.waitlistEnabled ? ' stats-row-3' : ''}">
       <div class="stat"><div class="stat-num" id="statA">—</div><div class="stat-label">Confirmed</div></div>
       <div class="stat">
         ${CONFIG.waitlistEnabled
@@ -2431,10 +2448,10 @@ async function renderRsvp() {
     }
   });
 
-  // Pre-fill referred_by from ?ref=PIN recruiter link
+  // Pre-fill referred_by from ?ref=ID recruiter link
   const refPin = new URLSearchParams(location.search).get('ref');
   if (refPin) {
-    sb.from('guests').select('name').eq('pin', refPin).eq('status','approved').single()
+    sb.from('guests').select('name').eq('id', refPin).eq('status','approved').single()
       .then(({ data: refGuest }) => {
         if (!refGuest) return;
         const refEl = document.getElementById('rReferredBy');
@@ -3605,6 +3622,11 @@ async function removeWaitlisted(id) {
   if (adminCachedData) adminCachedData.wl = adminCachedData.wl.filter(x => x.id !== id);
   wlOrder = wlOrder.filter(x => x !== id);
   await saveWlOrder();
+  // Clean up any personal message for the removed guest
+  if (wlMessages[id]) {
+    delete wlMessages[id];
+    await sb.from('config').upsert({ key: 'wl_messages', value: JSON.stringify(wlMessages) }, { onConflict: 'key' });
+  }
   _adminRebuild();
 }
 
@@ -3846,7 +3868,7 @@ function dismissRecruiterBanner() {
 }
 
 function copyRecruiterLink(btn) {
-  const url = `${location.origin}${location.pathname}?ref=${currentGuest.pin}`;
+  const url = `${location.origin}${location.pathname}?ref=${currentGuest.id}`;
   navigator.clipboard.writeText(url).then(() => {
     if (!btn) return;
     const orig = btn.textContent;
@@ -3928,7 +3950,7 @@ async function saveSettings() {
     alert('Save failed: ' + error.message); return;
   }
 
-  document.getElementById('heroMeta').innerHTML = `${CONFIG.eventDate}&ensp;·&ensp;${CONFIG.eventLocation}`;
+  document.getElementById('heroMeta').innerHTML = `${esc(CONFIG.eventDate)}&ensp;·&ensp;${esc(CONFIG.eventLocation)}`;
   startCountdown();
 
   // Flash confirmation in admin
