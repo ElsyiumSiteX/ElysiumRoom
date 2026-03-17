@@ -1073,6 +1073,10 @@ const _debouncedDoorFilter = debounce(q => doorFilter(q), 120);
 // Safe HTML escape
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+// Admin Supabase Auth email — set the password for this user in your
+// Supabase dashboard: Authentication → Users → Create user
+const ADMIN_EMAIL = 'admin@elysiumroom.local';
+
 // ══ STATE ══════════════════════════════════════════════════════════
 let adminIn      = false;
 let currentGuest = null; // { id, name, pin } of logged-in guest
@@ -1083,6 +1087,9 @@ let selectedPrep  = null;
 let allGuests       = [];
 let activeVibeFilter = null;
 let adminData       = { notes: {}, flagged: {}, priorEvents: {} };
+let pinFailCount  = 0;
+let pinLockUntil  = 0;
+let _pinLockTimer = null;
 let doorCheckins    = {};
 let doorArrivedCollapsed = false;
 let wlMessages        = {}; // { [guestId]: personalMessageString }
@@ -1651,7 +1658,11 @@ function startCountdown() {
 async function init() {
   await loadConfig();
 
-  // Restore session from localStorage, validate guest still exists in DB
+  // Restore admin session if one exists (Supabase Auth persists in localStorage)
+  const { data: { session: adminSession } } = await sb.auth.getSession();
+  if (adminSession) adminIn = true;
+
+  // Restore guest session from localStorage, validate guest still exists in DB
   const saved = localStorage.getItem(SESSION_KEY);
   if (saved) {
     try {
@@ -2256,16 +2267,41 @@ function getEnteredPin() {
   return [0,1,2,3,4,5].map(i => document.getElementById('pd'+i)?.value||'').join('');
 }
 
+function _startPinLockCountdown(msgEl) {
+  if (_pinLockTimer) clearInterval(_pinLockTimer);
+  _pinLockTimer = setInterval(() => {
+    const secs = Math.ceil((pinLockUntil - Date.now()) / 1000);
+    if (secs <= 0) {
+      clearInterval(_pinLockTimer); _pinLockTimer = null;
+      if (msgEl?.isConnected) msgEl.innerHTML = '';
+      return;
+    }
+    if (msgEl?.isConnected) {
+      msgEl.innerHTML = `<div class="msg msg-error">Too many attempts — try again in ${secs}s.</div>`;
+    } else {
+      clearInterval(_pinLockTimer); _pinLockTimer = null;
+    }
+  }, 1000);
+}
+
 async function submitPin(target) {
   const pin = getEnteredPin();
   const msgEl = document.getElementById('pinMsg');
+
+  // Lockout check
+  if (pinLockUntil > Date.now()) {
+    const secs = Math.ceil((pinLockUntil - Date.now()) / 1000);
+    msgEl.innerHTML = `<div class="msg msg-error">Too many attempts — try again in ${secs}s.</div>`;
+    return;
+  }
 
   if (pin.length < 6) {
     msgEl.innerHTML = `<div class="msg msg-error">Please enter your full 6-digit PIN.</div>`; return;
   }
 
-  // Check guest preview PIN
+  // Check guest preview PIN (no fail-count for the shared preview code)
   if (pin === CONFIG.guestPreviewPin) {
+    pinFailCount = 0;
     isPreview = true; currentGuest = null;
     localStorage.setItem(SESSION_KEY, JSON.stringify({pin}));
     showSessionBar('Preview Guest');
@@ -2275,9 +2311,20 @@ async function submitPin(target) {
   // Check personal PIN in Supabase
   const { data, error } = await sb.from('guests').select('*').eq('pin', pin).single();
   if (error || !data) {
-    msgEl.innerHTML = `<div class="msg msg-error">PIN not recognised.</div>`; return;
+    pinFailCount++;
+    if (pinFailCount >= 5) {
+      pinLockUntil = Date.now() + 30000;
+      pinFailCount = 0;
+      msgEl.innerHTML = `<div class="msg msg-error">Too many attempts — try again in 30s.</div>`;
+      _startPinLockCountdown(msgEl);
+    } else {
+      const left = 5 - pinFailCount;
+      msgEl.innerHTML = `<div class="msg msg-error">PIN not recognised. ${left} attempt${left === 1 ? '' : 's'} remaining.</div>`;
+    }
+    return;
   }
 
+  pinFailCount = 0;
   currentGuest = { id: data.id, name: data.name, pin: data.pin }; isPreview = false;
   localStorage.setItem(SESSION_KEY, JSON.stringify({id:data.id, name:data.name, pin}));
   showSessionBar(data.name);
@@ -3495,18 +3542,24 @@ function buildAdminHTML(el) {
   `;
 }
 
-function adminLogin() {
-  if (document.getElementById('adminPass').value === CONFIG.adminPassword) {
-    adminIn=true;
-    renderAdmin();
-  } else {
-    document.getElementById('adminMsg').innerHTML=`<div class="msg msg-error">Incorrect password.</div>`;
+async function adminLogin() {
+  const pass = document.getElementById('adminPass').value;
+  const btn  = document.querySelector('#adminContent .btn-solid');
+  if (btn) { btn.disabled = true; btn.textContent = 'Entering…'; }
+  const { error } = await sb.auth.signInWithPassword({ email: ADMIN_EMAIL, password: pass });
+  if (btn) { btn.disabled = false; btn.textContent = 'Enter'; }
+  if (error) {
+    document.getElementById('adminMsg').innerHTML = `<div class="msg msg-error">Incorrect password.</div>`;
+    return;
   }
+  adminIn = true;
+  renderAdmin();
 }
 
-function adminLogout() {
-  adminIn=false;
-  adminCachedData=null;
+async function adminLogout() {
+  await sb.auth.signOut();
+  adminIn = false;
+  adminCachedData = null;
   renderAdmin();
 }
 
