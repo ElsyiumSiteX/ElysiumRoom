@@ -254,7 +254,7 @@
     .prep-picker { display: flex; gap: 1rem; }
     .modal-no-photo { grid-column: 1/-1; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; background: linear-gradient(145deg, var(--black-card), var(--black-raise)); }
     .modal-info { padding: 1.5rem 2rem 2.5rem; }
-    .modal-name { font-family: 'Cormorant', serif; font-size: 2.2rem; font-weight: 300; font-style: italic; color: var(--cream); line-height: 1; margin-bottom: 0.3rem; }
+    .modal-name { font-family: 'Cormorant', serif; font-size: 2.2rem; font-weight: 300; font-style: italic; color: var(--cream); line-height: 1; margin-bottom: 0.3rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
     .modal-role { display: inline-block; margin-bottom: 1rem; font-family: 'Cinzel', serif; font-size: 0.7rem; font-weight: 400; letter-spacing: 0.24em; text-transform: uppercase; padding: 0.3rem 0.8rem; border: 1px solid var(--gold-dim); color: var(--gold); }
     .modal-bio-label { font-family: 'Cinzel', serif; font-size: 0.7rem; font-weight: 400; letter-spacing: 0.28em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 0.6rem; }
     .modal-bio { font-family: 'Cormorant', serif; font-size: 1.1rem; font-weight: 300; font-style: italic; line-height: 1.8; color: var(--cream); opacity: 0.94; }
@@ -2136,20 +2136,20 @@ async function sendMessage() {
   const { data: gCheck } = await sb.from('guests').select('status').eq('id', currentGuest.id).single();
   if (!gCheck || gCheck.status !== 'approved') return;
   const btn = document.querySelector('.chat-send');
-  btn.disabled = true;
+  btn.disabled = true; btn.textContent = 'Sending…';
   input.value = ''; input.style.height = 'auto';
   const { error } = await sb.from('messages').insert({
     guest_id:   currentGuest.id,
     guest_name: currentGuest.name,
     content,
   });
-  btn.disabled = false;
-  if (error) { input.value = content; alert('Could not send. Try again.'); }
+  btn.disabled = false; btn.textContent = 'Send';
+  if (error) { input.value = content; btn.insertAdjacentHTML('afterend', '<span class="chat-send-err" style="color:var(--rose);font-size:0.75rem;margin-left:0.5rem;">Failed — try again</span>'); setTimeout(() => document.querySelector('.chat-send-err')?.remove(), 3000); }
 }
 
 async function deleteMessage(id) {
   const { error } = await sb.from('messages').delete().eq('id', id);
-  if (error) alert('Could not delete message. Try again.');
+  if (error) { const t=document.createElement('div');t.className='msg msg-error';t.style.cssText='position:fixed;bottom:5rem;left:50%;transform:translateX(-50%);z-index:9999;padding:0.6rem 1.2rem;';t.textContent='Could not delete message.';document.body.appendChild(t);setTimeout(()=>t.remove(),3000); }
 }
 
 // ══ INFO / FAQ ══════════════════════════════════════════════════════
@@ -2590,6 +2590,7 @@ function _startPinLockCountdown(msgEl) {
 async function submitPin(target) {
   const pin = getEnteredPin();
   const msgEl = document.getElementById('pinMsg');
+  const btn = document.querySelector('#pinInputs + .btn-row .btn-solid') || document.querySelector('.btn-solid[onclick*="submitPin"]');
 
   // Lockout check
   if (pinLockUntil > Date.now()) {
@@ -2601,6 +2602,9 @@ async function submitPin(target) {
   if (pin.length < 6) {
     msgEl.innerHTML = `<div class="msg msg-error">Please enter your full 6-digit PIN.</div>`; return;
   }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Verifying…'; }
+  document.querySelectorAll('.pin-digit').forEach(d => d.disabled = true);
 
   // Check guest preview PIN (no fail-count for the shared preview code)
   if (pin === CONFIG.guestPreviewPin) {
@@ -2624,6 +2628,8 @@ async function submitPin(target) {
       const left = 5 - pinFailCount;
       msgEl.innerHTML = `<div class="msg msg-error">PIN not recognised. ${left} attempt${left === 1 ? '' : 's'} remaining.</div>`;
     }
+    if (btn) { btn.disabled = false; btn.textContent = 'Enter'; }
+    document.querySelectorAll('.pin-digit').forEach(d => d.disabled = false);
     return;
   }
 
@@ -2649,8 +2655,8 @@ async function renderRsvp() {
 
   if (currentGuest && !isPreview) {
     el.innerHTML = `
-      <h2 class="form-title">Already Registered</h2>
-      <p class="form-sub">You're on the list, ${currentGuest.name}.</p>
+      <h2 class="form-title">Already RSVP'd</h2>
+      <p class="form-sub">You're on the list, ${esc(currentGuest.name)}.</p>
       <div class="btn-row">
         <button class="btn btn-solid" onclick="showView('account',null)">Edit My Profile</button>
         <button class="btn btn-ghost" onclick="showView('roster',null)">View Roster</button>
