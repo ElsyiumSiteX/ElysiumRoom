@@ -1531,8 +1531,8 @@ function rosterCardsHTML(list) {
             return `<span style="font-family:'Cormorant',serif;font-size:1.4rem;line-height:1;color:${map[v]||'#888'};">${sym[v]||v}</span>`;
           }).join('')}
         </div>` : ''}
-        ${g.age ? `<div class="roster-age-line">${esc(g.age)}</div>` : ''}
-        ${g.bio ? `<div class="roster-snippet">${esc(g.bio)}</div>` : ''}
+        ${adminIn && g.age ? `<div class="roster-age-line">${esc(g.age)}</div>` : ''}
+        ${adminIn && g.bio ? `<div class="roster-snippet">${esc(g.bio)}</div>` : ''}
         <div class="roster-bio-hint">Tap to view profile</div>
       </div>
     </div>`;
@@ -2830,6 +2830,7 @@ function buildAdminHTML(el) {
   // Set of IDs that are actually approved — used to keep all mutual counts
   // consistent with what guests themselves see in their profile connections.
   const approvedIds = new Set(apprList.map(g => g.id));
+  const nameById    = Object.fromEntries(apprList.map(g => [g.id, g.name]));
 
   // ── computed stats ──────────────────────────────────────────────
   const aPct = CONFIG.capacity > 0 ? Math.min(100, Math.round(apprList.length / CONFIG.capacity * 100)) : 0;
@@ -3048,11 +3049,14 @@ function buildAdminHTML(el) {
           const savesRcvd  = Object.values(socialData.saved).filter(arr=>arr.includes(g.id)).length;
           const firesGiven = (socialData.fires[g.id]||[]).length;
           const mutuals    = (socialData.fires[g.id]||[]).filter(id=>approvedIds.has(id)&&(socialData.fires[id]||[]).includes(g.id)).length;
+          const firedAtIds   = (socialData.fires[g.id]||[]).filter(id => nameById[id]);
+          const firedAtNames = firedAtIds.map(id => nameById[id]);
           const socialLine = (firesRcvd||savesRcvd||firesGiven) ? `
             <div style="font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:0.12em;color:var(--muted);margin-top:0.2rem;">
               🔥 ${firesRcvd} rcvd · ${firesGiven} sent${mutuals?` · <span style="color:#e05050">${mutuals} mutual</span>`:''}
               ${savesRcvd ? `&ensp;★ ${savesRcvd} saved` : ''}
-            </div>` : '';
+            </div>
+            ${firedAtNames.length ? `<div style="font-family:'Cormorant',serif;font-size:0.82rem;font-style:italic;color:rgba(235,225,205,0.45);margin-top:0.15rem;line-height:1.5;">Fired: ${firedAtIds.map((tid,i)=>{const isMut=(socialData.fires[tid]||[]).includes(g.id);return `<span style="color:${isMut?'#e05050':'rgba(235,225,205,0.65)'}">${esc(nameById[tid])}</span>`;}).join('<span style="color:var(--border-dim)"> · </span>')}</div>` : ''}` : '';
           const priorCount = adminData.priorEvents[g.id] || 0;
           const priorLine = `<div class="prior-events-row">
             <span class="prior-label">Prior events</span>
