@@ -822,6 +822,9 @@
     .a-revert-msg::placeholder { color:var(--muted); opacity:1; }
     .a-revert-msg:focus { border-color:var(--gold-dim); }
     .a-revert-actions { display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; }
+    .a-expand-btn { background:none; border:1px solid var(--border-dim); color:var(--muted); font-size:0.65rem; padding:0.3rem 0.55rem; cursor:pointer; transition:color 0.2s,border-color 0.2s; flex-shrink:0; }
+    .a-expand-btn:hover, .a-expand-btn.open { color:var(--gold-dim); border-color:rgba(200,168,75,0.35); }
+    .a-detail-panel { margin-top:0.6rem; padding-top:0.75rem; border-top:1px solid var(--border-dim); width:100%; box-sizing:border-box; }
     .admin-bulk-btn { font-family:'Cinzel',serif; font-size:0.68rem; letter-spacing:0.16em; text-transform:uppercase; background:rgba(76,175,128,0.07); border:1px solid rgba(76,175,128,0.28); color:#4caf80; padding:0.38rem 0.9rem; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
     .admin-bulk-btn:hover { background:rgba(76,175,128,0.14); border-color:rgba(76,175,128,0.5); }
     .admin-filter-empty { font-family:'Cormorant',serif; font-size:1rem; font-style:italic; color:var(--muted2); padding:1.5rem 0; }
@@ -1037,6 +1040,7 @@ let adminTab        = 'guests';
 let adminCachedData = null;
 let adminSections   = { pending: true, waitlist: false, confirmed: false, analytics: false };
 let adminRevertOpen = new Set();
+let adminExpandOpen = new Set();
 let adminSearchQ    = '';
 let adminSortBy     = 'date';
 let currentModalGuestId = null;
@@ -3056,11 +3060,30 @@ function buildAdminHTML(el) {
             </div>
             <div style="display:flex;gap:0.5rem;align-items:center;">
               ${isArrived ? `<span class="checkin-badge">✓ Here</span>` : ''}
+              <button class="a-expand-btn${adminExpandOpen.has(g.id)?' open':''}" onclick="toggleGuestExpand('${g.id}')" title="View full profile">${adminExpandOpen.has(g.id)?'▾':'▸'}</button>
               <button class="a-flag-btn ${isFlagged?'flagged':''}" data-action="flag" data-id="${g.id}" title="${isFlagged?'Flagged — click to unflag':'Flag guest'}">⚑</button>
               <button class="a-revert-toggle${adminRevertOpen.has(g.id)?' active':''}" onclick="toggleRevertPanel('${g.id}')" title="Move back to waitlist or pending review">↩</button>
               <button class="btn btn-danger btn-sm" data-action="remove" data-id="${g.id}">Remove</button>
             </div>
             <textarea class="a-note-input" rows="1" placeholder="Private note…" data-note-id="${g.id}" onblur="saveNote(this.dataset.noteId, this.value)">${esc(note)}</textarea>
+            ${adminExpandOpen.has(g.id) ? (() => {
+              const photos  = g.photos||[];
+              const vibeMap = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
+              const symMap  = {up:'↑',down:'↓',dash:'—'};
+              const vibes   = g.vibes||[];
+              const hasData = photos.length||vibes.length||g.age||g.last_tested||g.prep||g.bio;
+              return `<div class="a-detail-panel">
+                ${photos.length ? `<div class="p-photo-grid">${photos.map(src=>`<img src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)">`).join('')}</div>` : ''}
+                <div class="p-details-row"${photos.length?` style="margin-top:0.8rem"`:''}">
+                  ${vibes.length ? `<div class="p-section"><div class="p-label">Vibes</div><div style="display:flex;gap:.4rem;margin-top:.2rem;">${vibes.map(v=>`<span style="font-family:'Cormorant',serif;font-size:1.5rem;line-height:1;color:${vibeMap[v]||'#888'};border:1px solid ${vibeMap[v]||'#888'}44;padding:.2rem .6rem;">${symMap[v]||v}</span>`).join('')}</div></div>` : ''}
+                  ${g.age ? `<div class="p-section"><div class="p-label">Age</div><div class="p-value">${g.age}</div></div>` : ''}
+                  ${g.last_tested ? `<div class="p-section"><div class="p-label">Last Tested</div><div class="p-value">${esc(g.last_tested)}</div></div>` : ''}
+                  ${g.prep ? `<div class="p-section"><div class="p-label">PrEP</div><div class="p-value">${g.prep==='yes'?'Yes':'No'}</div></div>` : ''}
+                </div>
+                ${g.bio ? `<div class="p-section" style="margin-top:0.6rem;"><div class="p-label">About</div><div class="p-bio">${esc(g.bio).replace(/\n/g,'<br>')}</div></div>` : ''}
+                ${!hasData ? `<div style="font-family:'Cormorant',serif;font-style:italic;color:var(--muted);font-size:.95rem;">No additional profile data.</div>` : ''}
+              </div>`;
+            })() : ''}
             ${adminRevertOpen.has(g.id) ? `<div class="a-revert-panel">
               <div class="a-revert-label">Move ${esc(g.name.split(' ')[0])} back to…</div>
               <input class="a-revert-msg" id="revertMsg-${g.id}" type="text" placeholder="Message to guest (optional — shown on their profile)" />
@@ -3385,6 +3408,12 @@ async function promoteFromWaitlist(id) {
   wlOrder = wlOrder.filter(x => x !== id);
   await saveWlOrder();
   _adminRebuild(); renderRoster();
+}
+
+function toggleGuestExpand(id) {
+  if (adminExpandOpen.has(id)) adminExpandOpen.delete(id);
+  else adminExpandOpen.add(id);
+  _adminRebuild();
 }
 
 function toggleRevertPanel(id) {
