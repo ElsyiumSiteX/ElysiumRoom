@@ -888,6 +888,61 @@
     .phase-btn.phase-live.active { background: rgba(76,175,128,0.1); color: #4caf80; }
     .phase-btn.phase-closed.active { background: rgba(224,80,80,0.07); color: #e05050; }
 
+    /* ── POST-EVENT BLAST ── */
+    .pe-blast-section { margin-bottom: 3rem; }
+    .pe-compose-area { background: var(--black-card); border: 1px solid var(--border-dim); padding: 1.6rem; margin-bottom: 1.5rem; }
+    .pe-compose-area .form-group { margin-bottom: 1.2rem; }
+    .pe-status-bar { display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1.2rem; background: rgba(76,175,128,0.06); border: 1px solid rgba(76,175,128,0.2); margin-bottom: 2rem; flex-wrap: wrap; }
+    .pe-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .pe-status-dot.sent { background: #4caf80; box-shadow: 0 0 8px rgba(76,175,128,0.6); }
+    .pe-status-dot.pending { background: var(--gold); box-shadow: 0 0 8px rgba(200,168,75,0.6); }
+    .pe-status-text { font-family: 'Cinzel', serif; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+    .pe-status-count { font-family: 'Cormorant', serif; font-size: 1rem; color: var(--cream); margin-left: auto; }
+    .pe-response-list { display: flex; flex-direction: column; gap: 1px; margin-bottom: 2rem; }
+    .pe-response-item { background: var(--black-card); border: 1px solid var(--border-dim); padding: 1.2rem 1.4rem; }
+    .pe-response-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.6rem; }
+    .pe-response-name { font-family: 'Cormorant', serif; font-size: 1.15rem; font-style: italic; color: var(--cream); flex: 1; }
+    .pe-response-badges { display: flex; gap: 0.4rem; }
+    .pe-badge { font-family: 'Cinzel', serif; font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; padding: 0.18em 0.55em; border: 1px solid; white-space: nowrap; }
+    .pe-badge-yes { color: #4caf80; border-color: rgba(76,175,128,0.35); background: rgba(76,175,128,0.06); }
+    .pe-badge-no { color: var(--muted); border-color: var(--border-dim); }
+    .pe-badge-phone { color: var(--neon-blue); border-color: rgba(91,200,245,0.3); background: rgba(91,200,245,0.04); }
+    .pe-review-text { font-family: 'Cormorant', serif; font-size: 1rem; font-style: italic; color: rgba(220,210,195,0.8); line-height: 1.6; padding-left: 0.4rem; border-left: 2px solid var(--border-dim); }
+    .pe-no-responses { font-family: 'Cormorant', serif; font-size: 1rem; font-style: italic; color: var(--muted); text-align: center; padding: 3rem; border: 1px solid var(--border-dim); }
+    .pe-export-row { display: flex; gap: 0.8rem; margin-top: 1.5rem; flex-wrap: wrap; }
+
+    /* ── POST-EVENT GUEST OVERLAY ── */
+    #postEventOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 9800; display: none; align-items: center; justify-content: center; padding: 1.5rem; backdrop-filter: blur(3px); overflow-y: auto; }
+    #postEventOverlay.open { display: flex; animation: fadeIn 0.4s ease; }
+    .pe-overlay-box { background: linear-gradient(160deg, rgba(15,12,9,0.98) 0%, rgba(10,8,6,0.99) 100%); border: 1px solid rgba(200,168,75,0.25); border-top: 2px solid rgba(200,168,75,0.6); max-width: 440px; width: 100%; padding: 2.8rem 2.6rem 2.4rem; position: relative; animation: fadeUp 0.4s ease; box-shadow: 0 0 80px rgba(0,0,0,0.8), 0 0 40px rgba(200,168,75,0.04); }
+    .pe-overlay-box .form-group { margin-bottom: 1.4rem; }
+    .pe-overlay-box textarea { min-height: 80px; }
+    .pe-interest-btns { display: flex; gap: 0.8rem; }
+    .pe-interest-btn { font-family: 'Cinzel', serif; font-size: 0.72rem; font-weight: 400; letter-spacing: 0.18em; text-transform: uppercase; padding: 0.85rem 1.8rem; border: 1px solid var(--border-dim); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.3s; flex: 1; text-align: center; }
+    .pe-interest-btn.selected { border-color: var(--gold); color: var(--gold-light); box-shadow: 0 0 24px var(--gold-glow); }
+    .pe-thankyou { text-align: center; padding: 2rem; }
+    .pe-thankyou-icon { font-size: 2rem; margin-bottom: 1rem; }
+    .pe-thankyou-text { font-family: 'Cormorant', serif; font-size: 1.3rem; font-style: italic; color: var(--cream); }
+    @media (max-width: 480px) { .pe-overlay-box { padding: 2.2rem 1.6rem 2rem; } }
+
+    /* ── DEMOGRAPHICS PANEL ── */
+    .demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1px; background: var(--border-dim); border: 1px solid var(--border-dim); margin-bottom: 2.5rem; }
+    .demo-cell { background: var(--black-card); padding: 1.2rem 1.4rem; }
+    .demo-cell-title { font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.8rem; }
+    .demo-bar-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.35rem; }
+    .demo-bar-label { font-family: 'Cinzel', serif; font-size: 0.6rem; letter-spacing: 0.1em; color: var(--muted); min-width: 3.5rem; text-align: right; }
+    .demo-bar-track { flex: 1; height: 4px; background: rgba(255,255,255,0.04); border-radius: 2px; overflow: hidden; }
+    .demo-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+    .demo-bar-count { font-family: 'Cinzel', serif; font-size: 0.6rem; color: var(--muted2); min-width: 1.5rem; }
+    .demo-big-val { font-family: 'Cormorant', serif; font-size: 2rem; font-weight: 300; color: var(--gold); line-height: 1; }
+    .demo-big-sub { font-family: 'Cormorant', serif; font-size: 0.88rem; font-style: italic; color: var(--muted2); margin-top: 0.3rem; }
+
+    /* ── ADMIN FILTER CHIPS ── */
+    .admin-filter-chips { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .admin-chip { font-family: 'Cinzel', serif; font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; padding: 0.35rem 0.7rem; border: 1px solid var(--border-dim); background: none; color: var(--muted); cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+    .admin-chip:hover { border-color: var(--gold-dim); color: var(--gold-dim); }
+    .admin-chip.active { border-color: var(--gold); color: var(--gold); background: rgba(200,168,75,0.06); }
+
     /* ── PHOTO WATERMARK ── */
     /* Invisible during normal viewing; becomes legible in screenshots */
     .roster-card::after,
@@ -1037,6 +1092,34 @@
   </div>
 </div>
 
+<!-- POST-EVENT FEEDBACK OVERLAY (guest-facing) -->
+<div id="postEventOverlay">
+  <div class="pe-overlay-box" id="peOverlayInner">
+    <div class="confirm-eyebrow">Elysium Room</div>
+    <div class="confirm-heading">Thank you for joining us.</div>
+    <div class="confirm-sub" id="peBlastMsg">We'd love to hear your thoughts.</div>
+    <div class="form-group">
+      <label>How was your experience?</label>
+      <textarea id="peReviewInput" rows="3" placeholder="What stood out? What could we do better?"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Would you like to be contacted about the June Event?</label>
+      <div class="pe-interest-btns">
+        <button class="pe-interest-btn" onclick="selectJuneInterest(true, this)">Yes, please</button>
+        <button class="pe-interest-btn" onclick="selectJuneInterest(false, this)">Not this time</button>
+      </div>
+    </div>
+    <div class="form-group" id="pePhoneGroup" style="display:none">
+      <label>Phone number <span style="opacity:.45;font-size:.8em">(so we can reach you)</span></label>
+      <input type="tel" id="pePhoneInput" placeholder="(555) 555-5555" />
+    </div>
+    <div class="confirm-actions" style="margin-top:1.5rem;">
+      <button class="confirm-btn-primary ready" id="peSubmitBtn" onclick="submitPostEventFeedback()">Submit Feedback</button>
+      <button class="confirm-btn-delete" onclick="dismissPostEventOverlay()">Skip for now</button>
+    </div>
+  </div>
+</div>
+
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
   <button class="lightbox-close" onclick="closeLightbox()">Close</button>
   <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()" />
@@ -1110,16 +1193,20 @@ let adminRevertOpen = new Set();
 let adminExpandOpen = new Set();
 let adminSearchQ    = '';
 let adminSortBy     = 'date';
+let adminFilterFlag = false; // toggle: show only flagged guests
+let postEventData   = { blastSent: false, blastMessage: '', responses: {} };
+// responses shape: { [guestId]: { review: string, juneInterest: bool, phone: string, submittedAt: ISO } }
 let currentModalGuestId = null;
 let _touchX = 0, _touchY = 0;
 
 // ══ SOCIAL ═════════════════════════════════════════════════════════
 async function loadSocialData() {
-  const [socialRes, wlMsgRes, confirmRes, wlOrderRes] = await Promise.all([
+  const [socialRes, wlMsgRes, confirmRes, wlOrderRes, peRes] = await Promise.all([
     sb.from('config').select('value').eq('key','social').single(),
     sb.from('config').select('value').eq('key','wl_messages').single(),
     sb.from('config').select('value').eq('key','confirm_responses').single(),
     sb.from('config').select('value').eq('key','wl_order').single(),
+    sb.from('config').select('value').eq('key','post_event_data').single(),
   ]);
   if (socialRes.data?.value) {
     try {
@@ -1138,6 +1225,14 @@ async function loadSocialData() {
   }
   if (wlOrderRes.data?.value) {
     try { wlOrder = JSON.parse(wlOrderRes.data.value) || []; } catch(e) {}
+  }
+  if (peRes.data?.value) {
+    try {
+      const pe = JSON.parse(peRes.data.value);
+      postEventData.blastSent = pe.blastSent || false;
+      postEventData.blastMessage = pe.blastMessage || '';
+      postEventData.responses = pe.responses || {};
+    } catch(e) {}
   }
 }
 
@@ -1688,6 +1783,7 @@ async function init() {
           showFireToast();
           checkConfirmOverlay();
           checkRecruiterBanner();
+          setTimeout(checkPostEventOverlay, 1200);
         } else {
           localStorage.removeItem(SESSION_KEY);
         }
@@ -2340,6 +2436,7 @@ async function submitPin(target) {
   showFireToast();
   checkConfirmOverlay();
   checkRecruiterBanner();
+  setTimeout(checkPostEventOverlay, 1200);
 
   if (target === 'roster') renderRoster();
   else if (target === 'account') renderAccount();
@@ -2650,6 +2747,7 @@ async function submitRsvp() {
   showFireToast();
   checkConfirmOverlay();
   checkRecruiterBanner();
+  setTimeout(checkPostEventOverlay, 1200);
 
   const isWaitlisted = submitStatus === 'waitlisted';
   const statusLine = isWaitlisted
@@ -2948,14 +3046,21 @@ async function approveAllPending() {
 
 function exportGuestCSV() {
   if (!adminCachedData) return;
-  const rows = [['Name', 'Role', 'Age', 'PIN', 'Vibes', 'PrEP', 'Bio', 'Referred By', 'Fires Received', 'Arrived']];
+  const rows = [['Name', 'Role', 'Age', 'PIN', 'Phone', 'Vibes', 'PrEP', 'Last Tested', 'Bio', 'Referred By', 'Prior Events', 'Fires Received', 'Fires Sent', 'Mutuals', 'Flagged', 'Arrived', 'Notes']];
+  const approvedIds = new Set(adminCachedData.appr.map(g => g.id));
   for (const g of adminCachedData.appr) {
     const firesRcvd = Object.values(socialData.fires).filter(arr => arr.includes(g.id)).length;
+    const firesSent = (socialData.fires[g.id]||[]).length;
+    const mutuals   = (socialData.fires[g.id]||[]).filter(id => approvedIds.has(id) && (socialData.fires[id]||[]).includes(g.id)).length;
     rows.push([
-      g.name || '', g.role || '', g.age || '', g.pin || '',
-      (g.vibes || []).join(';'), g.prep || '',
+      g.name || '', g.role || '', g.age || '', g.pin || '', g.phone || '',
+      (g.vibes || []).join(';'), g.prep || '', g.last_tested || '',
       (g.bio || '').replace(/\n/g, ' '),
-      g.referred_by || '', firesRcvd, doorCheckins[g.id] ? 'Yes' : 'No'
+      g.referred_by || '', adminData.priorEvents[g.id] || 0,
+      firesRcvd, firesSent, mutuals,
+      adminData.flagged[g.id] ? 'Yes' : 'No',
+      doorCheckins[g.id] ? 'Yes' : 'No',
+      (adminData.notes[g.id] || '').replace(/\n/g, ' ')
     ]);
   }
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -3089,6 +3194,7 @@ function buildAdminHTML(el) {
     const searchQ = adminSearchQ.toLowerCase();
     const filteredPend = searchQ ? pendList.filter(g=>(g.name||'').toLowerCase().includes(searchQ)) : pendList;
     let filteredAppr = searchQ ? apprList.filter(g=>(g.name||'').toLowerCase().includes(searchQ)) : [...apprList];
+    if (adminFilterFlag) filteredAppr = filteredAppr.filter(g => !!adminData.flagged[g.id]);
     if (adminSortBy === 'name') filteredAppr.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
     else if (adminSortBy === 'fires') filteredAppr.sort((a,b)=>{
       const fa = Object.values(socialData.fires).filter(arr=>arr.includes(a.id)).length;
@@ -3127,8 +3233,9 @@ function buildAdminHTML(el) {
         <option value="fires" ${adminSortBy==='fires'?'selected':''}>Most fired</option>
         <option value="arrived" ${adminSortBy==='arrived'?'selected':''}>Arrived first</option>
       </select>
-      <button class="admin-export-btn" onclick="exportGuestCSV()">↓ Export CSV</button>
-      <button class="admin-export-btn" onclick="purgeGhostFireData()" title="Remove fire/save entries for guests no longer in the database" style="color:rgba(224,80,80,0.7);border-color:rgba(224,80,80,0.25);">✕ Clean Ghost Data</button>
+      <button class="admin-chip${adminFilterFlag?' active':''}" onclick="toggleAdminFlagFilter()" title="Show only flagged guests">⚑ Flagged${adminFilterFlag && Object.keys(adminData.flagged).filter(id=>adminData.flagged[id]).length ? ` (${Object.keys(adminData.flagged).filter(id=>adminData.flagged[id]).length})` : ''}</button>
+      <button class="admin-export-btn" onclick="exportGuestCSV()">↓ CSV</button>
+      <button class="admin-export-btn" onclick="purgeGhostFireData()" title="Remove fire/save entries for guests no longer in the database" style="color:rgba(224,80,80,0.7);border-color:rgba(224,80,80,0.25);">✕ Ghost Data</button>
     </div>
 
     <div class="admin-section-header admin-collapse-hdr" onclick="toggleAdminSection('pending')">
@@ -3213,7 +3320,7 @@ function buildAdminHTML(el) {
     <hr class="div" />
 
     <div class="admin-section-header admin-collapse-hdr" onclick="toggleAdminSection('confirmed')">
-      <div class="section-label" style="margin:0;">Confirmed — ${filteredAppr.length}${searchQ&&filteredAppr.length!==apprList.length?` <span style="font-size:.8em;color:var(--muted)">of ${apprList.length}</span>`:''}</div>
+      <div class="section-label" style="margin:0;">Confirmed — ${filteredAppr.length}${(searchQ||adminFilterFlag)&&filteredAppr.length!==apprList.length?` <span style="font-size:.8em;color:var(--muted)">of ${apprList.length}</span>`:''}</div>
       <span class="admin-collapse-chevron${adminSections.confirmed?' open':''}">▾</span>
     </div>
     ${adminSections.confirmed ? `<div class="approved-list" style="margin-top:1rem;">
@@ -3302,6 +3409,102 @@ function buildAdminHTML(el) {
     </div>
     ${adminSections.analytics ? `
     ${vibeChips ? `<div class="vibe-breakdown" style="margin-top:1rem;"><span class="vibe-breakdown-label">Vibes</span>${vibeChips}</div>` : ''}
+
+    ${(() => {
+      // Demographics
+      const ages = apprList.filter(g => g.age).map(g => g.age);
+      const avgAge = ages.length ? Math.round(ages.reduce((s,a) => s+a, 0) / ages.length) : null;
+      const ageRanges = {'18-24':0,'25-30':0,'31-35':0,'36-40':0,'41+':0};
+      for (const a of ages) {
+        if (a <= 24) ageRanges['18-24']++;
+        else if (a <= 30) ageRanges['25-30']++;
+        else if (a <= 35) ageRanges['31-35']++;
+        else if (a <= 40) ageRanges['36-40']++;
+        else ageRanges['41+']++;
+      }
+      const maxAgeCount = Math.max(...Object.values(ageRanges), 1);
+
+      const prepYes = apprList.filter(g => g.prep === 'yes').length;
+      const prepNo  = apprList.filter(g => g.prep === 'no').length;
+      const prepNA  = apprList.length - prepYes - prepNo;
+      const prepPct = apprList.length > 0 ? Math.round(prepYes / apprList.length * 100) : 0;
+
+      const referrers = {};
+      for (const g of apprList) {
+        if (g.referred_by) {
+          const ref = g.referred_by.trim();
+          referrers[ref] = (referrers[ref]||0) + 1;
+        }
+      }
+      const topRefs = Object.entries(referrers).sort((a,b) => b[1]-a[1]).slice(0,5);
+      const referred = apprList.filter(g => g.referred_by).length;
+      const withPhone = apprList.filter(g => g.phone).length;
+      const withBio = apprList.filter(g => g.bio).length;
+      const withPhotos = apprList.filter(g => g.photos && g.photos.length > 0).length;
+
+      return `
+      <div class="section-label" style="margin-bottom:1rem;margin-top:1.4rem;">Demographics</div>
+      <div class="demo-grid">
+        <div class="demo-cell">
+          <div class="demo-cell-title">Age Distribution</div>
+          ${Object.entries(ageRanges).map(([range, count]) => `
+            <div class="demo-bar-row">
+              <div class="demo-bar-label">${range}</div>
+              <div class="demo-bar-track"><div class="demo-bar-fill" style="width:${Math.round(count/maxAgeCount*100)}%;background:linear-gradient(to right,var(--gold-dim),var(--gold))"></div></div>
+              <div class="demo-bar-count">${count}</div>
+            </div>`).join('')}
+          ${avgAge ? `<div style="margin-top:.6rem;font-family:'Cormorant',serif;font-size:.9rem;font-style:italic;color:var(--muted);">Avg: ${avgAge} · ${ages.length} reported</div>` : ''}
+        </div>
+        <div class="demo-cell">
+          <div class="demo-cell-title">PrEP Status</div>
+          <div class="demo-bar-row">
+            <div class="demo-bar-label">Yes</div>
+            <div class="demo-bar-track"><div class="demo-bar-fill" style="width:${apprList.length?Math.round(prepYes/apprList.length*100):0}%;background:#4caf80"></div></div>
+            <div class="demo-bar-count">${prepYes}</div>
+          </div>
+          <div class="demo-bar-row">
+            <div class="demo-bar-label">No</div>
+            <div class="demo-bar-track"><div class="demo-bar-fill" style="width:${apprList.length?Math.round(prepNo/apprList.length*100):0}%;background:#e05050"></div></div>
+            <div class="demo-bar-count">${prepNo}</div>
+          </div>
+          <div class="demo-bar-row">
+            <div class="demo-bar-label">N/A</div>
+            <div class="demo-bar-track"><div class="demo-bar-fill" style="width:${apprList.length?Math.round(prepNA/apprList.length*100):0}%;background:var(--muted2)"></div></div>
+            <div class="demo-bar-count">${prepNA}</div>
+          </div>
+          <div style="margin-top:.6rem;font-family:'Cormorant',serif;font-size:.9rem;font-style:italic;color:var(--muted);">${prepPct}% on PrEP</div>
+        </div>
+        <div class="demo-cell">
+          <div class="demo-cell-title">Profile Completeness</div>
+          <div class="demo-bar-row">
+            <div class="demo-bar-label">Photo</div>
+            <div class="demo-bar-track"><div class="demo-bar-fill" style="width:${apprList.length?Math.round(withPhotos/apprList.length*100):0}%;background:var(--gold)"></div></div>
+            <div class="demo-bar-count">${withPhotos}</div>
+          </div>
+          <div class="demo-bar-row">
+            <div class="demo-bar-label">Bio</div>
+            <div class="demo-bar-track"><div class="demo-bar-fill" style="width:${apprList.length?Math.round(withBio/apprList.length*100):0}%;background:var(--gold)"></div></div>
+            <div class="demo-bar-count">${withBio}</div>
+          </div>
+          <div class="demo-bar-row">
+            <div class="demo-bar-label">Phone</div>
+            <div class="demo-bar-track"><div class="demo-bar-fill" style="width:${apprList.length?Math.round(withPhone/apprList.length*100):0}%;background:var(--neon-blue)"></div></div>
+            <div class="demo-bar-count">${withPhone}</div>
+          </div>
+        </div>
+        ${topRefs.length ? `<div class="demo-cell">
+          <div class="demo-cell-title">Top Referrers</div>
+          ${topRefs.map(([name, ct]) => `
+            <div class="demo-bar-row">
+              <div class="demo-bar-label" style="min-width:5rem;font-family:'Cormorant',serif;font-size:.9rem;font-style:italic;color:var(--cream);">${esc(name)}</div>
+              <div class="demo-bar-track"><div class="demo-bar-fill" style="width:${Math.round(ct/topRefs[0][1]*100)}%;background:var(--neon-purple)"></div></div>
+              <div class="demo-bar-count">${ct}</div>
+            </div>`).join('')}
+          <div style="margin-top:.6rem;font-family:'Cormorant',serif;font-size:.9rem;font-style:italic;color:var(--muted);">${referred} of ${apprList.length} were referred</div>
+        </div>` : ''}
+      </div>`;
+    })()}
+
     <div class="section-label" style="margin-bottom:1rem;margin-top:1.4rem;">Social Pulse</div>
     <div class="insights-grid">
       <div class="insight-cell">
@@ -3536,6 +3739,92 @@ function buildAdminHTML(el) {
     </div>
   ` : '';
 
+  const peResponseCount = Object.keys(postEventData.responses).length;
+  const tabPostEvent = adminTab === 'postevent' ? (() => {
+    const nameMap = {};
+    const phoneMap = {};
+    apprList.forEach(g => { nameMap[g.id] = g.name; phoneMap[g.id] = g.phone || ''; });
+    const responses = Object.entries(postEventData.responses);
+    const juneYes = responses.filter(([,r]) => r.juneInterest === true).length;
+    const juneNo  = responses.filter(([,r]) => r.juneInterest === false).length;
+    const withReview = responses.filter(([,r]) => r.review).length;
+    const withPhone = responses.filter(([,r]) => r.phone).length;
+
+    if (!postEventData.blastSent) {
+      return `
+        <div class="pe-blast-section">
+          <div class="section-label">Post-Event Feedback Blast</div>
+          <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">
+            Send a feedback request to all approved guests. When they next open Elysium, they'll see an overlay asking for a short review, whether they'd like to be contacted about the June event, and their phone number if not already on file.
+          </p>
+          <div class="pe-compose-area">
+            <div class="form-group">
+              <label>Custom Message <span style="opacity:.45;font-size:.8em">(optional — shown to guests)</span></label>
+              <textarea id="peBlastMsgInput" rows="3" placeholder="We'd love to hear your thoughts.">${esc(postEventData.blastMessage||'')}</textarea>
+            </div>
+            <button class="btn btn-solid" onclick="sendPostEventBlast()">Send Feedback Blast</button>
+          </div>
+          <p style="font-family:'Cormorant',serif;font-size:.9rem;font-style:italic;color:var(--muted2);margin-top:1rem;">
+            This will go to ${apprList.length} approved guest${apprList.length===1?'':'s'}. Guests who have already submitted feedback won't see it again.
+          </p>
+        </div>`;
+    }
+
+    return `
+      <div class="section-label">Post-Event Responses</div>
+      <div class="pe-status-bar">
+        <span class="pe-status-dot sent"></span>
+        <span class="pe-status-text">Blast sent</span>
+        <span class="pe-status-count">${responses.length} of ${apprList.length} responded</span>
+      </div>
+
+      <div class="insights-grid" style="margin-bottom:2rem;">
+        <div class="insight-cell">
+          <div class="insight-val" style="color:#4caf80;">${juneYes}</div>
+          <div class="insight-lbl">June Interest</div>
+          <div class="insight-sub">want to come back</div>
+        </div>
+        <div class="insight-cell">
+          <div class="insight-val" style="color:var(--muted);">${juneNo}</div>
+          <div class="insight-lbl">Declined June</div>
+        </div>
+        <div class="insight-cell">
+          <div class="insight-val fire-col">${withReview}</div>
+          <div class="insight-lbl">Reviews</div>
+          <div class="insight-sub">written feedback</div>
+        </div>
+        <div class="insight-cell">
+          <div class="insight-val" style="color:var(--neon-blue);">${withPhone}</div>
+          <div class="insight-lbl">Phone #s</div>
+          <div class="insight-sub">collected</div>
+        </div>
+      </div>
+
+      ${responses.length ? `
+      <div class="pe-response-list">
+        ${responses.map(([gid, r]) => `
+          <div class="pe-response-item">
+            <div class="pe-response-header">
+              <div class="pe-response-name">${esc(nameMap[gid] || 'Unknown')}</div>
+              <div class="pe-response-badges">
+                ${r.juneInterest === true ? '<span class="pe-badge pe-badge-yes">June: Yes</span>' :
+                  r.juneInterest === false ? '<span class="pe-badge pe-badge-no">June: No</span>' : ''}
+                ${r.phone ? `<span class="pe-badge pe-badge-phone">${esc(r.phone)}</span>` : ''}
+              </div>
+            </div>
+            ${r.review ? `<div class="pe-review-text">${esc(r.review).replace(/\n/g,'<br>')}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>` : `<div class="pe-no-responses">No responses yet. Guests will see the feedback overlay on their next visit.</div>`}
+
+      <div class="pe-export-row">
+        <button class="admin-export-btn" onclick="exportPostEventCSV()">↓ Export All Feedback</button>
+        ${juneYes > 0 ? `<button class="admin-export-btn" onclick="exportJuneInterestedCSV()">↓ Export June Interested</button>` : ''}
+        <button class="admin-export-btn" onclick="resetPostEventBlast()" style="color:rgba(224,80,80,0.7);border-color:rgba(224,80,80,0.25);margin-left:auto;">Reset Blast</button>
+      </div>
+    `;
+  })() : '';
+
   el.innerHTML = `
     <div class="admin-tabs">
       <button class="admin-tab-btn ${adminTab==='guests'?'active':''}" onclick="setAdminTab('guests')">
@@ -3543,9 +3832,12 @@ function buildAdminHTML(el) {
       </button>
       <button class="admin-tab-btn ${adminTab==='door'?'active':''}" onclick="setAdminTab('door')">Door</button>
       <button class="admin-tab-btn ${adminTab==='announce'?'active':''}" onclick="setAdminTab('announce')">Announce</button>
+      <button class="admin-tab-btn ${adminTab==='postevent'?'active':''}" onclick="setAdminTab('postevent')">
+        Post-Event${peResponseCount ? `<span class="admin-tab-count" style="background:var(--gold);">${peResponseCount}</span>` : ''}
+      </button>
       <button class="admin-tab-btn ${adminTab==='settings'?'active':''}" onclick="setAdminTab('settings')">Settings</button>
     </div>
-    ${tabGuests}${tabDoor}${tabAnnounce}${tabSettings}
+    ${tabGuests}${tabDoor}${tabAnnounce}${tabPostEvent}${tabSettings}
   `;
 }
 
@@ -3946,6 +4238,162 @@ async function toggleRecruiter(id) {
   CONFIG.recruiters = list;
   await sb.from('config').upsert([{ key: 'recruiters', value: JSON.stringify(list) }], { onConflict: 'key' });
   _adminRebuild();
+}
+
+// ══ POST-EVENT BLAST ════════════════════════════════════════════════
+let _peJuneInterest = null;
+
+function selectJuneInterest(val, btn) {
+  _peJuneInterest = val;
+  btn.closest('.pe-interest-btns').querySelectorAll('.pe-interest-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  // Show phone field if interested and guest has no phone on file
+  const phoneGroup = document.getElementById('pePhoneGroup');
+  if (phoneGroup) {
+    phoneGroup.style.display = (val && !currentGuest?.phone) ? '' : 'none';
+  }
+}
+
+function checkPostEventOverlay() {
+  if (!currentGuest || isPreview) return;
+  if (!postEventData.blastSent) return;
+  if (postEventData.responses[currentGuest.id]) return;
+  // Don't show if confirm overlay is active
+  if (document.getElementById('confirmOverlay')?.classList.contains('open')) return;
+  // Show overlay
+  const msgEl = document.getElementById('peBlastMsg');
+  if (msgEl && postEventData.blastMessage) {
+    msgEl.textContent = postEventData.blastMessage;
+  }
+  // Pre-fill phone if guest has one
+  const phoneInput = document.getElementById('pePhoneInput');
+  if (phoneInput && currentGuest.phone) phoneInput.value = currentGuest.phone;
+  document.getElementById('postEventOverlay').classList.add('open');
+  lockScroll();
+}
+
+async function submitPostEventFeedback() {
+  const btn = document.getElementById('peSubmitBtn');
+  btn.textContent = 'Submitting…'; btn.style.opacity = '0.6';
+
+  const review = document.getElementById('peReviewInput').value.trim();
+  const phone  = document.getElementById('pePhoneInput')?.value.trim() || '';
+
+  postEventData.responses[currentGuest.id] = {
+    review: review,
+    juneInterest: _peJuneInterest,
+    phone: phone || currentGuest.phone || '',
+    submittedAt: new Date().toISOString(),
+  };
+
+  // If guest provided a new phone number, update their profile too
+  if (phone && !currentGuest.phone) {
+    await sb.from('guests').update({ phone: phone }).eq('id', currentGuest.id);
+    currentGuest.phone = phone;
+  }
+
+  const { error } = await sb.from('config').upsert(
+    { key: 'post_event_data', value: JSON.stringify(postEventData) },
+    { onConflict: 'key' }
+  );
+
+  if (error) {
+    delete postEventData.responses[currentGuest.id];
+    btn.textContent = 'Submit Feedback'; btn.style.opacity = '';
+    alert('Could not save — please try again.');
+    return;
+  }
+
+  // Show thank-you state
+  document.getElementById('peOverlayInner').innerHTML = `
+    <div class="pe-thankyou">
+      <div class="pe-thankyou-icon">✦</div>
+      <div class="confirm-heading" style="margin-bottom:.6rem;">Thank you.</div>
+      <div class="pe-thankyou-text">Your feedback means everything to us.</div>
+      <button class="btn btn-ghost" style="margin-top:2rem;" onclick="dismissPostEventOverlay()">Close</button>
+    </div>`;
+}
+
+function dismissPostEventOverlay() {
+  document.getElementById('postEventOverlay').classList.remove('open');
+  unlockScroll();
+}
+
+async function sendPostEventBlast() {
+  const msg = document.getElementById('peBlastMsgInput')?.value.trim() || '';
+  postEventData.blastSent = true;
+  postEventData.blastMessage = msg || "We'd love to hear your thoughts.";
+
+  const { error } = await sb.from('config').upsert(
+    { key: 'post_event_data', value: JSON.stringify(postEventData) },
+    { onConflict: 'key' }
+  );
+  if (error) {
+    postEventData.blastSent = false;
+    alert('Could not send blast — try again.');
+    return;
+  }
+  if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
+}
+
+async function resetPostEventBlast() {
+  if (!window.confirm('Reset the post-event blast? This clears all collected responses.')) return;
+  postEventData = { blastSent: false, blastMessage: '', responses: {} };
+  const { error } = await sb.from('config').upsert(
+    { key: 'post_event_data', value: JSON.stringify(postEventData) },
+    { onConflict: 'key' }
+  );
+  if (error) { alert('Could not reset — try again.'); return; }
+  if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
+}
+
+function exportPostEventCSV() {
+  if (!adminCachedData) return;
+  const nameMap = {};
+  adminCachedData.appr.forEach(g => { nameMap[g.id] = g.name; });
+  const rows = [['Name', 'Review', 'June Interest', 'Phone', 'Submitted']];
+  for (const [gid, r] of Object.entries(postEventData.responses)) {
+    rows.push([
+      nameMap[gid] || gid,
+      (r.review || '').replace(/\n/g, ' '),
+      r.juneInterest === true ? 'Yes' : r.juneInterest === false ? 'No' : 'N/A',
+      r.phone || '',
+      r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '',
+    ]);
+  }
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'post-event-feedback.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportJuneInterestedCSV() {
+  if (!adminCachedData) return;
+  const nameMap = {};
+  const phoneMap = {};
+  adminCachedData.appr.forEach(g => { nameMap[g.id] = g.name; phoneMap[g.id] = g.phone || ''; });
+  const rows = [['Name', 'Phone', 'Response Date']];
+  for (const [gid, r] of Object.entries(postEventData.responses)) {
+    if (r.juneInterest !== true) continue;
+    rows.push([
+      nameMap[gid] || gid,
+      r.phone || phoneMap[gid] || '',
+      r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '',
+    ]);
+  }
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'june-event-interested.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function toggleAdminFlagFilter() {
+  adminFilterFlag = !adminFilterFlag;
+  if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
 }
 
 // ══ PREP TOGGLE ═════════════════════════════════════════════════════
