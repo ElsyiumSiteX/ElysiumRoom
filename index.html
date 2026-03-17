@@ -578,10 +578,10 @@
     .ci-fire  { filter:drop-shadow(0 0 5px rgba(224,80,80,0.9)); }
     .ci-saved { filter:drop-shadow(0 0 4px rgba(200,168,75,0.8)); }
     .roster-card.mutual-fire-card { box-shadow:0 0 0 1px rgba(224,80,80,0.3), 0 0 28px rgba(224,80,80,0.1); }
-    .roster-card.host-card { box-shadow:0 0 0 1px rgba(200,168,75,0.7), 0 0 28px rgba(200,168,75,0.28), 0 0 72px rgba(200,168,75,0.1); border-color:rgba(200,168,75,0.55) !important; border-top-color:rgba(200,168,75,0.85) !important; }
-    .roster-card.host-card img { filter:brightness(0.88) contrast(1.1) saturate(0.9) !important; }
-    @media (hover:hover) { .roster-card.host-card:hover { box-shadow:0 24px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(200,168,75,0.9), 0 0 48px rgba(200,168,75,0.35) !important; } }
-    .host-badge { position:absolute; top:0; left:0; right:0; font-family:'Cinzel',serif; font-size:0.55rem; letter-spacing:0.32em; text-transform:uppercase; color:rgba(200,168,75,0.95); background:linear-gradient(to bottom, rgba(8,6,4,0.82) 0%, rgba(8,6,4,0) 100%); padding:0.55rem 0.5rem 1.2rem; z-index:3; text-align:center; pointer-events:none; text-shadow:0 0 12px rgba(200,168,75,0.6); }
+    .roster-card.host-card { box-shadow:0 0 0 1px rgba(176,96,255,0.75), 0 0 28px rgba(176,96,255,0.32), 0 0 72px rgba(176,96,255,0.15), 0 0 120px rgba(176,96,255,0.07); border-color:rgba(176,96,255,0.6) !important; border-top-color:rgba(176,96,255,0.9) !important; }
+    .roster-card.host-card img { filter:brightness(0.88) contrast(1.1) saturate(0.95) hue-rotate(-5deg) !important; }
+    @media (hover:hover) { .roster-card.host-card:hover { box-shadow:0 24px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(176,96,255,0.95), 0 0 56px rgba(176,96,255,0.42), 0 0 100px rgba(176,96,255,0.18) !important; } }
+    .host-badge { position:absolute; top:0; left:0; right:0; font-family:'Cinzel',serif; font-size:0.55rem; letter-spacing:0.32em; text-transform:uppercase; color:rgba(200,160,255,0.95); background:linear-gradient(to bottom, rgba(8,6,4,0.82) 0%, rgba(8,6,4,0) 100%); padding:0.55rem 0.5rem 1.2rem; z-index:3; text-align:center; pointer-events:none; text-shadow:0 0 12px rgba(176,96,255,0.7); }
 
     .modal-interact { border-top:1px solid var(--border-dim); padding:1.5rem; }
     .mutual-reveal { font-family:'Cormorant',serif; font-size:1.05rem; font-style:italic; color:#e05050; text-align:center; letter-spacing:0.06em; padding-bottom:1rem; animation:fadeUp 0.4s ease; }
@@ -2318,6 +2318,11 @@ async function renderRsvp() {
       <input type="tel" id="rPhone" placeholder="For follow-up if needed" autocomplete="tel" />
     </div>
 
+    <div class="form-group">
+      <label>Referred by <span style="opacity:.45;font-size:.8em">(optional)</span></label>
+      <input type="text" id="rReferredBy" placeholder="Who invited you?" autocomplete="off" maxlength="80" />
+    </div>
+
     <div class="social-proof">
       <div class="sp-stats">
         <div class="sp-stat">
@@ -2454,17 +2459,18 @@ async function submitRsvp() {
     age:          document.getElementById('rAge').value ? parseInt(document.getElementById('rAge').value) : null,
     pin,
     phone:        document.getElementById('rPhone').value.trim() || null,
+    referred_by:  document.getElementById('rReferredBy').value.trim() || null,
     status: submitStatus,
   };
 
   let { data, error } = await sb.from('guests').insert(insertPayload).select().single();
 
-  // If the phone column doesn't exist yet, retry without it so RSVPs still go through
+  // If optional columns don't exist yet, retry without them so RSVPs still go through
   if (error) {
     console.warn('RSVP insert error:', error.message);
-    if (error.message?.toLowerCase().includes('phone') || error.code === '42703') {
-      const { phone: _drop, ...payloadWithoutPhone } = insertPayload;
-      ({ data, error } = await sb.from('guests').insert(payloadWithoutPhone).select().single());
+    if (error.message?.toLowerCase().includes('phone') || error.message?.toLowerCase().includes('referred_by') || error.code === '42703') {
+      const { phone: _p, referred_by: _r, ...payloadCore } = insertPayload;
+      ({ data, error } = await sb.from('guests').insert(payloadCore).select().single());
     }
   }
 
@@ -2760,14 +2766,14 @@ async function approveAllPending() {
 
 function exportGuestCSV() {
   if (!adminCachedData) return;
-  const rows = [['Name', 'Role', 'Age', 'PIN', 'Vibes', 'PrEP', 'Bio', 'Fires Received', 'Arrived']];
+  const rows = [['Name', 'Role', 'Age', 'PIN', 'Vibes', 'PrEP', 'Bio', 'Referred By', 'Fires Received', 'Arrived']];
   for (const g of adminCachedData.appr) {
     const firesRcvd = Object.values(socialData.fires).filter(arr => arr.includes(g.id)).length;
     rows.push([
       g.name || '', g.role || '', g.age || '', g.pin || '',
       (g.vibes || []).join(';'), g.prep || '',
       (g.bio || '').replace(/\n/g, ' '),
-      firesRcvd, doorCheckins[g.id] ? 'Yes' : 'No'
+      g.referred_by || '', firesRcvd, doorCheckins[g.id] ? 'Yes' : 'No'
     ]);
   }
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -2878,6 +2884,7 @@ function buildAdminHTML(el) {
           <div class="p-name">${esc(g.name)}</div>
           <div class="p-meta">${esc(g.role||'')} · PIN: ${esc(g.pin)} · Submitted ${new Date(g.created_at).toLocaleString()}</div>
           ${g.phone ? `<div class="p-meta" style="margin-top:.2rem;">📱 ${esc(g.phone)} &ensp;<a href="sms:${esc(g.phone)}" class="admin-sms-link">Text ↗</a></div>` : ''}
+          ${g.referred_by ? `<div class="p-meta" style="margin-top:.2rem;">Referred by: <span style="color:var(--cream)">${esc(g.referred_by)}</span></div>` : ''}
         </div>
       </div>
       ${photos.length ? `<div class="p-photo-grid">${photos.map(src=>`<img src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)">`).join('')}</div>` : ''}
@@ -2995,6 +3002,7 @@ function buildAdminHTML(el) {
                 <div class="p-name">${esc(g.name)}</div>
                 <div class="p-meta">${esc(g.role||'')} · PIN: ${esc(g.pin)} · Submitted ${new Date(g.created_at).toLocaleString()}</div>
                 ${g.phone ? `<div class="p-meta" style="margin-top:.2rem;">📱 ${esc(g.phone)} &ensp;<a href="sms:${esc(g.phone)}" class="admin-sms-link">Text ↗</a></div>` : ''}
+                ${g.referred_by ? `<div class="p-meta" style="margin-top:.2rem;">Referred by: <span style="color:var(--cream)">${esc(g.referred_by)}</span></div>` : ''}
               </div>
             </div>
             ${photos.length ? `<div class="p-photo-grid">${photos.map(src=>`<img src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)">`).join('')}</div>` : ''}
@@ -3071,7 +3079,7 @@ function buildAdminHTML(el) {
               const vibeMap = {up:'#e05050',down:'#5bc8f5',dash:'#d4b84a'};
               const symMap  = {up:'↑',down:'↓',dash:'—'};
               const vibes   = g.vibes||[];
-              const hasData = photos.length||vibes.length||g.age||g.last_tested||g.prep||g.bio;
+              const hasData = photos.length||vibes.length||g.age||g.last_tested||g.prep||g.bio||g.referred_by;
               return `<div class="a-detail-panel">
                 ${photos.length ? `<div class="p-photo-grid">${photos.map(src=>`<img src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)">`).join('')}</div>` : ''}
                 <div class="p-details-row"${photos.length?` style="margin-top:0.8rem"`:''}">
@@ -3079,6 +3087,7 @@ function buildAdminHTML(el) {
                   ${g.age ? `<div class="p-section"><div class="p-label">Age</div><div class="p-value">${g.age}</div></div>` : ''}
                   ${g.last_tested ? `<div class="p-section"><div class="p-label">Last Tested</div><div class="p-value">${esc(g.last_tested)}</div></div>` : ''}
                   ${g.prep ? `<div class="p-section"><div class="p-label">PrEP</div><div class="p-value">${g.prep==='yes'?'Yes':'No'}</div></div>` : ''}
+                  ${g.referred_by ? `<div class="p-section"><div class="p-label">Referred by</div><div class="p-value">${esc(g.referred_by)}</div></div>` : ''}
                 </div>
                 ${g.bio ? `<div class="p-section" style="margin-top:0.6rem;"><div class="p-label">About</div><div class="p-bio">${esc(g.bio).replace(/\n/g,'<br>')}</div></div>` : ''}
                 ${!hasData ? `<div style="font-family:'Cormorant',serif;font-style:italic;color:var(--muted);font-size:.95rem;">No additional profile data.</div>` : ''}
