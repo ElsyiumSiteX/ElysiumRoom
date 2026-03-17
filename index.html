@@ -2250,7 +2250,7 @@ async function renderRsvp() {
   el.innerHTML = `
     <h2 class="form-title">${rsvpIsWaitlist ? 'Join the Waitlist' : 'Reserve Your Place'}</h2>
     ${rsvpIsWaitlist
-      ? `<div class="waitlist-notice">All ${CONFIG.capacity} places are reserved. Add your details below and you'll be contacted if a spot opens up. It happens all the time! Maybe you'll get squeezed in anyways!</div>`
+      ? `<div class="waitlist-notice">All ${CONFIG.capacity} places are reserved. Add your details below and you'll be contacted if a spot opens up. It happens all the time! Maybe you'll get squeezed in anyways!<br><br><em>Even if the waitlist seems large, still submit — it's not necessarily first come, first served. You never know.</em></div>`
       : `<p class="form-sub">${rem} of ${CONFIG.capacity} places remaining</p>`
     }
     <div id="formMsg"></div>
