@@ -499,7 +499,10 @@
     .fire-toast-text { font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cream); line-height: 1.45; }
     .fire-toast-dismiss { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 0.1rem; flex-shrink: 0; transition: color 0.2s; }
     .fire-toast-dismiss:hover { color: var(--cream); }
-    .session-name { font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-dim); }
+    .session-avatar { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--gold); background: var(--black) center/cover no-repeat; cursor: pointer; flex-shrink: 0; transition: border-color 0.2s, box-shadow 0.2s; }
+    .session-avatar:hover { border-color: var(--gold-dim); box-shadow: 0 0 8px rgba(200,168,75,0.35); }
+    .session-name { font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-dim); cursor: pointer; transition: color 0.2s; }
+    .session-name:hover { color: var(--gold); }
     .session-btn { font-family: 'Cinzel', serif; font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase; background: none; border: none; color: var(--muted); cursor: pointer; transition: color 0.2s; padding: 0.2rem 0; }
     .session-btn:hover { color: var(--gold); }
 
@@ -1090,7 +1093,6 @@
   <button onclick="showView('rsvp',this)">RSVP</button>
   <button onclick="showView('info',this)">Info</button>
   <button onclick="showView('chat',this)">Chat</button>
-  <button onclick="showView('account',this)">My Profile</button>
   <button onclick="showView('admin',this)">Admin</button>
 </nav>
 
@@ -1236,9 +1238,9 @@
 
 <!-- SESSION BAR -->
 <div class="session-bar" id="sessionBar" style="display:none">
-  <span class="session-name" id="sessionName"></span>
+  <button class="session-avatar" id="sessionAvatar" onclick="showView('account',null)" aria-label="My Profile"></button>
+  <span class="session-name" id="sessionName" onclick="showView('account',null)" style="cursor:pointer"></span>
   <span class="session-fire-badge" id="sessionFireBadge" style="display:none"></span>
-  <button class="session-btn" onclick="editProfile()">Edit Profile</button>
   <button class="session-btn" onclick="logout()">Log Out</button>
 </div>
 
@@ -1990,11 +1992,11 @@ async function init() {
         isPreview = true; currentGuest = null;
         showSessionBar('Preview Guest');
       } else {
-        const { data: g } = await sb.from('guests').select('id,name,pin').eq('id', s.id).single();
+        const { data: g } = await sb.from('guests').select('id,name,pin,photos').eq('id', s.id).single();
         if (g) {
           currentGuest = { id: g.id, name: g.name, pin: g.pin };
           localStorage.setItem(SESSION_KEY, JSON.stringify(currentGuest));
-          showSessionBar(g.name);
+          showSessionBar(g.name, g.photos);
           await loadSocialData();
           updateFireBadge();
           checkUnreadChat();
@@ -2060,9 +2062,23 @@ async function checkUnreadChat() {
   if (data && new Date(data.created_at) > new Date(lastSeen)) showChatBadge();
 }
 
-function showSessionBar(name) {
+function showSessionBar(name, photos) {
   const bar = document.getElementById('sessionBar');
   document.getElementById('sessionName').textContent = name;
+  const avatar = document.getElementById('sessionAvatar');
+  const firstPhoto = (photos && photos.length) ? photos[0] : null;
+  if (firstPhoto) {
+    avatar.style.backgroundImage = `url(${firstPhoto})`;
+  } else {
+    avatar.style.backgroundImage = 'none';
+    avatar.textContent = name.charAt(0).toUpperCase();
+    avatar.style.fontFamily = "'Cinzel', serif";
+    avatar.style.fontSize = '0.7rem';
+    avatar.style.color = 'var(--gold)';
+    avatar.style.display = 'flex';
+    avatar.style.alignItems = 'center';
+    avatar.style.justifyContent = 'center';
+  }
   bar.style.display = 'flex';
   document.body.classList.add('session-active');
 }
@@ -2275,10 +2291,13 @@ function renderInfo() {
         </div>`
     },
     {
-      title: 'Group Play',
+      title: 'Group Play / Vibe',
       html: `
         <div class="info-acc-pad">
-          <div class="info-body" style="margin-bottom:.9rem"><p>Flows naturally. Always ask before touching.</p></div>
+          <div class="info-body" style="margin-bottom:.9rem">
+            <p>This is not a cum dump or gangbang. Nothing hardcore happens here. It's not a free for all.</p>
+            <p style="margin-top:.7rem">You find and pair with 1–2 <span style="font-style:italic;opacity:.7">(haha maybe more)</span> at a time that you have clear mutual interest in. Best thing you can do is let yourself really buy in and learn to read / deliver a soft rejection and bid for attention.</p>
+          </div>
           <div class="info-chips">
             <span class="info-chip">Watch</span>
             <span class="info-chip">Join</span>
@@ -2720,7 +2739,7 @@ async function submitPin(target) {
   currentGuest = { id: data.id, name: data.name, pin: data.pin }; isPreview = false;
   localStorage.setItem(SESSION_KEY, JSON.stringify({id:data.id, name:data.name, pin}));
   if (CONFIG.sessionVersion) localStorage.setItem('elysium_session_ver', CONFIG.sessionVersion);
-  showSessionBar(data.name);
+  showSessionBar(data.name, data.photos);
   await loadSocialData();
   updateFireBadge();
   checkUnreadChat();
@@ -3039,7 +3058,7 @@ async function submitRsvp() {
   currentGuest = { id: data.id, name: data.name, pin: data.pin }; isPreview = false;
   photoSlots = [null,null,null]; selectedVibes = []; selectedPrep = null;
   localStorage.setItem(SESSION_KEY, JSON.stringify({id:data.id, name:data.name, pin}));
-  showSessionBar(data.name);
+  showSessionBar(data.name, data.photos);
   await loadSocialData();
   updateFireBadge();
   checkUnreadChat();
