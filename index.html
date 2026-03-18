@@ -1478,6 +1478,17 @@ async function savePriorEvents(id, val) {
 }
 
 async function saveSocialData() {
+  // Re-fetch latest blob from DB and merge before writing so concurrent
+  // guests (e.g. two people firing simultaneously) don't overwrite each other.
+  const { data: latest } = await sb.from('config').select('value').eq('key','social').single();
+  if (latest?.value) {
+    try {
+      const remote = JSON.parse(latest.value);
+      // Merge: keep remote data for all other owners, only we own our own row
+      for (const k in (remote.fires || {})) { if (k !== currentGuest?.id) socialData.fires[k] = remote.fires[k]; }
+      for (const k in (remote.saved || {})) { if (k !== currentGuest?.id) socialData.saved[k] = remote.saved[k]; }
+    } catch(e) {}
+  }
   const { error } = await sb.from('config').upsert({ key:'social', value:JSON.stringify(socialData) }, { onConflict:'key' });
   return error || null;
 }
@@ -2047,6 +2058,7 @@ async function init() {
         if (g) {
           currentGuest = { id: g.id, name: g.name, pin: g.pin, phone: g.phone || null };
           localStorage.setItem(SESSION_KEY, JSON.stringify(currentGuest));
+          if (CONFIG.sessionVersion) localStorage.setItem('elysium_session_ver', CONFIG.sessionVersion);
           showSessionBar(g.name, g.photos);
           await loadSocialData();
           updateFireBadge();
