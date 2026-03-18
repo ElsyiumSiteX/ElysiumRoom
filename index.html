@@ -2008,9 +2008,9 @@ async function init() {
         isPreview = true; currentGuest = null;
         showSessionBar('Preview Guest');
       } else {
-        const { data: g } = await sb.from('guests').select('id,name,pin,photos').eq('id', s.id).single();
+        const { data: g } = await sb.from('guests').select('id,name,pin,photos,phone').eq('id', s.id).single();
         if (g) {
-          currentGuest = { id: g.id, name: g.name, pin: g.pin };
+          currentGuest = { id: g.id, name: g.name, pin: g.pin, phone: g.phone || null };
           localStorage.setItem(SESSION_KEY, JSON.stringify(currentGuest));
           showSessionBar(g.name, g.photos);
           await loadSocialData();
@@ -2324,7 +2324,7 @@ function renderInfo() {
     },
     {
       title: 'Pacing',
-      html: `<div class="info-acc-pad info-body"><p>No pressure. Some people take it slow. Some play multiple rounds. Both normal.</p></div>`
+      html: `<div class="info-acc-pad info-body"><p>You're encouraged to stay the entire time, but you're free to leave whenever. No pressure.</p><p style="margin-top:.7rem">It's completely ok to tell a partner you're having fun but need a break, or want to explore with others before cumming — or before cumming again. Multiple rounds are hot. Pacing yourself makes for a better night.</p></div>`
     },
     {
       title: 'Hygiene',
@@ -2752,7 +2752,7 @@ async function submitPin(target) {
   }
 
   pinFailCount = 0;
-  currentGuest = { id: data.id, name: data.name, pin: data.pin }; isPreview = false;
+  currentGuest = { id: data.id, name: data.name, pin: data.pin, phone: data.phone || null }; isPreview = false;
   localStorage.setItem(SESSION_KEY, JSON.stringify({id:data.id, name:data.name, pin}));
   if (CONFIG.sessionVersion) localStorage.setItem('elysium_session_ver', CONFIG.sessionVersion);
   showSessionBar(data.name, data.photos);
@@ -3071,7 +3071,7 @@ async function submitRsvp() {
   }
 
   rsvpSubmitting = false;
-  currentGuest = { id: data.id, name: data.name, pin: data.pin }; isPreview = false;
+  currentGuest = { id: data.id, name: data.name, pin: data.pin, phone: data.phone || null }; isPreview = false;
   photoSlots = [null,null,null]; selectedVibes = []; selectedPrep = null;
   localStorage.setItem(SESSION_KEY, JSON.stringify({id:data.id, name:data.name, pin}));
   showSessionBar(data.name, data.photos);
