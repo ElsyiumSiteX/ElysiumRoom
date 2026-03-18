@@ -996,6 +996,26 @@
     .trophy-tooltip { position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); white-space:nowrap; background:rgba(10,8,6,0.95); border:1px solid var(--border); padding:0.35rem 0.7rem; font-family:'Cormorant',serif; font-size:0.85rem; font-style:italic; color:var(--cream); pointer-events:none; opacity:0; transition:opacity 0.2s; z-index:15; }
     .trophy-item:hover .trophy-tooltip { opacity:1; }
 
+    /* ── ADMIN BROADCAST POPUP ── */
+    #broadcastOverlay { position:fixed; inset:0; background:rgba(6,5,4,0.88); z-index:9600; display:none; align-items:center; justify-content:center; padding:1.5rem; backdrop-filter:blur(10px); }
+    #broadcastOverlay.open { display:flex; animation:fadeIn 0.4s ease; }
+    .broadcast-box { background:linear-gradient(160deg, rgba(15,12,9,0.98) 0%, rgba(10,8,6,0.99) 100%); border:1px solid rgba(200,168,75,0.3); border-top:2px solid rgba(200,168,75,0.6); max-width:420px; width:100%; padding:2.6rem 2.4rem 2rem; position:relative; animation:fadeUp 0.4s ease; box-shadow:0 0 80px rgba(0,0,0,0.8), 0 0 40px rgba(200,168,75,0.05); text-align:center; }
+    .broadcast-eyebrow { font-family:'Cinzel',serif; font-size:0.68rem; letter-spacing:0.35em; text-transform:uppercase; color:var(--gold-dim); margin-bottom:1.2rem; }
+    .broadcast-msg { font-family:'Cormorant',serif; font-size:1.25rem; font-weight:300; font-style:italic; color:var(--cream); line-height:1.7; white-space:pre-wrap; margin-bottom:1.8rem; }
+    .broadcast-dismiss { font-family:'Cinzel',serif; font-size:0.64rem; letter-spacing:.2em; text-transform:uppercase; background:none; border:1px solid rgba(200,168,75,0.3); color:var(--gold-dim); padding:.6rem 1.6rem; cursor:pointer; transition:all .2s; }
+    .broadcast-dismiss:hover { border-color:rgba(200,168,75,0.6); color:var(--gold); }
+
+    /* ── THE VENUE PAGE ── */
+    .venue-wrap { max-width:640px; margin:0 auto; padding:2rem 1.5rem 4rem; }
+    .venue-back { font-family:'Cinzel',serif; font-size:0.68rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); background:none; border:none; cursor:pointer; padding:0.3rem 0; margin-bottom:2rem; display:inline-flex; align-items:center; gap:0.4rem; transition:color 0.2s; }
+    .venue-back:hover { color:var(--gold-dim); }
+    .venue-heading { font-family:'Cinzel',serif; font-size:clamp(1.6rem,4vw,2.2rem); font-weight:700; letter-spacing:0.12em; color:var(--gold); margin-bottom:0.6rem; text-align:center; }
+    .venue-sub { font-family:'Cormorant',serif; font-size:1rem; font-style:italic; color:var(--muted); text-align:center; margin-bottom:2.5rem; letter-spacing:0.06em; }
+    .venue-desc { font-family:'Cormorant',serif; font-size:1.15rem; font-weight:300; line-height:1.85; color:var(--cream); opacity:.96; white-space:pre-wrap; margin-bottom:2.5rem; }
+    .venue-photos { display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-bottom:2rem; }
+    .venue-photos img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; cursor:zoom-in; }
+    .venue-photos img:first-child:nth-last-child(1) { grid-column:1/-1; aspect-ratio:16/9; }
+
     /* ── PHOTO WATERMARK ── */
     /* Invisible during normal viewing; becomes legible in screenshots */
     .roster-card::after,
@@ -1038,6 +1058,11 @@
     eventPhase:         'pre',
     hostName:           'Nico',
     confirmRound:       0,
+    broadcastMsg:       '',
+    broadcastId:        '',
+    sessionVersion:     '',
+    venueDescription:   '',
+    venueImages:        [],
   };
 </script>
 <!-- ════════════════════════════════════════════════════════════════ -->
@@ -1077,6 +1102,7 @@
   <div id="view-account" class="view"><div class="form-wrap" id="accountContent"></div></div>
   <div id="view-admin"  class="view"><div id="adminContent"></div></div>
   <div id="view-door"   class="view"><div id="doorContent"></div></div>
+  <div id="view-venue"  class="view"><div class="venue-wrap" id="venueContent"></div></div>
 </main>
 
 <!-- LIGHTBOX -->
@@ -1142,6 +1168,15 @@
       <div class="contact-host-handle">@nick.aranda.nick</div>
     </div>
     <button class="contact-host-btn" onclick="closeContactHost()">Done</button>
+  </div>
+</div>
+
+<!-- BROADCAST POPUP -->
+<div id="broadcastOverlay">
+  <div class="broadcast-box">
+    <div class="broadcast-eyebrow">From the Host</div>
+    <div class="broadcast-msg" id="broadcastMsg"></div>
+    <button class="broadcast-dismiss" onclick="dismissBroadcast()">Got it</button>
   </div>
 </div>
 
@@ -1908,6 +1943,9 @@ async function loadConfig() {
       else if (row.key === 'recruiters') {
         try { CONFIG.recruiters = JSON.parse(row.value) || []; } catch(e) { CONFIG.recruiters = []; }
       }
+      else if (row.key === 'venueImages') {
+        try { CONFIG.venueImages = JSON.parse(row.value) || []; } catch(e) { CONFIG.venueImages = []; }
+      }
       else if (row.key === 'eventDateISO')     CONFIG.eventDateISO = row.value;
       else if (row.key === 'eventPhase')       CONFIG.eventPhase   = row.value;
       else if (CONFIG.hasOwnProperty(row.key)) CONFIG[row.key] = row.value;
@@ -1965,12 +2003,21 @@ async function init() {
           checkRecruiterBanner();
           setTimeout(checkPostEventOverlay, 1200);
           setTimeout(checkAwardBanners, 2400);
+          setTimeout(checkBroadcast, 600);
         } else {
           localStorage.removeItem(SESSION_KEY);
         }
       }
     } catch {}
   }
+  // Session version check — force re-login if admin bumped the version
+  if ((currentGuest || isPreview) && CONFIG.sessionVersion) {
+    const localVer = localStorage.getItem('elysium_session_ver');
+    if (localVer !== CONFIG.sessionVersion) {
+      logout();
+    }
+  }
+
   subscribeConfigChanges();
   renderRoster();
   renderRsvp();
@@ -1992,6 +2039,7 @@ function showView(name, btn) {
   if (name === 'account') renderAccount();
   if (name === 'admin')   renderAdmin();
   if (name === 'door')    renderDoor();
+  if (name === 'venue')   renderVenue();
 }
 
 // ══ SESSION BAR ════════════════════════════════════════════════════
@@ -2051,6 +2099,21 @@ function subscribeConfigChanges() {
       if (newRound > CONFIG.confirmRound) {
         CONFIG.confirmRound = newRound;
         checkConfirmOverlay();
+      }
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'config', filter: 'key=eq.broadcastId' }, payload => {
+      const newId = payload.new?.value || '';
+      if (newId && newId !== CONFIG.broadcastId) {
+        CONFIG.broadcastId = newId;
+        sb.from('config').select('value').eq('key','broadcastMsg').single().then(({ data }) => {
+          if (data?.value) { CONFIG.broadcastMsg = data.value; checkBroadcast(); }
+        });
+      }
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'config', filter: 'key=eq.sessionVersion' }, payload => {
+      const newVer = payload.new?.value || '';
+      if (newVer && newVer !== localStorage.getItem('elysium_session_ver')) {
+        if (currentGuest || isPreview) logout();
       }
     })
     .subscribe();
@@ -2307,7 +2370,10 @@ function renderInfo() {
       </div>
     </div>
     ${accHTML}
-    <div style="text-align:center;padding:3rem 0 2rem;">
+    <div style="text-align:center;padding:2.5rem 0 1rem;">
+      <button onclick="showView('venue')" style="font-family:'Cinzel',serif;font-size:0.74rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--gold-dim);background:none;border:1px solid var(--border);padding:0.75rem 2rem;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold-dim)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--gold-dim)'">The Venue →</button>
+    </div>
+    <div style="text-align:center;padding:1.5rem 0 2rem;">
       <span style="font-family:'Cinzel',serif;font-size:0.82rem;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);">Have fun.</span>
     </div>
   `;
@@ -2627,6 +2693,7 @@ async function submitPin(target) {
     pinFailCount = 0;
     isPreview = true; currentGuest = null;
     localStorage.setItem(SESSION_KEY, JSON.stringify({pin}));
+    if (CONFIG.sessionVersion) localStorage.setItem('elysium_session_ver', CONFIG.sessionVersion);
     showSessionBar('Preview Guest');
     renderRoster(); return;
   }
@@ -2652,6 +2719,7 @@ async function submitPin(target) {
   pinFailCount = 0;
   currentGuest = { id: data.id, name: data.name, pin: data.pin }; isPreview = false;
   localStorage.setItem(SESSION_KEY, JSON.stringify({id:data.id, name:data.name, pin}));
+  if (CONFIG.sessionVersion) localStorage.setItem('elysium_session_ver', CONFIG.sessionVersion);
   showSessionBar(data.name);
   await loadSocialData();
   updateFireBadge();
@@ -2661,6 +2729,7 @@ async function submitPin(target) {
   checkRecruiterBanner();
   setTimeout(checkPostEventOverlay, 1200);
   setTimeout(checkAwardBanners, 2400);
+  setTimeout(checkBroadcast, 600);
 
   if (target === 'roster') renderRoster();
   else if (target === 'account') renderAccount();
@@ -3849,7 +3918,27 @@ function buildAdminHTML(el) {
   })() : '';
 
   const tabAnnounce = adminTab === 'announce' ? `
-    <div class="section-label">Announcement</div>
+    <div class="section-label">Broadcast Popup</div>
+    <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">Send a one-time popup that each guest sees once and can dismiss permanently.</p>
+    ${CONFIG.broadcastMsg ? `
+      <div style="padding:1rem 1.2rem;background:rgba(76,175,128,0.04);border:1px solid rgba(76,175,128,0.2);margin-bottom:1.2rem;">
+        <div style="font-family:'Cinzel',serif;font-size:0.66rem;letter-spacing:0.18em;text-transform:uppercase;color:#4caf80;margin-bottom:0.5rem;">Active Broadcast</div>
+        <div style="font-family:'Cormorant',serif;font-size:1.05rem;font-style:italic;color:var(--cream);line-height:1.6;white-space:pre-wrap;">${esc(CONFIG.broadcastMsg)}</div>
+      </div>
+      <div style="display:flex;gap:1rem;margin-bottom:2.5rem;">
+        <button class="btn btn-ghost" onclick="clearBroadcastPopup()" style="color:rgba(224,80,80,0.7);border-color:rgba(224,80,80,0.25);">Clear Broadcast</button>
+      </div>
+    ` : `
+      <div class="form-group">
+        <label>Message</label>
+        <textarea id="broadcastMsgInput" rows="3" placeholder="Write a message all guests will see once…"></textarea>
+      </div>
+      <div style="display:flex;gap:1rem;margin-bottom:2.5rem;">
+        <button class="btn btn-solid" id="broadcastSendBtn" onclick="sendBroadcastPopup()">Send Broadcast</button>
+      </div>
+    `}
+    <hr class="div" />
+    <div class="section-label" style="margin-top:2rem;">Announcement</div>
     <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">Shown to all guests above the roster. Leave blank to hide.</p>
     <div class="form-group">
       <label>Message</label>
@@ -3899,6 +3988,34 @@ function buildAdminHTML(el) {
     </div>
     <div style="display:flex;gap:1rem;margin-bottom:3rem;">
       <button class="btn btn-solid" id="infoImgSaveBtn" onclick="saveInfoImages()">Save Info Images</button>
+    </div>
+    <hr class="div" />
+    <div class="section-label" style="margin-top:2rem;">The Venue Page</div>
+    <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">Guests can view this from the Info page. Describe the space and add up to 6 photos.</p>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="venueDescInput" rows="5" placeholder="Describe the venue — atmosphere, layout, what to expect…">${esc(CONFIG.venueDescription||'')}</textarea>
+    </div>
+    <div class="form-group">
+      <label>Photos <span style="opacity:.45;font-size:.8em">(up to 6)</span></label>
+      <div class="ann-grid" id="venueGrid">
+        ${[0,1,2,3,4,5].map(i => {
+          const src = (CONFIG.venueImages||[])[i] || null;
+          return `<div class="ann-grid-slot" id="venueSlot${i}">
+            ${src
+              ? `<img class="ann-grid-preview" src="${esc(src)}" alt="" onclick="openLightbox(this.src)" />
+                 <button class="slot-remove" onclick="clearVenueSlot(${i})">✕</button>`
+              : `<div class="ann-grid-slot-inner" onclick="triggerVenueSlot(${i})">
+                   <div class="slot-icon" style="font-size:1.2rem">✦</div>
+                   <div class="slot-label">Add photo</div>
+                 </div>`}
+            <input type="file" id="venueFile${i}" accept="image/*" style="display:none" onchange="loadVenueSlot(${i},event)" />
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div style="display:flex;gap:1rem;margin-bottom:3rem;">
+      <button class="btn btn-solid" id="venueSaveBtn" onclick="saveVenue()">Save Venue</button>
     </div>
   ` : '';
 
@@ -3983,9 +4100,15 @@ function buildAdminHTML(el) {
         </div>
       </label>
     </div>
-    <div style="display:flex;gap:1rem;margin-bottom:3rem;margin-top:1.5rem;">
+    <div style="display:flex;gap:1rem;margin-bottom:2rem;margin-top:1.5rem;">
       <button class="btn btn-solid" onclick="saveSettings()">Save Settings</button>
       <button class="btn btn-ghost" onclick="adminLogout()">Log Out</button>
+    </div>
+    <hr class="div" />
+    <div class="section-label" style="margin-top:2rem;">Session Management</div>
+    <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.2rem;">Force all guests to re-enter their PIN on next visit. PINs are not changed — this only invalidates active sessions.</p>
+    <div style="margin-bottom:3rem;">
+      <button class="btn btn-ghost" onclick="massLogoutAllGuests()" style="color:rgba(224,80,80,0.8);border-color:rgba(224,80,80,0.3);">Force All Guests to Re-Login</button>
     </div>
   ` : '';
 
@@ -4717,6 +4840,161 @@ async function saveSettings() {
   flash.style.cssText = 'margin-bottom:1rem;';
   flash.textContent = 'Settings saved.';
   btn.parentNode.insertBefore(flash, btn.parentNode.firstChild);
+  setTimeout(() => flash.remove(), 3000);
+}
+
+// ══ BROADCAST POPUP ════════════════════════════════════════════════
+function checkBroadcast() {
+  if (!currentGuest || isPreview) return;
+  if (!CONFIG.broadcastMsg || !CONFIG.broadcastId) return;
+  const dismissed = localStorage.getItem('elysium_broadcast_dismissed');
+  if (dismissed === CONFIG.broadcastId) return;
+  document.getElementById('broadcastMsg').textContent = CONFIG.broadcastMsg;
+  document.getElementById('broadcastOverlay').classList.add('open');
+  lockScroll();
+}
+
+function dismissBroadcast() {
+  document.getElementById('broadcastOverlay').classList.remove('open');
+  unlockScroll();
+  if (CONFIG.broadcastId) localStorage.setItem('elysium_broadcast_dismissed', CONFIG.broadcastId);
+}
+
+async function sendBroadcastPopup() {
+  const msg = document.getElementById('broadcastMsgInput').value.trim();
+  if (!msg) { alert('Please write a message to broadcast.'); return; }
+  const broadcastId = Date.now().toString(36);
+  const btn = document.getElementById('broadcastSendBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  const { error } = await sb.from('config').upsert([
+    { key: 'broadcastMsg', value: msg },
+    { key: 'broadcastId', value: broadcastId },
+  ], { onConflict: 'key' });
+  btn.disabled = false; btn.textContent = 'Send Broadcast';
+  if (error) { alert('Failed to send: ' + error.message); return; }
+  CONFIG.broadcastMsg = msg;
+  CONFIG.broadcastId = broadcastId;
+  document.getElementById('broadcastMsgInput').value = '';
+  const flash = document.createElement('div');
+  flash.className = 'msg msg-success'; flash.style.cssText = 'margin-bottom:1rem;';
+  flash.textContent = 'Broadcast sent! Guests will see it on their next visit.';
+  btn.parentNode.insertBefore(flash, btn);
+  setTimeout(() => flash.remove(), 4000);
+  _adminRebuild();
+}
+
+async function clearBroadcastPopup() {
+  const { error } = await sb.from('config').upsert([
+    { key: 'broadcastMsg', value: '' },
+    { key: 'broadcastId', value: '' },
+  ], { onConflict: 'key' });
+  if (error) { alert('Failed to clear: ' + error.message); return; }
+  CONFIG.broadcastMsg = ''; CONFIG.broadcastId = '';
+  _adminRebuild();
+}
+
+// ══ MASS LOGOUT ════════════════════════════════════════════════════
+async function massLogoutAllGuests() {
+  if (!window.confirm('Force all guests to re-login? Their PINs will not change — they just need to enter them again.')) return;
+  const newVer = Date.now().toString(36);
+  const { error } = await sb.from('config').upsert({ key: 'sessionVersion', value: newVer }, { onConflict: 'key' });
+  if (error) { alert('Failed: ' + error.message); return; }
+  CONFIG.sessionVersion = newVer;
+  const flash = document.createElement('div');
+  flash.className = 'msg msg-success'; flash.style.cssText = 'margin-bottom:1rem;';
+  flash.textContent = 'All guest sessions invalidated. They will need to re-enter their PIN.';
+  const container = document.querySelector('#adminContent .settings-grid');
+  if (container) container.parentNode.insertBefore(flash, container);
+  setTimeout(() => flash.remove(), 4000);
+}
+
+// ══ THE VENUE ══════════════════════════════════════════════════════
+let venueImgSlots = [null, null, null, null, null, null];
+
+function renderVenue() {
+  const el = document.getElementById('venueContent');
+  const desc = CONFIG.venueDescription || '';
+  const imgs = (CONFIG.venueImages || []).filter(Boolean);
+  el.innerHTML = `
+    <button class="venue-back" onclick="showView('info',document.querySelector('[onclick=\\'showView(\\'info\\',this)\\']'))">← Back to Info</button>
+    <div class="venue-heading">The Venue</div>
+    <div class="venue-sub">Where it all happens</div>
+    ${desc ? `<div class="venue-desc">${esc(desc).replace(/\n/g,'<br>')}</div>` : `<div class="venue-desc" style="color:var(--muted);font-style:italic;">No venue description yet.</div>`}
+    ${imgs.length ? `<div class="venue-photos">${imgs.map(src => `<img src="${esc(src)}" alt="" onclick="openLightbox(this.src)" />`).join('')}</div>` : ''}
+  `;
+}
+
+function triggerVenueSlot(i) { document.getElementById('venueFile'+i).click(); }
+
+function loadVenueSlot(i, e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 1200; let w = img.width, h = img.height;
+      if (w > max || h > max) { if (w > h) { h = Math.round(h * max / w); w = max; } else { w = Math.round(w * max / h); h = max; } }
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      venueImgSlots[i] = c.toDataURL('image/jpeg', 0.82);
+      const slot = document.getElementById('venueSlot'+i);
+      slot.querySelector('.ann-grid-slot-inner')?.remove();
+      slot.querySelector('.ann-grid-preview')?.remove();
+      slot.querySelector('.slot-remove')?.remove();
+      const preview = document.createElement('img');
+      preview.className = 'ann-grid-preview'; preview.src = venueImgSlots[i];
+      preview.onclick = () => openLightbox(venueImgSlots[i]);
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'slot-remove'; removeBtn.textContent = '\u2715';
+      removeBtn.onclick = () => clearVenueSlot(i);
+      slot.appendChild(preview); slot.appendChild(removeBtn);
+    };
+    img.onerror = () => alert('Could not load that image.');
+    img.src = ev.target.result;
+  };
+  reader.onerror = () => alert('Could not read that file.');
+  reader.readAsDataURL(file);
+}
+
+function clearVenueSlot(i) {
+  venueImgSlots[i] = '';
+  const slot = document.getElementById('venueSlot'+i);
+  slot.querySelector('.ann-grid-preview')?.remove();
+  slot.querySelector('.slot-remove')?.remove();
+  const inner = document.createElement('div');
+  inner.className = 'ann-grid-slot-inner';
+  inner.onclick = () => triggerVenueSlot(i);
+  inner.innerHTML = `<div class="slot-icon" style="font-size:1.2rem">\u2726</div><div class="slot-label">Add photo</div>`;
+  slot.appendChild(inner);
+}
+
+async function saveVenue() {
+  const desc = document.getElementById('venueDescInput').value.trim();
+  const images = (CONFIG.venueImages || []).slice();
+  venueImgSlots.forEach((v, i) => { if (v !== null) images[i] = v; });
+  while (images.length && !images[images.length-1]) images.pop();
+
+  CONFIG.venueDescription = desc;
+  CONFIG.venueImages = images;
+
+  const btn = document.getElementById('venueSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const { error } = await sb.from('config').upsert([
+    { key: 'venueDescription', value: desc },
+    { key: 'venueImages', value: JSON.stringify(images) },
+  ], { onConflict: 'key' });
+
+  btn.disabled = false; btn.textContent = 'Save Venue';
+  venueImgSlots = [null, null, null, null, null, null];
+
+  if (error) { alert('Save failed: ' + error.message); return; }
+
+  const flash = document.createElement('div');
+  flash.className = 'msg msg-success'; flash.style.cssText = 'margin-bottom:1rem;';
+  flash.textContent = 'Venue saved.';
+  btn.parentNode.insertBefore(flash, btn);
   setTimeout(() => flash.remove(), 3000);
 }
 
