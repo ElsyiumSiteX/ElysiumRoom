@@ -273,7 +273,9 @@
 
     /* ANNOUNCEMENT BANNER */
     .announce-banner { margin-bottom: 2.5rem; border: 1px solid var(--border); background: var(--black-card); overflow: hidden; }
-    .announce-header { font-family: 'Cinzel', serif; font-size: 0.78rem; font-weight: 400; letter-spacing: .3em; text-transform: uppercase; color: var(--gold-dim); padding: .9rem 1.8rem .6rem; border-bottom: 1px solid var(--border-dim); }
+    .announce-header { font-family: 'Cinzel', serif; font-size: 0.78rem; font-weight: 400; letter-spacing: .3em; text-transform: uppercase; color: var(--gold-dim); padding: .9rem 1.8rem .6rem; border-bottom: 1px solid var(--border-dim); display:flex; align-items:center; justify-content:space-between; }
+    .announce-close { background:none; border:none; color:var(--muted); font-size:1rem; cursor:pointer; padding:0.1rem 0.4rem; line-height:1; transition:color .2s; flex-shrink:0; }
+    .announce-close:hover { color:var(--cream); }
     .announce-body { padding: 1.4rem 1.8rem; }
     .announce-text { font-family: 'Cormorant', serif; font-size: 1.15rem; font-weight: 300; font-style: italic; line-height: 1.85; color: var(--cream); opacity: .96; white-space: pre-wrap; }
     .announce-img { width: 100%; display: block; margin-top: 1.2rem; }
@@ -1554,7 +1556,8 @@ const AWARDS = [
       if (!CONFIG.eventDateISO) return false;
       const days = (new Date(CONFIG.eventDateISO) - Date.now()) / 864e5;
       if (days > 10 || days < -30) return false;
-      return (socialData.fires[id]||[]).length <= 1;
+      const sent = (socialData.fires[id]||[]).length;
+      return sent >= 1 && sent <= 2;
     }
   },
   {
@@ -2476,10 +2479,15 @@ async function renderRoster() {
   }
 
   const annImgs = (CONFIG.announcementImages || []).filter(Boolean);
-  const hasAnn = CONFIG.announcementText || annImgs.length;
+  const annContent = (CONFIG.announcementText || '') + annImgs.join('');
+  const annDismissed = localStorage.getItem('elysium_ann_dismissed');
+  const hasAnn = annContent && annDismissed !== annContent;
   el.innerHTML = `
-    ${hasAnn ? `<div class="announce-banner">
-      <div class="announce-header">From the Host</div>
+    ${hasAnn ? `<div class="announce-banner" id="announceBanner">
+      <div class="announce-header">
+        <span>From the Host</span>
+        <button class="announce-close" onclick="dismissAnnounceBanner()" aria-label="Dismiss">✕</button>
+      </div>
       <div class="announce-body">
         ${CONFIG.announcementText ? `<div class="announce-text">${esc(CONFIG.announcementText).replace(/\n/g,'<br>')}</div>` : ''}
         ${annImgs.length ? `<div class="announce-imgs">${annImgs.map(src=>`<img src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)" />`).join('')}</div>` : ''}
@@ -2556,6 +2564,14 @@ async function renderRoster() {
 
   // Show lube poll for approved guests who haven't voted yet
   renderLubePoll(guests);
+}
+
+function dismissAnnounceBanner() {
+  const annImgs = (CONFIG.announcementImages || []).filter(Boolean);
+  const annContent = (CONFIG.announcementText || '') + annImgs.join('');
+  if (annContent) localStorage.setItem('elysium_ann_dismissed', annContent);
+  const el = document.getElementById('announceBanner');
+  if (el) { el.style.transition = 'opacity 0.3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 320); }
 }
 
 function renderLubePoll(guests) {
