@@ -1641,7 +1641,7 @@ function modalInteractHTML(id) {
     <div class="modal-interact-btns">
       <button class="modal-fire-btn${fired?' fired':''}${mutual?' mutual':''}" onclick="toggleFire('${esc(id)}')">
         <span class="fire-icon">🔥</span>
-        <span>${mutual ? 'Mutual 💕' : fired ? 'Fire Sent' : 'Send Fire'}</span>
+        <span>${mutual ? 'Mutual' : fired ? 'Sent · tap to undo' : 'Send Fire'}</span>
       </button>
       <button class="modal-save-btn${saved?' saved':''}" onclick="toggleSave('${esc(id)}')" title="${saved?'Remove from saved':'Save'}">
         ${saved ? '★' : '☆'}
