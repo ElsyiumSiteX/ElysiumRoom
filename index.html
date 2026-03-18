@@ -542,6 +542,8 @@
     .session-name:hover { color: var(--gold); }
     .session-btn { font-family: 'Cinzel', serif; font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase; background: none; border: none; color: var(--muted); cursor: pointer; transition: color 0.2s; padding: 0.2rem 0; }
     .session-btn:hover { color: var(--gold); }
+    .session-btn-login { color: var(--gold-dim); border: 1px solid rgba(200,168,75,0.3); padding: 0.25rem 0.85rem; transition: color 0.2s, border-color 0.2s, background 0.2s; }
+    .session-btn-login:hover { color: var(--gold); border-color: rgba(200,168,75,0.6); background: var(--gold-glow2); }
 
     @media (max-width: 700px) {
       /* Layout */
@@ -1283,6 +1285,7 @@
   <button class="session-avatar" id="sessionAvatar" onclick="showView('account',null)" aria-label="My Profile"></button>
   <span class="session-name" id="sessionName" onclick="showView('account',null)" style="cursor:pointer"></span>
   <span class="session-fire-badge" id="sessionFireBadge" style="display:none"></span>
+  <button class="session-btn session-btn-login" id="sessionLoginBtn" style="display:none" onclick="loginFromPreview()">Log In</button>
   <button class="session-btn" onclick="logout()">Log Out</button>
 </div>
 
@@ -2126,6 +2129,7 @@ function showSessionBar(name, photos) {
   }
   bar.style.display = 'flex';
   document.body.classList.add('session-active');
+  document.getElementById('sessionLoginBtn').style.display = isPreview ? 'inline-block' : 'none';
 }
 
 function hideSessionBar() {
@@ -2142,6 +2146,17 @@ function logout() {
   renderRoster();
   renderRsvp();
   renderAccount();
+}
+
+function loginFromPreview() {
+  currentGuest = null; isPreview = false;
+  photoSlots = [null, null, null]; selectedVibes = []; selectedPrep = null;
+  localStorage.removeItem(SESSION_KEY);
+  if (chatChannel) { sb.removeChannel(chatChannel); chatChannel = null; }
+  hideSessionBar();
+  renderRoster();
+  renderRsvp();
+  showView('account', null);
 }
 
 function editProfile() {
