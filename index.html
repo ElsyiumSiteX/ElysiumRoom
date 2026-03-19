@@ -2437,10 +2437,10 @@ function renderInfo() {
         </div>`
     },
     {
-      title: 'What to Wear',
+      title: 'What to Wear/Bring',
       html: `
         <div class="info-acc-pad">
-          <div class="info-body" style="margin-bottom:.9rem"><p>Arrive comfortable and discreet. Inside: naked or jock.</p></div>
+          <div class="info-body" style="margin-bottom:.9rem"><p>Arrive comfortable and discreet. Inside: naked or jock.</p><p style="margin-top:.5rem">We provide small hand towels, lube, cock rings, and a bag for your things. You may consider bringing a towel for the showers, though the venue will have a limited number. No masks.</p></div>
           <div class="info-chips">
             <span class="info-chip">Sweats</span>
             <span class="info-chip">Shorts</span>
@@ -4629,7 +4629,7 @@ let annSlots     = [null, null, null, null, null, null]; // pending uploads; nul
 let infoImgSlots  = {}; // { sectionIndex: base64 | '' (cleared) | null (unchanged) }
 let rsvpSubmitting = false;
 const SESSION_KEY = 'elysium_session';
-const INFO_SECTION_TITLES = ['Time & Entry','The Vibe','Core Rules','Group Play','Pacing','Hygiene','What to Wear','Sexual Health','Guests','RSVP','Contributions'];
+const INFO_SECTION_TITLES = ['Time & Entry','The Vibe','Core Rules','Group Play','Pacing','Hygiene','What to Wear/Bring','Sexual Health','Guests','RSVP','Contributions'];
 
 function triggerAnnSlot(i) { document.getElementById('annFile'+i).click(); }
 
