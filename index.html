@@ -2041,9 +2041,8 @@ function startCountdown() {
 async function init() {
   await loadConfig();
 
-  // Restore admin session if one exists (Supabase Auth persists in localStorage)
-  const { data: { session: adminSession } } = await sbAuth.auth.getSession();
-  if (adminSession) adminIn = true;
+  // Restore admin session if one exists
+  if (localStorage.getItem('elysium_admin') === '1') adminIn = true;
 
   // Restore guest session from localStorage, validate guest still exists in DB
   const saved = localStorage.getItem(SESSION_KEY);
@@ -2153,6 +2152,12 @@ function hideSessionBar() {
 }
 
 function logout() {
+  // Revoke admin if it was granted via host login
+  if (currentGuest && CONFIG.hostName && currentGuest.name.trim().toLowerCase() === CONFIG.hostName.trim().toLowerCase()) {
+    adminIn = false;
+    adminCachedData = null;
+    localStorage.removeItem('elysium_admin');
+  }
   currentGuest = null; isPreview = false;
   photoSlots = [null, null, null]; selectedVibes = []; selectedPrep = null;
   localStorage.removeItem(SESSION_KEY);
@@ -2878,6 +2883,11 @@ async function submitPin(target) {
   currentGuest = { id: data.id, name: data.name, pin: data.pin, phone: data.phone || null }; isPreview = false;
   localStorage.setItem(SESSION_KEY, JSON.stringify({id:data.id, name:data.name, pin}));
   if (CONFIG.sessionVersion) localStorage.setItem('elysium_session_ver', CONFIG.sessionVersion);
+  // Sync: host PIN login also grants admin access
+  if (CONFIG.hostName && data.name.trim().toLowerCase() === CONFIG.hostName.trim().toLowerCase()) {
+    adminIn = true;
+    localStorage.setItem('elysium_admin', '1');
+  }
   showSessionBar(data.name, data.photos);
   await loadSocialData();
   updateFireBadge();
@@ -4399,22 +4409,19 @@ function buildAdminHTML(el) {
 
 async function adminLogin() {
   const pass = document.getElementById('adminPass').value;
-  const btn  = document.querySelector('#adminContent .btn-solid');
-  if (btn) { btn.disabled = true; btn.textContent = 'Entering…'; }
-  const { error } = await sbAuth.auth.signInWithPassword({ email: ADMIN_EMAIL, password: pass });
-  if (btn) { btn.disabled = false; btn.textContent = 'Enter'; }
-  if (error) {
+  if (!pass || pass !== CONFIG.adminPassword) {
     document.getElementById('adminMsg').innerHTML = `<div class="msg msg-error">Incorrect password.</div>`;
     return;
   }
   adminIn = true;
+  localStorage.setItem('elysium_admin', '1');
   renderAdmin();
 }
 
-async function adminLogout() {
-  await sbAuth.auth.signOut();
+function adminLogout() {
   adminIn = false;
   adminCachedData = null;
+  localStorage.removeItem('elysium_admin');
   renderAdmin();
 }
 
