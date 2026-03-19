@@ -2874,7 +2874,7 @@ async function submitPin(target) {
       _startPinLockCountdown(msgEl);
     } else {
       const left = 5 - pinFailCount;
-      msgEl.innerHTML = `<div class="msg msg-error">PIN not recognised. ${left} attempt${left === 1 ? '' : 's'} remaining.</div>`;
+      msgEl.innerHTML = `<div class="msg msg-error">Wrong Pin — if you have been given a temporary password it likely expired and you may need a new one. ${left} attempt${left === 1 ? '' : 's'} remaining.</div>`;
     }
     if (btn) { btn.disabled = false; btn.textContent = 'Enter'; }
     document.querySelectorAll('.pin-digit').forEach(d => d.disabled = false);
