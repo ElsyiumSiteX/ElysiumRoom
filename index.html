@@ -1991,7 +1991,8 @@ function setVibeFilter(vibe) {
 
 // ══ INIT ═══════════════════════════════════════════════════════════
 async function loadConfig() {
-  const { data, error } = await sb.from('config').select('key, value');
+  const CONFIG_KEYS = ['capacity','waitlistEnabled','confirmRound','announcementImages','infoImages','recruiters','venueImages','lube_votes','eventDateISO','eventPhase','eventName','eventDate','eventLocation','adminPassword','guestPreviewPin','requireApproval','announcementText','hostName','broadcastMsg','broadcastId','sessionVersion','venueDescription'];
+  const { data, error } = await sb.from('config').select('key, value').in('key', CONFIG_KEYS);
   if (!error && data) {
     data.forEach(row => {
       if (row.key === 'capacity')             CONFIG.capacity           = parseInt(row.value, 10) || 30;
