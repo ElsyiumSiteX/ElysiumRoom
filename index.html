@@ -8,7 +8,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Elysium" />
   <meta name="theme-color" content="#060504" />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet" /></noscript>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -63,6 +67,7 @@
       content: ''; position: fixed; inset: 0;
       pointer-events: none; z-index: 9999; opacity: 0.028;
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.88' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      will-change: transform; /* promote to own GPU layer — avoids repainting parent */
     }
 
     /* ── HERO ── */
@@ -129,8 +134,8 @@
     /* ── MAIN ── */
     main { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 4rem 3rem; }
 
-    .view { display: none; }
-    .view.active { display: block; animation: fadeUp 0.5s ease both; }
+    .view { display: none; content-visibility: hidden; }
+    .view.active { display: block; content-visibility: visible; animation: fadeUp 0.5s ease both; }
 
     @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -1305,7 +1310,8 @@ const sbAuth = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
 function debounce(fn, ms) {
   let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
-const _debouncedDoorFilter = debounce(q => doorFilter(q), 120);
+const _debouncedDoorFilter  = debounce(q => doorFilter(q), 120);
+const _debouncedAdminSearch = debounce(q => filterGuests(q), 150);
 
 // Safe HTML escape
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -1333,6 +1339,25 @@ let wlMessages        = {}; // { [guestId]: personalMessageString }
 let wlOrder           = []; // ordered array of waitlist guest IDs
 let confirmResponses  = {}; // { [guestId]: roundNumber } — last round they confirmed
 let socialData      = { fires: {}, saved: {} };
+// Precomputed reverse indexes — rebuilt by _rebuildFireIndex() after any
+// social data change. Eliminates O(n²) scans in admin, awards, and badges.
+let _fireReceivedCount = {}; // { targetId: number }
+let _saveReceivedCount = {}; // { targetId: number }
+
+function _rebuildFireIndex() {
+  _fireReceivedCount = {};
+  _saveReceivedCount = {};
+  for (const senderId in socialData.fires) {
+    for (const targetId of (socialData.fires[senderId] || [])) {
+      _fireReceivedCount[targetId] = (_fireReceivedCount[targetId] || 0) + 1;
+    }
+  }
+  for (const senderId in socialData.saved) {
+    for (const targetId of (socialData.saved[senderId] || [])) {
+      _saveReceivedCount[targetId] = (_saveReceivedCount[targetId] || 0) + 1;
+    }
+  }
+}
 let adminTab        = 'guests';
 let adminCachedData = null;
 let adminSections   = { pending: true, waitlist: false, confirmed: false, confirmBlast: false, analytics: false };
@@ -1383,6 +1408,7 @@ async function loadSocialData() {
       postEventData.responses = pe.responses || {};
     } catch(e) {}
   }
+  _rebuildFireIndex();
 }
 
 // ══ ATTENDANCE CONFIRMATION ═════════════════════════════════════════
@@ -1492,6 +1518,7 @@ async function saveSocialData() {
     } catch(e) {}
   }
   const { error } = await sb.from('config').upsert({ key:'social', value:JSON.stringify(socialData) }, { onConflict:'key' });
+  _rebuildFireIndex();
   return error || null;
 }
 
@@ -1523,7 +1550,7 @@ async function purgeGhostFireData() {
 
 function firesReceivedCount() {
   if (!currentGuest) return 0;
-  return Object.values(socialData.fires).filter(arr => arr.includes(currentGuest.id)).length;
+  return _fireReceivedCount[currentGuest.id] || 0;
 }
 
 function updateFireBadge() {
@@ -1597,8 +1624,7 @@ const AWARDS = [
     title: "You're a Star",
     subtitle: "3 or more people fired at you. You didn't even have to try.",
     test(id) {
-      const rcvd = Object.values(socialData.fires).filter(arr => arr.includes(id)).length;
-      return rcvd >= 3;
+      return (_fireReceivedCount[id] || 0) >= 3;
     }
   },
 ];
@@ -1961,7 +1987,7 @@ function rosterCardsHTML(list) {
     const vibes = g.vibes || [];
     const isHost = CONFIG.hostName && g.name.trim().toLowerCase() === CONFIG.hostName.trim().toLowerCase();
     return `
-    <div class="roster-card${isHost?' host-card':''}" data-guest-id="${g.id}" onclick="openModal('${g.id}')" style="animation-delay:${i*0.05}s">
+    <div class="roster-card${isHost?' host-card':''}" data-guest-id="${g.id}" onclick="openModal('${g.id}')" style="animation-delay:${Math.min(i*0.05, 0.6)}s">
       ${isHost ? `<div class="host-badge">Host</div>` : ''}
       ${primary ? `<img src="${primary}" alt="" loading="lazy" />` : `<div class="no-photo"><div class="no-photo-initial">${esc((g.name||'?').charAt(0).toUpperCase())}</div></div>`}
       <div class="roster-overlay">
@@ -2056,13 +2082,16 @@ async function init() {
         isPreview = true; currentGuest = null;
         showSessionBar('Preview Guest');
       } else {
-        const { data: g } = await sb.from('guests').select('id,name,pin,photos,phone').eq('id', s.id).single();
+        // Fetch guest validation and social data in parallel
+        const [{ data: g }] = await Promise.all([
+          sb.from('guests').select('id,name,pin,photos,phone').eq('id', s.id).single(),
+          loadSocialData(),
+        ]);
         if (g) {
           currentGuest = { id: g.id, name: g.name, pin: g.pin, phone: g.phone || null };
           localStorage.setItem(SESSION_KEY, JSON.stringify(currentGuest));
           if (CONFIG.sessionVersion) localStorage.setItem('elysium_session_ver', CONFIG.sessionVersion);
           showSessionBar(g.name, g.photos);
-          await loadSocialData();
           updateFireBadge();
           checkUnreadChat();
           showFireToast();
@@ -2338,14 +2367,15 @@ function renderInfo() {
       html: `
         <div class="info-acc-pad">
           <div class="info-time-grid">
-            <div class="info-time-cell"><div class="info-time-val">6:55 PM</div><div class="info-time-lbl">Doors open</div></div>
-            <div class="info-time-cell"><div class="info-time-val">8:20 PM</div><div class="info-time-lbl">Doors lock</div></div>
-            <div class="info-time-cell"><div class="info-time-val">~3 hrs</div><div class="info-time-lbl">Duration</div></div>
+            <div class="info-time-cell"><div class="info-time-val">7:00 PM</div><div class="info-time-lbl">Doors open</div></div>
+            <div class="info-time-cell"><div class="info-time-val" style="color:#e05050;text-shadow:0 0 18px rgba(224,80,80,0.4);">8:20 PM</div><div class="info-time-lbl" style="color:#e05050;">No entry after</div></div>
+            <div class="info-time-cell"><div class="info-time-val">~4 hrs</div><div class="info-time-lbl">Duration</div></div>
           </div>
+          <div style="text-align:center;margin:1.2rem 0 0.4rem;font-family:'Cormorant',serif;font-size:0.95rem;font-style:italic;color:var(--muted);">We're right next to City Park. Address goes live 1 hour before.</div>
           <div class="step-phase">Getting in</div>
           <div class="info-steps">
-            <div class="info-step"><span class="step-num">1</span><span class="step-txt">Confirmed guests receive address &amp; building QR</span></div>
-            <div class="info-step"><span class="step-num">2</span><span class="step-txt">Enter building · take elevator</span></div>
+            <div class="info-step"><span class="step-num">1</span><span class="step-txt">Confirmed guests receive address 1 hour before</span></div>
+            <div class="info-step"><span class="step-num">2</span><span class="step-txt">Enter venue · code: <strong style="color:var(--gold);letter-spacing:0.15em;">6969</strong></span></div>
             <div class="info-step"><span class="step-num">3</span><span class="step-txt">Enter unit</span></div>
           </div>
           <div class="step-phase">Once inside</div>
@@ -2490,11 +2520,21 @@ function toggleInfoAcc(i) {
 }
 
 // ══ ROSTER ═════════════════════════════════════════════════════════
-async function renderRoster() {
+let _rosterCacheTime = 0;
+const ROSTER_CACHE_TTL = 15000; // 15s — avoids re-fetching on quick tab switches
+
+async function renderRoster(forceRefresh) {
   const el = document.getElementById('rosterContent');
 
   if (!currentGuest && !isPreview && !adminIn) {
     el.innerHTML = renderPinGate('roster');
+    return;
+  }
+
+  // Use cached data for quick tab switches (unless force-refreshed)
+  const cacheAge = Date.now() - _rosterCacheTime;
+  if (!forceRefresh && allGuests.length > 0 && cacheAge < ROSTER_CACHE_TTL && el.innerHTML) {
+    applyRosterIndicators();
     return;
   }
 
@@ -2531,15 +2571,17 @@ async function renderRoster() {
     <div id="guestGrid"><div class="skeleton-grid">${Array.from({length:8}).map(()=>`<div class="skeleton-card"></div>`).join('')}</div></div>
   `;
 
-  const { data: guests, error } = await sb.from('guests').select('id,name,photos,vibes,role,created_at').eq('status','approved').order('created_at');
-  if (error) { document.getElementById('guestGrid').innerHTML = `<div class="empty-state">Could not load roster.</div>`; return; }
-
-  allGuests = guests;
-
-  const [pendRes2, wlRes2] = await Promise.all([
+  // Fetch approved guests + pending/waitlist counts in parallel
+  const [guestRes, pendRes2, wlRes2] = await Promise.all([
+    sb.from('guests').select('id,name,photos,vibes,role,created_at').eq('status','approved').order('created_at'),
     sb.from('guests').select('*', {count:'exact',head:true}).eq('status','pending'),
     sb.from('guests').select('*', {count:'exact',head:true}).eq('status','waitlisted'),
   ]);
+  const { data: guests, error } = guestRes;
+  if (error) { document.getElementById('guestGrid').innerHTML = `<div class="empty-state">Could not load roster.</div>`; return; }
+
+  allGuests = guests;
+  _rosterCacheTime = Date.now();
   const pending = pendRes2.count ?? 0;
   const waitlisted = wlRes2.count ?? 0;
   // Don't count the host toward capacity so the number reflects guest-only spots
@@ -3512,7 +3554,7 @@ async function approveAllPending() {
   adminCachedData.pend = [];
   adminCachedData.appr = [...adminCachedData.appr, ...toMove.map(g => ({ ...g, status: 'approved' }))]
     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-  _adminRebuild(); renderRoster();
+  _adminRebuild(); renderRoster(true);
 }
 
 function exportGuestCSV() {
@@ -3520,7 +3562,7 @@ function exportGuestCSV() {
   const rows = [['Name', 'Role', 'Age', 'PIN', 'Phone', 'Vibes', 'PrEP', 'Last Tested', 'Bio', 'Referred By', 'Prior Events', 'Fires Received', 'Fires Sent', 'Mutuals', 'Flagged', 'Arrived', 'Notes']];
   const approvedIds = new Set(adminCachedData.appr.map(g => g.id));
   for (const g of adminCachedData.appr) {
-    const firesRcvd = Object.values(socialData.fires).filter(arr => arr.includes(g.id)).length;
+    const firesRcvd = (_fireReceivedCount[g.id] || 0);
     const firesSent = (socialData.fires[g.id]||[]).length;
     const mutuals   = (socialData.fires[g.id]||[]).filter(id => approvedIds.has(id) && (socialData.fires[id]||[]).includes(g.id)).length;
     rows.push([
@@ -3633,7 +3675,7 @@ function buildAdminHTML(el) {
 
   // top guests by fires received
   const hotGuests = apprList
-    .map(g => ({ g, fr: Object.values(socialData.fires).filter(arr=>arr.includes(g.id)).length }))
+    .map(g => ({ g, fr: _fireReceivedCount[g.id] || 0 }))
     .filter(x => x.fr > 0)
     .sort((a,b) => b.fr - a.fr)
     .slice(0, 5);
@@ -3641,9 +3683,9 @@ function buildAdminHTML(el) {
   // coldest guests — least social activity (fires rcvd + sent + saves rcvd)
   const coldGuests = apprList
     .map(g => {
-      const rcvd = Object.values(socialData.fires).filter(arr=>arr.includes(g.id)).length;
+      const rcvd = _fireReceivedCount[g.id] || 0;
       const sent = (socialData.fires[g.id]||[]).length;
-      const saved = Object.values(socialData.saved).filter(arr=>arr.includes(g.id)).length;
+      const saved = _saveReceivedCount[g.id] || 0;
       return { g, rcvd, sent, saved, total: rcvd + sent + saved };
     })
     .sort((a,b) => a.total - b.total || (a.g.name||'').localeCompare(b.g.name||''))
@@ -3698,8 +3740,8 @@ function buildAdminHTML(el) {
       : 'Not yet sent';
     if (adminSortBy === 'name') filteredAppr.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
     else if (adminSortBy === 'fires') filteredAppr.sort((a,b)=>{
-      const fa = Object.values(socialData.fires).filter(arr=>arr.includes(a.id)).length;
-      const fb = Object.values(socialData.fires).filter(arr=>arr.includes(b.id)).length;
+      const fa = _fireReceivedCount[a.id] || 0;
+      const fb = _fireReceivedCount[b.id] || 0;
       return fb - fa;
     });
     else if (adminSortBy === 'arrived') filteredAppr.sort((a,b)=>(doorCheckins[b.id]?1:0)-(doorCheckins[a.id]?1:0));
@@ -3727,7 +3769,7 @@ function buildAdminHTML(el) {
     </div>
 
     <div class="admin-search-row">
-      <input class="admin-search-input" type="text" id="guestSearch" placeholder="Search guests by name…" oninput="filterGuests(this.value)" value="${esc(adminSearchQ)}" />
+      <input class="admin-search-input" type="text" id="guestSearch" placeholder="Search guests by name…" oninput="_debouncedAdminSearch(this.value)" value="${esc(adminSearchQ)}" />
       <select class="admin-sort-select" id="guestSort" onchange="sortGuests(this.value)">
         <option value="date" ${adminSortBy==='date'?'selected':''}>Date joined</option>
         <option value="name" ${adminSortBy==='name'?'selected':''}>Name A–Z</option>
@@ -3855,8 +3897,8 @@ function buildAdminHTML(el) {
           const isFlagged  = !!adminData.flagged[g.id];
           const note       = adminData.notes[g.id] || '';
           const isArrived  = !!doorCheckins[g.id];
-          const firesRcvd  = Object.values(socialData.fires).filter(arr=>arr.includes(g.id)).length;
-          const savesRcvd  = Object.values(socialData.saved).filter(arr=>arr.includes(g.id)).length;
+          const firesRcvd  = _fireReceivedCount[g.id] || 0;
+          const savesRcvd  = _saveReceivedCount[g.id] || 0;
           const firesGiven = (socialData.fires[g.id]||[]).length;
           const mutuals    = (socialData.fires[g.id]||[]).filter(id=>approvedIds.has(id)&&(socialData.fires[id]||[]).includes(g.id)).length;
           const firedAtIds   = (socialData.fires[g.id]||[]).filter(id => nameById[id]);
@@ -4460,14 +4502,14 @@ async function approveGuest(id) {
         .sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
     }
   }
-  _adminRebuild(); renderRoster();
+  _adminRebuild(); renderRoster(true);
 }
 
 async function rejectGuest(id) {
   const { error } = await sb.from('guests').delete().eq('id',id);
   if (error) { alert('Reject failed — please try again.'); return; }
   if (adminCachedData) adminCachedData.pend = adminCachedData.pend.filter(x => x.id !== id);
-  _adminRebuild(); renderRoster();
+  _adminRebuild(); renderRoster(true);
 }
 
 async function removeGuest(id) {
@@ -4476,7 +4518,7 @@ async function removeGuest(id) {
   if (!window.confirm(`Remove ${g.name}?`)) return;
   await sb.from('guests').delete().eq('id',id);
   if (adminCachedData) adminCachedData.appr = adminCachedData.appr.filter(x => x.id !== id);
-  _adminRebuild(); renderRoster();
+  _adminRebuild(); renderRoster(true);
 }
 
 async function promoteFromWaitlist(id) {
@@ -4492,7 +4534,7 @@ async function promoteFromWaitlist(id) {
   }
   wlOrder = wlOrder.filter(x => x !== id);
   await saveWlOrder();
-  _adminRebuild(); renderRoster();
+  _adminRebuild(); renderRoster(true);
 }
 
 function toggleGuestExpand(id) {
@@ -4529,7 +4571,7 @@ async function revertGuest(id, targetStatus) {
     await sb.from('config').upsert({ key: 'wl_messages', value: JSON.stringify(wlMessages) }, { onConflict: 'key' });
   }
   adminRevertOpen.delete(id);
-  _adminRebuild(); renderRoster();
+  _adminRebuild(); renderRoster(true);
 }
 
 async function removeWaitlisted(id) {
