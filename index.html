@@ -1348,13 +1348,15 @@ let _touchX = 0, _touchY = 0;
 
 // ══ SOCIAL ═════════════════════════════════════════════════════════
 async function loadSocialData() {
-  const [socialRes, wlMsgRes, confirmRes, wlOrderRes, peRes] = await Promise.all([
-    sb.from('config').select('value').eq('key','social').single(),
-    sb.from('config').select('value').eq('key','wl_messages').single(),
-    sb.from('config').select('value').eq('key','confirm_responses').single(),
-    sb.from('config').select('value').eq('key','wl_order').single(),
-    sb.from('config').select('value').eq('key','post_event_data').single(),
-  ]);
+  // Batch all 5 config reads into a single round-trip
+  const { data: cfgRows } = await sb.from('config').select('key,value')
+    .in('key', ['social','wl_messages','confirm_responses','wl_order','post_event_data']);
+  const _cfg = Object.fromEntries((cfgRows||[]).map(r => [r.key, r.value]));
+  const socialRes   = { data: _cfg.social             ? { value: _cfg.social }             : null };
+  const wlMsgRes    = { data: _cfg.wl_messages        ? { value: _cfg.wl_messages }        : null };
+  const confirmRes  = { data: _cfg.confirm_responses  ? { value: _cfg.confirm_responses }  : null };
+  const wlOrderRes  = { data: _cfg.wl_order           ? { value: _cfg.wl_order }           : null };
+  const peRes       = { data: _cfg.post_event_data    ? { value: _cfg.post_event_data }    : null };
   if (socialRes.data?.value) {
     try {
       const p = JSON.parse(socialRes.data.value);
@@ -2528,7 +2530,7 @@ async function renderRoster() {
     <div id="guestGrid"><div class="skeleton-grid">${Array.from({length:8}).map(()=>`<div class="skeleton-card"></div>`).join('')}</div></div>
   `;
 
-  const { data: guests, error } = await sb.from('guests').select('*').eq('status','approved').order('created_at');
+  const { data: guests, error } = await sb.from('guests').select('id,name,photos,vibes,role,created_at').eq('status','approved').order('created_at');
   if (error) { document.getElementById('guestGrid').innerHTML = `<div class="empty-state">Could not load roster.</div>`; return; }
 
   allGuests = guests;
@@ -2918,10 +2920,10 @@ async function renderRsvp() {
     return;
   }
 
-  const { count: approvedCountRaw } = await sb.from('guests').select('*',{count:'exact',head:true}).eq('status','approved');
-  // Subtract host from capacity count
-  const hostExists = CONFIG.hostName && (await sb.from('guests').select('id',{count:'exact',head:true}).eq('status','approved').ilike('name', CONFIG.hostName.trim())).count > 0;
-  const approvedCount = approvedCountRaw - (hostExists ? 1 : 0);
+  // Single query: fetch names only, check host client-side (avoids 2 round-trips)
+  const { data: approvedNames } = await sb.from('guests').select('name').eq('status','approved');
+  const hostExists = CONFIG.hostName && (approvedNames||[]).some(g => g.name.trim().toLowerCase() === CONFIG.hostName.trim().toLowerCase());
+  const approvedCount = (approvedNames?.length || 0) - (hostExists ? 1 : 0);
   const atCapacity = approvedCount >= CONFIG.capacity;
   if (atCapacity && !CONFIG.waitlistEnabled) {
     el.innerHTML = `<div class="full-overlay"><div class="full-title">At Capacity</div><div class="full-sub">All ${CONFIG.capacity} places have been reserved.</div></div>`;
@@ -3160,9 +3162,9 @@ async function submitRsvp() {
   const photos = photoSlots.filter(Boolean);
 
   // Re-check capacity at submit time to avoid race conditions (host excluded)
-  const { count: approvedNowRaw } = await sb.from('guests').select('*',{count:'exact',head:true}).eq('status','approved');
-  const hostExistsNow = CONFIG.hostName && (await sb.from('guests').select('id',{count:'exact',head:true}).eq('status','approved').ilike('name', CONFIG.hostName.trim())).count > 0;
-  const approvedNow = approvedNowRaw - (hostExistsNow ? 1 : 0);
+  const { data: approvedNowNames } = await sb.from('guests').select('name').eq('status','approved');
+  const hostExistsNow = CONFIG.hostName && (approvedNowNames||[]).some(g => g.name.trim().toLowerCase() === CONFIG.hostName.trim().toLowerCase());
+  const approvedNow = (approvedNowNames?.length || 0) - (hostExistsNow ? 1 : 0);
   const submitAtCapacity = approvedNow >= CONFIG.capacity;
   let submitStatus;
   if (submitAtCapacity && CONFIG.waitlistEnabled) submitStatus = 'waitlisted';
