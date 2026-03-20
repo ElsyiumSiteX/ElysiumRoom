@@ -1628,6 +1628,15 @@ const AWARDS = [
       return (_fireReceivedCount[id] || 0) >= 3;
     }
   },
+  {
+    key: 'elysium_veteran',
+    emoji: '✨',
+    title: "Elysium Veteran",
+    subtitle: "You've been to an Elysium before. Welcome back, darling.",
+    test(id) {
+      return (adminData.priorEvents[id] || 0) > 0;
+    }
+  },
 ];
 
 function getAwardsForGuest(id) {
