@@ -2507,6 +2507,7 @@ function renderInfo() {
       </button>
       <div class="info-acc-body"><div class="info-acc-inner">
         ${CONFIG.infoImages[i] ? `<img class="info-acc-img" src="${CONFIG.infoImages[i]}" alt="" onclick="openLightbox(this.src)" />` : ''}
+        ${CONFIG.infoImages[i+'b'] ? `<img class="info-acc-img" src="${CONFIG.infoImages[i+'b']}" alt="" onclick="openLightbox(this.src)" />` : ''}
         ${s.html}
       </div></div>
     </div>`).join('');
@@ -4224,10 +4225,18 @@ function buildAdminHTML(el) {
     </div>
     <hr class="div" />
     <div class="section-label" style="margin-top:2rem;">Info Page Images</div>
-    <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">One image per section — shown at the top of each info dropdown with a red glow.</p>
+    <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">One image per section (Hygiene supports two) — shown at the top of each info dropdown with a red glow.</p>
     <div style="display:flex;flex-direction:column;gap:1.2rem;margin-bottom:3rem;">
       ${INFO_SECTION_TITLES.map((title, i) => {
         const src = (CONFIG.infoImages||{})[i] || null;
+        const src2 = i === 5 ? ((CONFIG.infoImages||{})['5b'] || null) : null;
+        let secondSlot = '';
+        if (i === 5) {
+          const s2inner = src2
+            ? '<img class="ann-grid-preview" src="' + esc(src2) + '" alt="" onclick="openLightbox(this.src)" style="object-fit:cover;width:100%;height:100%;" /><button class="slot-remove" onclick="clearInfoSlot(\'5b\')">✕</button>'
+            : '<div class="ann-grid-slot-inner" onclick="triggerInfoSlot(\'5b\')"><div class="slot-icon" style="font-size:1rem">✦</div></div>';
+          secondSlot = '<div class="ann-grid-slot" id="infoImgSlot5b" style="width:80px;height:56px;flex-shrink:0;">' + s2inner + '<input type="file" id="infoFile5b" accept="image/*" style="display:none" onchange="loadInfoSlot(\'5b\',event)" /></div>';
+        }
         return `<div style="display:flex;align-items:center;gap:1rem;">
           <div style="font-family:'Cinzel',serif;font-size:0.68rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);width:7rem;flex-shrink:0;">${title}</div>
           <div class="ann-grid-slot" id="infoImgSlot${i}" style="width:80px;height:56px;flex-shrink:0;">
@@ -4239,7 +4248,7 @@ function buildAdminHTML(el) {
                  </div>`}
             <input type="file" id="infoFile${i}" accept="image/*" style="display:none" onchange="loadInfoSlot(${i},event)" />
           </div>
-          ${src ? '' : ''}
+          ${secondSlot}
         </div>`;
       }).join('')}
     </div>
@@ -4729,7 +4738,7 @@ async function saveAnnouncement() {
   setTimeout(() => flash.remove(), 3000);
 }
 
-function triggerInfoSlot(i) { document.getElementById('infoFile'+i).click(); }
+function triggerInfoSlot(i) { document.getElementById('infoFile'+i)?.click(); }
 
 function loadInfoSlot(i, e) {
   const file = e.target.files[0];
