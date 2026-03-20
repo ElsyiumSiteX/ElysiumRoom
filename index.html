@@ -2592,7 +2592,7 @@ async function renderRoster(forceRefresh) {
 
   // Fetch approved guests + pending/waitlist counts in parallel
   const [guestRes, pendRes2, wlRes2] = await Promise.all([
-    sb.from('guests').select('id,name,photos,vibes,role,created_at').eq('status','approved').order('created_at'),
+    sb.from('guests').select('id,name,photos,vibes,role,bio,age,last_tested,prep,created_at').eq('status','approved').order('created_at'),
     sb.from('guests').select('*', {count:'exact',head:true}).eq('status','pending'),
     sb.from('guests').select('*', {count:'exact',head:true}).eq('status','waitlisted'),
   ]);
