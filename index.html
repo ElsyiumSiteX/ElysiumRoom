@@ -3330,7 +3330,7 @@ async function renderAccount() {
   // Fetch referral count if recruiter
   let refCount = 0;
   if (isRecruiter(g.id)) {
-    const { count } = await sb.from('guests').select('*',{count:'exact',head:true}).ilike('referred_by', g.name);
+    const { count } = await sb.from('guests').select('*',{count:'exact',head:true}).eq('status','approved').ilike('referred_by', g.name);
     refCount = count || 0;
   }
 
