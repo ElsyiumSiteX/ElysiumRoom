@@ -1390,6 +1390,19 @@ async function loadSocialData() {
       socialData.saved = p.saved || {};
       for (const id in socialData.fires) socialData.fires[id] = [...new Set(socialData.fires[id])];
       for (const id in socialData.saved) socialData.saved[id] = [...new Set(socialData.saved[id])];
+      try { localStorage.setItem('elysium_social_cache', socialRes.data.value); } catch(e) {}
+    } catch(e) {}
+  } else {
+    // Fall back to cached social data if DB returned nothing (network hiccup, cold start, etc.)
+    try {
+      const cached = localStorage.getItem('elysium_social_cache');
+      if (cached) {
+        const p = JSON.parse(cached);
+        socialData.fires = p.fires || {};
+        socialData.saved = p.saved || {};
+        for (const id in socialData.fires) socialData.fires[id] = [...new Set(socialData.fires[id])];
+        for (const id in socialData.saved) socialData.saved[id] = [...new Set(socialData.saved[id])];
+      }
     } catch(e) {}
   }
   if (wlMsgRes.data?.value) {
@@ -1518,7 +1531,9 @@ async function saveSocialData() {
       for (const k in (remote.saved || {})) { if (k !== currentGuest?.id) socialData.saved[k] = remote.saved[k]; }
     } catch(e) {}
   }
-  const { error } = await sb.from('config').upsert({ key:'social', value:JSON.stringify(socialData) }, { onConflict:'key' });
+  const serialized = JSON.stringify(socialData);
+  const { error } = await sb.from('config').upsert({ key:'social', value:serialized }, { onConflict:'key' });
+  if (!error) { try { localStorage.setItem('elysium_social_cache', serialized); } catch(e) {} }
   _rebuildFireIndex();
   return error || null;
 }
@@ -2201,6 +2216,7 @@ function logout() {
     localStorage.removeItem('elysium_admin');
   }
   currentGuest = null; isPreview = false;
+  socialData = { fires: {}, saved: {} }; _fireReceivedCount = {}; _saveReceivedCount = {};
   photoSlots = [null, null, null]; selectedVibes = []; selectedPrep = null;
   localStorage.removeItem(SESSION_KEY);
   if (chatChannel) { sb.removeChannel(chatChannel); chatChannel = null; }
@@ -2253,6 +2269,9 @@ function subscribeConfigChanges() {
       if (newVer && newVer !== localStorage.getItem('elysium_session_ver')) {
         if (currentGuest || isPreview) logout();
       }
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'config', filter: 'key=eq.social' }, () => {
+      loadSocialData().then(() => { updateFireBadge(); applyRosterIndicators(); });
     })
     .subscribe();
 }
