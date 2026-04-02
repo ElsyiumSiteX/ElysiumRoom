@@ -1558,7 +1558,12 @@ async function purgeGhostFireData() {
     }
   }
   if (removed === 0) { alert('No ghost data found — everything looks clean.'); return; }
-  const err = await saveSocialData();
+  // Write directly instead of saveSocialData() — its merge logic would
+  // re-import the ghost entries we just removed from the remote copy.
+  const serialized = JSON.stringify(socialData);
+  const { error: err } = await sb.from('config').upsert({ key:'social', value:serialized }, { onConflict:'key' });
+  if (!err) { try { localStorage.setItem('elysium_social_cache', serialized); } catch(e) {} }
+  _rebuildFireIndex();
   if (err) { alert('Could not save — try again.'); return; }
   alert(`Cleaned ${removed} ghost entr${removed===1?'y':'ies'} from fire/save data.`);
   if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
