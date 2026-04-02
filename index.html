@@ -1070,6 +1070,20 @@
     .venue-photos img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; cursor:zoom-in; }
     .venue-photos img:first-child:nth-last-child(1) { grid-column:1/-1; aspect-ratio:16/9; }
 
+    /* ── ATTENDANCE PLEDGE BUTTON ── */
+    .pledge-wrap { text-align:center; padding:1.8rem 1.4rem; margin-bottom:0; border-bottom:1px solid var(--border-dim); background:linear-gradient(to bottom, rgba(76,175,128,0.03), transparent); }
+    .pledge-btn { font-family:'Cinzel',serif; font-size:0.82rem; letter-spacing:0.28em; text-transform:uppercase; background:linear-gradient(135deg,rgba(76,175,128,0.12),rgba(76,175,128,0.04)); border:1px solid rgba(76,175,128,0.4); color:#4caf80; padding:0.85rem 2.4rem; cursor:pointer; transition:all 0.3s; position:relative; overflow:hidden; }
+    .pledge-btn:hover { border-color:rgba(76,175,128,0.7); background:rgba(76,175,128,0.15); color:#6fd8a0; box-shadow:0 0 24px rgba(76,175,128,0.15); }
+    .pledge-btn:active { transform:scale(0.97); }
+    .pledge-done { font-family:'Cinzel',serif; font-size:0.78rem; letter-spacing:0.22em; text-transform:uppercase; color:rgba(76,175,128,0.6); }
+    .pledge-done::before { content:'✓ '; }
+
+    /* ── EVENT ADDRESS BOX ── */
+    .address-box { text-align:center; padding:1.4rem 1.4rem; margin-bottom:0; border-bottom:1px solid var(--border-dim); background:linear-gradient(to bottom, rgba(200,168,75,0.03), transparent); }
+    .address-label { font-family:'Cinzel',serif; font-size:0.68rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--gold-dim); margin-bottom:0.5rem; }
+    .address-value { font-family:'Cormorant',serif; font-size:1.15rem; font-style:italic; color:var(--cream); line-height:1.5; }
+    .address-hidden { font-family:'Cormorant',serif; font-size:0.95rem; font-style:italic; color:var(--muted2); }
+
     /* ── PHOTO WATERMARK ── */
     /* Invisible during normal viewing; becomes legible in screenshots */
     .roster-card::after,
@@ -1118,6 +1132,7 @@
     venueDescription:   '',
     venueImages:        [],
     lubeVotes:          {},
+    eventAddress:       '',
   };
 </script>
 <!-- ════════════════════════════════════════════════════════════════ -->
@@ -1339,6 +1354,7 @@ let doorArrivedCollapsed = false;
 let wlMessages        = {}; // { [guestId]: personalMessageString }
 let wlOrder           = []; // ordered array of waitlist guest IDs
 let confirmResponses  = {}; // { [guestId]: roundNumber } — last round they confirmed
+let attendancePledges = {}; // { [guestId]: ISO timestamp } — "I will be there!" one-time clicks
 let socialData      = { fires: {}, saved: {} };
 // Precomputed reverse indexes — rebuilt by _rebuildFireIndex() after any
 // social data change. Eliminates O(n²) scans in admin, awards, and badges.
@@ -1361,7 +1377,7 @@ function _rebuildFireIndex() {
 }
 let adminTab        = 'guests';
 let adminCachedData = null;
-let adminSections   = { pending: true, waitlist: false, confirmed: false, confirmBlast: false, analytics: false };
+let adminSections   = { pending: true, waitlist: false, confirmed: false, confirmBlast: false, analytics: false, pledges: false };
 let adminRevertOpen = new Set();
 let adminExpandOpen = new Set();
 let adminSearchQ    = '';
@@ -1376,13 +1392,14 @@ let _touchX = 0, _touchY = 0;
 async function loadSocialData() {
   // Batch all 5 config reads into a single round-trip
   const { data: cfgRows } = await sb.from('config').select('key,value')
-    .in('key', ['social','wl_messages','confirm_responses','wl_order','post_event_data']);
+    .in('key', ['social','wl_messages','confirm_responses','wl_order','post_event_data','attendance_pledges']);
   const _cfg = Object.fromEntries((cfgRows||[]).map(r => [r.key, r.value]));
   const socialRes   = { data: _cfg.social             ? { value: _cfg.social }             : null };
   const wlMsgRes    = { data: _cfg.wl_messages        ? { value: _cfg.wl_messages }        : null };
   const confirmRes  = { data: _cfg.confirm_responses  ? { value: _cfg.confirm_responses }  : null };
   const wlOrderRes  = { data: _cfg.wl_order           ? { value: _cfg.wl_order }           : null };
   const peRes       = { data: _cfg.post_event_data    ? { value: _cfg.post_event_data }    : null };
+  const pledgeRes   = { data: _cfg.attendance_pledges  ? { value: _cfg.attendance_pledges }  : null };
   if (socialRes.data?.value) {
     try {
       const p = JSON.parse(socialRes.data.value);
@@ -1421,6 +1438,9 @@ async function loadSocialData() {
       postEventData.blastMessage = pe.blastMessage || '';
       postEventData.responses = pe.responses || {};
     } catch(e) {}
+  }
+  if (pledgeRes.data?.value) {
+    try { attendancePledges = JSON.parse(pledgeRes.data.value) || {}; } catch(e) {}
   }
   _rebuildFireIndex();
 }
@@ -2047,7 +2067,7 @@ function setVibeFilter(vibe) {
 
 // ══ INIT ═══════════════════════════════════════════════════════════
 async function loadConfig() {
-  const CONFIG_KEYS = ['capacity','waitlistEnabled','confirmRound','announcementImages','infoImages','recruiters','venueImages','lube_votes','eventDateISO','eventPhase','eventName','eventDate','eventLocation','adminPassword','guestPreviewPin','requireApproval','announcementText','hostName','broadcastMsg','broadcastId','sessionVersion','venueDescription'];
+  const CONFIG_KEYS = ['capacity','waitlistEnabled','confirmRound','announcementImages','infoImages','recruiters','venueImages','lube_votes','eventDateISO','eventPhase','eventName','eventDate','eventLocation','adminPassword','guestPreviewPin','requireApproval','announcementText','hostName','broadcastMsg','broadcastId','sessionVersion','venueDescription','eventAddress'];
   const { data, error } = await sb.from('config').select('key, value').in('key', CONFIG_KEYS);
   if (!error && data) {
     data.forEach(row => {
@@ -2567,6 +2587,45 @@ function toggleInfoAcc(i) {
 let _rosterCacheTime = 0;
 const ROSTER_CACHE_TTL = 15000; // 15s — avoids re-fetching on quick tab switches
 
+// ══ ATTENDANCE PLEDGE ("I WILL BE THERE!") ════════════════════════
+async function pledgeAttendance() {
+  if (!currentGuest || isPreview) return;
+  if (attendancePledges[currentGuest.id]) return;
+  attendancePledges[currentGuest.id] = new Date().toISOString();
+  // Optimistic UI update
+  const wrap = document.getElementById('pledgeWrap');
+  if (wrap) wrap.innerHTML = '<div class="pledge-done">You\'re confirmed — see you there</div>';
+  const { error } = await sb.from('config').upsert([
+    { key: 'attendance_pledges', value: JSON.stringify(attendancePledges) }
+  ], { onConflict: 'key' });
+  if (error) {
+    delete attendancePledges[currentGuest.id];
+    if (wrap) wrap.innerHTML = '<button class="pledge-btn" onclick="pledgeAttendance()">I WILL BE THERE!</button>';
+    alert('Could not save — please try again.');
+  }
+}
+
+// ══ EVENT ADDRESS (admin) ═════════════════════════════════════════
+async function saveEventAddress() {
+  const input = document.getElementById('eventAddressInput');
+  if (!input) return;
+  const addr = input.value.trim();
+  CONFIG.eventAddress = addr;
+  const btn = document.getElementById('eventAddressSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const { error } = await sb.from('config').upsert([
+    { key: 'eventAddress', value: addr }
+  ], { onConflict: 'key' });
+  btn.disabled = false; btn.textContent = 'Save Address';
+  if (error) { alert('Save failed: ' + error.message); return; }
+  const flash = document.createElement('div');
+  flash.className = 'msg msg-success';
+  flash.style.cssText = 'margin-bottom:1rem;';
+  flash.textContent = 'Address saved.';
+  btn.parentNode.insertBefore(flash, btn);
+  setTimeout(() => flash.remove(), 3000);
+}
+
 async function renderRoster(forceRefresh) {
   const el = document.getElementById('rosterContent');
 
@@ -2597,6 +2656,17 @@ async function renderRoster(forceRefresh) {
         ${annImgs.length ? `<div class="announce-imgs">${annImgs.map(src=>`<img src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)" />`).join('')}</div>` : ''}
       </div>
     </div>` : ''}
+    ${currentGuest && !isPreview ? `<div class="pledge-wrap" id="pledgeWrap">
+      ${attendancePledges[currentGuest.id]
+        ? '<div class="pledge-done">You\'re confirmed — see you there</div>'
+        : '<button class="pledge-btn" onclick="pledgeAttendance()">I WILL BE THERE!</button>'}
+    </div>` : ''}
+    <div class="address-box">
+      <div class="address-label">Address <span style="font-size:0.85em;opacity:0.6;">(goes live Friday at Noon)</span></div>
+      ${CONFIG.eventAddress
+        ? `<div class="address-value">${esc(CONFIG.eventAddress)}</div>`
+        : `<div class="address-hidden">To be announced</div>`}
+    </div>
     <div class="stats-row${CONFIG.waitlistEnabled ? ' stats-row-3' : ''}">
       <div class="stat"><div class="stat-num" id="statA">—</div><div class="stat-label">Confirmed</div></div>
       <div class="stat">
@@ -3811,6 +3881,10 @@ function buildAdminHTML(el) {
         <div class="admin-stat-val arrived-col" style="color:#4caf80;">${arrivedCount}</div>
         <div class="admin-stat-lbl">Arrived</div>
       </div>
+      <div class="admin-stat-cell">
+        <div class="admin-stat-val" style="color:#4caf80;">${apprList.filter(g => attendancePledges[g.id]).length}</div>
+        <div class="admin-stat-lbl">"Will Be There"</div>
+      </div>
     </div>
 
     <div class="admin-search-row">
@@ -3825,6 +3899,33 @@ function buildAdminHTML(el) {
       <button class="admin-export-btn" onclick="exportGuestCSV()">↓ CSV</button>
       <button class="admin-export-btn" onclick="purgeGhostFireData()" title="Remove fire/save entries for guests no longer in the database" style="color:rgba(224,80,80,0.7);border-color:rgba(224,80,80,0.25);">✕ Ghost Data</button>
     </div>
+
+    ${(() => {
+      const pledgedGuests = apprList.filter(g => attendancePledges[g.id]);
+      const pledgeCount = pledgedGuests.length;
+      return `
+      <div class="admin-section-header admin-collapse-hdr" onclick="toggleAdminSection('pledges')">
+        <div class="section-label" style="margin:0;">"I Will Be There!" — ${pledgeCount} of ${apprList.length}</div>
+        <span class="admin-collapse-chevron${adminSections.pledges?' open':''}">▾</span>
+      </div>
+      ${adminSections.pledges ? `<div style="margin-top:1rem;margin-bottom:1rem;">
+        ${!pledgeCount ? '<div class="empty-state">No one has pledged yet.</div>' :
+          `<div style="display:flex;flex-direction:column;gap:0.5rem;">
+            ${pledgedGuests.sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(g => {
+              const thumb = g.photos&&g.photos[0]?g.photos[0]:null;
+              const ts = attendancePledges[g.id] ? new Date(attendancePledges[g.id]).toLocaleString() : '';
+              return `<div style="display:flex;align-items:center;gap:0.8rem;padding:0.5rem 0.6rem;background:rgba(76,175,128,0.04);border:1px solid rgba(76,175,128,0.15);">
+                ${thumb?`<img src="${esc(thumb)}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" />`:`<div style="width:32px;height:32px;border-radius:50%;background:var(--black-raise);display:flex;align-items:center;justify-content:center;font-family:'Cormorant',serif;color:var(--muted);font-size:0.9rem;">${esc((g.name||'?').charAt(0).toUpperCase())}</div>`}
+                <div>
+                  <div style="font-family:'Cormorant',serif;font-size:1rem;color:var(--cream);">${esc(g.name)}</div>
+                  <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.12em;color:var(--muted);">${ts}</div>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>`}
+      </div>` : ''}
+      <hr class="div" />`;
+    })()}
 
     <div class="admin-section-header admin-collapse-hdr" onclick="toggleAdminSection('pending')">
       <div style="display:flex;align-items:center;gap:0.7rem;flex-wrap:wrap;">
@@ -4220,6 +4321,16 @@ function buildAdminHTML(el) {
         <button class="btn btn-solid" id="broadcastSendBtn" onclick="sendBroadcastPopup()">Send Broadcast</button>
       </div>
     `}
+    <hr class="div" />
+    <div class="section-label" style="margin-top:2rem;">Event Address</div>
+    <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">Shown on the roster page. Leave blank until ready — guests see "To be announced" until you type an address.</p>
+    <div class="form-group">
+      <label>Address <span style="opacity:.45;font-size:.8em">(goes live Friday at Noon)</span></label>
+      <input type="text" id="eventAddressInput" placeholder="e.g. 123 Main St, Apt 4B" value="${esc(CONFIG.eventAddress||'')}" style="width:100%;background:var(--black-card);border:1px solid var(--border-dim);color:var(--cream);font-family:'Cormorant',serif;font-size:1.05rem;padding:0.6rem 0.9rem;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--gold-dim)'" onblur="this.style.borderColor='var(--border-dim)'" />
+    </div>
+    <div style="display:flex;gap:1rem;margin-bottom:2.5rem;">
+      <button class="btn btn-solid" id="eventAddressSaveBtn" onclick="saveEventAddress()">Save Address</button>
+    </div>
     <hr class="div" />
     <div class="section-label" style="margin-top:2rem;">Announcement</div>
     <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">Shown to all guests above the roster. Leave blank to hide.</p>
