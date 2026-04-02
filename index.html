@@ -2662,7 +2662,7 @@ async function renderRoster(forceRefresh) {
         : '<button class="pledge-btn" onclick="pledgeAttendance()">I WILL BE THERE!</button>'}
     </div>` : ''}
     <div class="address-box">
-      <div class="address-label">Address <span style="font-size:0.85em;opacity:0.6;">(goes live Friday at Noon)</span></div>
+      <div class="address-label">Address <span style="font-size:0.85em;opacity:0.6;">(goes live Friday at 5pm)</span></div>
       ${CONFIG.eventAddress
         ? `<div class="address-value">${esc(CONFIG.eventAddress)}</div>`
         : `<div class="address-hidden">To be announced</div>`}
@@ -4325,7 +4325,7 @@ function buildAdminHTML(el) {
     <div class="section-label" style="margin-top:2rem;">Event Address</div>
     <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">Shown on the roster page. Leave blank until ready — guests see "To be announced" until you type an address.</p>
     <div class="form-group">
-      <label>Address <span style="opacity:.45;font-size:.8em">(goes live Friday at Noon)</span></label>
+      <label>Address <span style="opacity:.45;font-size:.8em">(goes live Friday at 5pm)</span></label>
       <input type="text" id="eventAddressInput" placeholder="e.g. 123 Main St, Apt 4B" value="${esc(CONFIG.eventAddress||'')}" style="width:100%;background:var(--black-card);border:1px solid var(--border-dim);color:var(--cream);font-family:'Cormorant',serif;font-size:1.05rem;padding:0.6rem 0.9rem;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--gold-dim)'" onblur="this.style.borderColor='var(--border-dim)'" />
     </div>
     <div style="display:flex;gap:1rem;margin-bottom:2.5rem;">
