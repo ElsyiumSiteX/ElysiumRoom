@@ -1155,6 +1155,7 @@
     recruiters:         [],
     eventDateISO:       "",
     waitlistEnabled:    false,
+    pledgeEnabled:      true,
     eventPhase:         'pre',
     hostName:           'Nico',
     confirmRound:       0,
@@ -2283,12 +2284,13 @@ function setVibeFilter(vibe) {
 
 // ══ INIT ═══════════════════════════════════════════════════════════
 async function loadConfig() {
-  const CONFIG_KEYS = ['capacity','waitlistEnabled','confirmRound','announcementImages','infoImages','recruiters','venueImages','lube_votes','eventDateISO','eventPhase','eventName','eventDate','eventLocation','adminPassword','guestPreviewPin','requireApproval','announcementText','hostName','broadcastMsg','broadcastId','sessionVersion','venueDescription','eventAddress'];
+  const CONFIG_KEYS = ['capacity','waitlistEnabled','pledgeEnabled','confirmRound','announcementImages','infoImages','recruiters','venueImages','lube_votes','eventDateISO','eventPhase','eventName','eventDate','eventLocation','adminPassword','guestPreviewPin','requireApproval','announcementText','hostName','broadcastMsg','broadcastId','sessionVersion','venueDescription','eventAddress'];
   const { data, error } = await sb.from('config').select('key, value').in('key', CONFIG_KEYS);
   if (!error && data) {
     data.forEach(row => {
       if (row.key === 'capacity')             CONFIG.capacity           = parseInt(row.value, 10) || 30;
       else if (row.key === 'waitlistEnabled')  CONFIG.waitlistEnabled  = row.value === 'true';
+      else if (row.key === 'pledgeEnabled')    CONFIG.pledgeEnabled    = row.value !== 'false';
       else if (row.key === 'confirmRound')     CONFIG.confirmRound     = parseInt(row.value, 10) || 0;
       else if (row.key === 'announcementImages') {
         try { CONFIG.announcementImages = JSON.parse(row.value) || []; } catch(e) { CONFIG.announcementImages = []; }
@@ -2875,7 +2877,7 @@ async function renderRoster(forceRefresh) {
         ${annImgs.length ? `<div class="announce-imgs">${annImgs.map(src=>`<img src="${esc(src)}" alt="" data-src="${esc(src)}" onclick="openLightbox(this.dataset.src)" />`).join('')}</div>` : ''}
       </div>
     </div>` : ''}
-    ${currentGuest && !isPreview ? `<div class="pledge-wrap" id="pledgeWrap">
+    ${currentGuest && !isPreview && CONFIG.pledgeEnabled ? `<div class="pledge-wrap" id="pledgeWrap">
       ${attendancePledges[currentGuest.id]
         ? '<div class="pledge-done">You\'re confirmed — see you there</div>'
         : '<button class="pledge-btn" onclick="pledgeAttendance()">I WILL BE THERE!</button>'}
@@ -4721,6 +4723,13 @@ function buildAdminHTML(el) {
           <span class="pill-slider"></span>
         </div>
       </label>
+      <label class="pill-toggle-wrap">
+        <span class="toggle-label">"I Will Be There" Button</span>
+        <div class="pill-toggle">
+          <input type="checkbox" id="sPledgeEnabled" ${CONFIG.pledgeEnabled?'checked':''} />
+          <span class="pill-slider"></span>
+        </div>
+      </label>
     </div>
     <div style="display:flex;gap:1rem;margin-bottom:2rem;margin-top:1.5rem;">
       <button class="btn btn-solid" onclick="saveSettings()">Save Settings</button>
@@ -5301,7 +5310,6 @@ async function submitPostEventFeedback() {
     <div class="pe-thankyou">
       <div class="pe-thankyou-icon">✦</div>
       <div class="confirm-heading" style="margin-bottom:.6rem;">Thank you.</div>
-      <div class="pe-thankyou-text">Your feedback means everything to us.</div>
       <button class="btn btn-ghost" style="margin-top:2rem;" onclick="dismissPostEventOverlay()">Close</button>
     </div>`;
 }
@@ -5410,6 +5418,7 @@ async function saveSettings() {
   const gp  = document.getElementById('sGuestPin').value.trim();
   const iso = document.getElementById('sDateISO').value;
   const wlEnabled    = document.getElementById('sWaitlistEnabled').checked;
+  const plEnabled    = document.getElementById('sPledgeEnabled').checked;
 
   if (gp && (gp.length !== 6 || !/^\d{6}$/.test(gp))) {
     alert('Guest PIN must be exactly 6 digits (numbers only).'); return;
@@ -5426,6 +5435,7 @@ async function saveSettings() {
   if (gp.length === 6)             CONFIG.guestPreviewPin  = gp;
   if (iso)                         CONFIG.eventDateISO     = iso;
   CONFIG.waitlistEnabled  = wlEnabled;
+  CONFIG.pledgeEnabled    = plEnabled;
 
   const updates = [
     { key: 'eventName',        value: CONFIG.eventName },
@@ -5435,6 +5445,7 @@ async function saveSettings() {
     { key: 'guestPreviewPin',  value: CONFIG.guestPreviewPin },
     { key: 'eventDateISO',     value: CONFIG.eventDateISO },
     { key: 'waitlistEnabled',  value: String(CONFIG.waitlistEnabled) },
+    { key: 'pledgeEnabled',    value: String(CONFIG.pledgeEnabled) },
     { key: 'eventPhase',       value: CONFIG.eventPhase },
     { key: 'hostName',         value: CONFIG.hostName },
   ];
