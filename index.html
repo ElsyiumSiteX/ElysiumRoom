@@ -1156,6 +1156,7 @@
     eventDateISO:       "",
     waitlistEnabled:    false,
     pledgeEnabled:      true,
+    proTipEnabled:      true,
     eventPhase:         'pre',
     hostName:           'Nico',
     confirmRound:       0,
@@ -1185,7 +1186,7 @@
     <div class="countdown-sep"><div class="countdown-sep-diamond"></div></div>
     <div class="countdown-unit"><div class="countdown-num" id="cdHours">00</div><div class="countdown-label">Hours</div></div>
   </div>
-  <div class="evening-tip">pro tip: avoid jacking off after 5pm day of</div>
+  <div class="evening-tip" id="proTipBanner">pro tip: avoid jacking off after 5pm day of</div>
   <div class="hero-frequency">Winter &middot; <span class="season-active">Spring</span> &middot; Summer &middot; Autumn</div>
 </div>
 
@@ -2284,13 +2285,14 @@ function setVibeFilter(vibe) {
 
 // ══ INIT ═══════════════════════════════════════════════════════════
 async function loadConfig() {
-  const CONFIG_KEYS = ['capacity','waitlistEnabled','pledgeEnabled','confirmRound','announcementImages','infoImages','recruiters','venueImages','lube_votes','eventDateISO','eventPhase','eventName','eventDate','eventLocation','adminPassword','guestPreviewPin','requireApproval','announcementText','hostName','broadcastMsg','broadcastId','sessionVersion','venueDescription','eventAddress'];
+  const CONFIG_KEYS = ['capacity','waitlistEnabled','pledgeEnabled','proTipEnabled','confirmRound','announcementImages','infoImages','recruiters','venueImages','lube_votes','eventDateISO','eventPhase','eventName','eventDate','eventLocation','adminPassword','guestPreviewPin','requireApproval','announcementText','hostName','broadcastMsg','broadcastId','sessionVersion','venueDescription','eventAddress'];
   const { data, error } = await sb.from('config').select('key, value').in('key', CONFIG_KEYS);
   if (!error && data) {
     data.forEach(row => {
       if (row.key === 'capacity')             CONFIG.capacity           = parseInt(row.value, 10) || 30;
       else if (row.key === 'waitlistEnabled')  CONFIG.waitlistEnabled  = row.value === 'true';
       else if (row.key === 'pledgeEnabled')    CONFIG.pledgeEnabled    = row.value !== 'false';
+      else if (row.key === 'proTipEnabled')   CONFIG.proTipEnabled   = row.value !== 'false';
       else if (row.key === 'confirmRound')     CONFIG.confirmRound     = parseInt(row.value, 10) || 0;
       else if (row.key === 'announcementImages') {
         try { CONFIG.announcementImages = JSON.parse(row.value) || []; } catch(e) { CONFIG.announcementImages = []; }
@@ -2313,6 +2315,8 @@ async function loadConfig() {
     });
   }
   document.getElementById('heroMeta').innerHTML = `${esc(CONFIG.eventDate)}&ensp;·&ensp;${esc(CONFIG.eventLocation)}`;
+  const _tip = document.getElementById('proTipBanner');
+  if (_tip) _tip.style.display = CONFIG.proTipEnabled ? '' : 'none';
   startCountdown();
 }
 
@@ -2888,6 +2892,10 @@ async function renderRoster(forceRefresh) {
         ? `<div class="address-value">${esc(CONFIG.eventAddress)}</div>`
         : `<div class="address-hidden">To be announced</div>`}
     </div>
+    ${CONFIG.eventPhase === 'closed' ? `
+    <div class="stats-row" style="grid-template-columns:1fr;">
+      <div class="stat"><div class="stat-num" id="statA">—</div><div class="stat-label">Confirmed</div></div>
+    </div>` : `
     <div class="stats-row${CONFIG.waitlistEnabled ? ' stats-row-3' : ''}">
       <div class="stat"><div class="stat-num" id="statA">—</div><div class="stat-label">Confirmed</div></div>
       <div class="stat">
@@ -2897,11 +2905,11 @@ async function renderRoster(forceRefresh) {
       </div>
       ${!CONFIG.waitlistEnabled ? `<div class="stat"><div class="stat-num purple" id="statR">—</div><div class="stat-label">Remaining</div></div>` : ''}
       <div class="stat"><div class="stat-num dim" id="statC">${CONFIG.capacity}</div><div class="stat-label">Capacity</div></div>
-    </div>
-    <div class="cap-wrap">
+    </div>`}
+    ${CONFIG.eventPhase !== 'closed' ? `<div class="cap-wrap">
       <div class="cap-header"><span class="cap-label">Capacity</span><span class="cap-count" id="capText"></span></div>
       <div class="cap-track"><div class="cap-fill" id="capFill" style="width:0%"></div></div>
-    </div>
+    </div>` : ''}
     <div id="lubePollWrap"></div>
     <div id="guestGrid"><div class="skeleton-grid">${Array.from({length:8}).map(()=>`<div class="skeleton-card"></div>`).join('')}</div></div>
   `;
@@ -2926,21 +2934,25 @@ async function renderRoster(forceRefresh) {
   const pct = CONFIG.capacity > 0 ? Math.min(100, Math.round(approved / CONFIG.capacity * 100)) : 0;
 
   document.getElementById('statA').textContent = approved;
-  if (CONFIG.waitlistEnabled) {
-    document.getElementById('statW').textContent = waitlisted || 0;
-  } else {
-    document.getElementById('statP').textContent = pending || 0;
-    document.getElementById('statR').textContent = rem;
+  if (CONFIG.eventPhase !== 'closed') {
+    if (CONFIG.waitlistEnabled) {
+      document.getElementById('statW').textContent = waitlisted || 0;
+    } else {
+      document.getElementById('statP').textContent = pending || 0;
+      document.getElementById('statR').textContent = rem;
+    }
   }
-  document.getElementById('capText').textContent = `${approved} / ${CONFIG.capacity}`;
   const fill = document.getElementById('capFill');
-  fill.style.width = pct + '%';
-  fill.className = 'cap-fill' + (pct >= 100 ? ' full' : pct >= 80 ? ' warn' : '');
+  if (fill) {
+    document.getElementById('capText').textContent = `${approved} / ${CONFIG.capacity}`;
+    fill.style.width = pct + '%';
+    fill.className = 'cap-fill' + (pct >= 100 ? ' full' : pct >= 80 ? ' warn' : '');
+  }
 
   // EVENT FULL banner
   const oldBanner = document.getElementById('eventFullBanner');
   if (oldBanner) oldBanner.remove();
-  if (pct >= 100) {
+  if (pct >= 100 && fill) {
     const banner = document.createElement('div');
     banner.id = 'eventFullBanner';
     banner.className = 'event-full-banner';
@@ -4730,6 +4742,13 @@ function buildAdminHTML(el) {
           <span class="pill-slider"></span>
         </div>
       </label>
+      <label class="pill-toggle-wrap">
+        <span class="toggle-label">Pro Tip Banner</span>
+        <div class="pill-toggle">
+          <input type="checkbox" id="sProTipEnabled" ${CONFIG.proTipEnabled?'checked':''} />
+          <span class="pill-slider"></span>
+        </div>
+      </label>
     </div>
     <div style="display:flex;gap:1rem;margin-bottom:2rem;margin-top:1.5rem;">
       <button class="btn btn-solid" onclick="saveSettings()">Save Settings</button>
@@ -5419,6 +5438,7 @@ async function saveSettings() {
   const iso = document.getElementById('sDateISO').value;
   const wlEnabled    = document.getElementById('sWaitlistEnabled').checked;
   const plEnabled    = document.getElementById('sPledgeEnabled').checked;
+  const ptEnabled    = document.getElementById('sProTipEnabled').checked;
 
   if (gp && (gp.length !== 6 || !/^\d{6}$/.test(gp))) {
     alert('Guest PIN must be exactly 6 digits (numbers only).'); return;
@@ -5436,6 +5456,7 @@ async function saveSettings() {
   if (iso)                         CONFIG.eventDateISO     = iso;
   CONFIG.waitlistEnabled  = wlEnabled;
   CONFIG.pledgeEnabled    = plEnabled;
+  CONFIG.proTipEnabled   = ptEnabled;
 
   const updates = [
     { key: 'eventName',        value: CONFIG.eventName },
@@ -5446,6 +5467,7 @@ async function saveSettings() {
     { key: 'eventDateISO',     value: CONFIG.eventDateISO },
     { key: 'waitlistEnabled',  value: String(CONFIG.waitlistEnabled) },
     { key: 'pledgeEnabled',    value: String(CONFIG.pledgeEnabled) },
+    { key: 'proTipEnabled',    value: String(CONFIG.proTipEnabled) },
     { key: 'eventPhase',       value: CONFIG.eventPhase },
     { key: 'hostName',         value: CONFIG.hostName },
   ];
@@ -5462,6 +5484,8 @@ async function saveSettings() {
   }
 
   document.getElementById('heroMeta').innerHTML = `${esc(CONFIG.eventDate)}&ensp;·&ensp;${esc(CONFIG.eventLocation)}`;
+  const _tip2 = document.getElementById('proTipBanner');
+  if (_tip2) _tip2.style.display = CONFIG.proTipEnabled ? '' : 'none';
   startCountdown();
 
   // Flash confirmation in admin
