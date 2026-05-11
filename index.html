@@ -152,7 +152,7 @@
     .stat-num.dim    { color: var(--muted); }
     .stat-label { font-family: 'Cinzel', serif; font-size: 0.72rem; font-weight: 400; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); margin-top: 0.5rem; }
 
-    .cap-wrap { background: var(--black-card); border: 1px solid var(--border); border-top: none; padding: 1.6rem 2rem; margin-bottom: 4rem; }
+    .cap-wrap { background: var(--black-card); border: 1px solid var(--border); border-top: none; padding: 0.9rem 0; margin-bottom: 4rem; }
     .cap-header { display: flex; justify-content: space-between; margin-bottom: 1rem; }
     .cap-label { font-family: 'Cinzel', serif; font-size: 0.72rem; font-weight: 400; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); }
     .cap-count { font-family: 'Cormorant', serif; font-size: 1rem; letter-spacing: 0.1em; color: var(--gold-dim); }
@@ -2892,22 +2892,11 @@ async function renderRoster(forceRefresh) {
         ? `<div class="address-value">${esc(CONFIG.eventAddress)}</div>`
         : `<div class="address-hidden">To be announced</div>`}
     </div>
-    ${CONFIG.eventPhase === 'closed' ? `
-    <div class="stats-row" style="grid-template-columns:1fr;">
-      <div class="stat"><div class="stat-num" id="statA">—</div><div class="stat-label">Confirmed</div></div>
-    </div>` : `
-    <div class="stats-row${CONFIG.waitlistEnabled ? ' stats-row-3' : ''}">
-      <div class="stat"><div class="stat-num" id="statA">—</div><div class="stat-label">Confirmed</div></div>
-      <div class="stat">
-        ${CONFIG.waitlistEnabled
-          ? `<div class="stat-num" style="color:var(--gold-dim);" id="statW">—</div><div class="stat-label">Waitlist</div>`
-          : `<div class="stat-num blue" id="statP">—</div><div class="stat-label">Pending</div>`}
-      </div>
-      ${!CONFIG.waitlistEnabled ? `<div class="stat"><div class="stat-num purple" id="statR">—</div><div class="stat-label">Remaining</div></div>` : ''}
-      <div class="stat"><div class="stat-num dim" id="statC">${CONFIG.capacity}</div><div class="stat-label">Capacity</div></div>
-    </div>`}
+    <div style="display:none">
+      <span id="statA"></span><span id="statC"></span>
+      ${CONFIG.waitlistEnabled ? `<span id="statW"></span>` : `<span id="statP"></span><span id="statR"></span>`}
+    </div>
     ${CONFIG.eventPhase !== 'closed' ? `<div class="cap-wrap">
-      <div class="cap-header"><span class="cap-label">Capacity</span><span class="cap-count" id="capText"></span></div>
       <div class="cap-track"><div class="cap-fill" id="capFill" style="width:0%"></div></div>
     </div>` : ''}
     <div id="lubePollWrap"></div>
@@ -2944,7 +2933,6 @@ async function renderRoster(forceRefresh) {
   }
   const fill = document.getElementById('capFill');
   if (fill) {
-    document.getElementById('capText').textContent = `${approved} / ${CONFIG.capacity}`;
     fill.style.width = pct + '%';
     fill.className = 'cap-fill' + (pct >= 100 ? ' full' : pct >= 80 ? ' warn' : '');
   }
