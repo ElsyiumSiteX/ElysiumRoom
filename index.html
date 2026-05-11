@@ -152,7 +152,7 @@
     .stat-num.dim    { color: var(--muted); }
     .stat-label { font-family: 'Cinzel', serif; font-size: 0.72rem; font-weight: 400; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); margin-top: 0.5rem; }
 
-    .cap-wrap { background: var(--black-card); border: 1px solid var(--border); border-top: none; padding: 0.9rem 0; margin-bottom: 4rem; }
+    .cap-wrap { background: transparent; padding: 0 0 3rem; margin-bottom: 1rem; }
     .cap-header { display: flex; justify-content: space-between; margin-bottom: 1rem; }
     .cap-label { font-family: 'Cinzel', serif; font-size: 0.72rem; font-weight: 400; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); }
     .cap-count { font-family: 'Cormorant', serif; font-size: 1rem; letter-spacing: 0.1em; color: var(--gold-dim); }
@@ -2239,7 +2239,7 @@ function vibeFilterBarHTML() {
     ${socialBtns.length ? `<span class="vibe-filter-sep"></span>` : ''}
     ${socialBtns.map(v => `<button class="vibe-filter-btn${activeVibeFilter===v.key?' vf-'+v.key:''}" onclick="setVibeFilter('${v.key}')">${v.sym}</button>`).join('')}
     ${activeVibeFilter ? `<button class="vibe-filter-clear" onclick="setVibeFilter(null)">✕ clear</button>` : ''}
-    <span class="vibe-filter-count">${filtered.length}${activeVibeFilter ? ` of ${allGuests.length}` : ' guests'}</span>
+    ${activeVibeFilter ? `<span class="vibe-filter-count">${filtered.length} of ${allGuests.length}</span>` : ''}
   </div>`;
 }
 
