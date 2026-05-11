@@ -4760,6 +4760,24 @@ function buildAdminHTML(el) {
     <div style="margin-bottom:3rem;">
       <button class="btn btn-ghost" onclick="massLogoutAllGuests()" style="color:rgba(224,80,80,0.8);border-color:rgba(224,80,80,0.3);">Force All Guests to Re-Login</button>
     </div>
+    <hr class="div" />
+    <div class="section-label" style="margin-top:2rem;">New Event Setup</div>
+    <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">Configure and launch a fresh event. Choose how to handle existing guests, then click Launch.</p>
+    <div class="settings-grid" style="margin-bottom:1.5rem;">
+      <div class="form-group"><label>Event Date <span style="opacity:.45;font-size:.8em">(display)</span></label><input type="text" id="neDate" value="June 12, 2026" /></div>
+      <div class="form-group"><label>Countdown Target</label><input type="datetime-local" id="neDateISO" value="2026-06-12T20:00" /></div>
+      <div class="form-group"><label>Location</label><input type="text" id="neLoc" value="${esc(CONFIG.eventLocation||'')}" /></div>
+      <div class="form-group"><label>Capacity</label><input type="number" id="neCap" value="${CONFIG.capacity}" min="1" /></div>
+    </div>
+    <div class="form-group" style="max-width:580px;margin-bottom:2rem;">
+      <label>Guest Rollover</label>
+      <select id="neGuestMode" style="width:100%;background:var(--dark);border:1px solid var(--border-dim);color:var(--cream);padding:0.7rem 1rem;font-family:inherit;border-radius:4px;font-size:0.95rem;">
+        <option value="june">Keep June-Interested Guests only (set to pending)</option>
+        <option value="clear">Clear All Guests (fresh start)</option>
+        <option value="keep">Keep All Approved Guests (reset to pending)</option>
+      </select>
+    </div>
+    <button class="btn btn-solid" onclick="launchNewEvent()" style="background:linear-gradient(135deg,#1e3a1e,#2d6b2d);border-color:#4caf80;color:#c8f0c8;margin-bottom:3rem;">Launch New Event</button>
   ` : '';
 
   const peResponseCount = Object.keys(postEventData.responses).length;
@@ -5364,6 +5382,91 @@ async function resetPostEventBlast() {
   );
   if (error) { alert('Could not reset — try again.'); return; }
   if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
+}
+
+async function launchNewEvent() {
+  const dt  = document.getElementById('neDate').value.trim();
+  const iso = document.getElementById('neDateISO').value;
+  const loc = document.getElementById('neLoc').value.trim();
+  const cap = parseInt(document.getElementById('neCap').value, 10);
+  const mode = document.getElementById('neGuestMode').value;
+
+  if (!dt || !iso) { alert('Please set both the event date and countdown target.'); return; }
+  if (isNaN(cap) || cap < 1) { alert('Capacity must be a positive number.'); return; }
+
+  const modeLabel = mode === 'june'  ? 'Keep June-interested guests (set to pending), remove others'
+                  : mode === 'clear' ? 'Delete ALL guests'
+                  :                   'Reset all approved guests back to pending';
+
+  if (!window.confirm(`Launch new event?\n\n• Date: ${dt}\n• Guests: ${modeLabel}\n• Phase reset to Pre-Event\n\nThis cannot be undone.`)) return;
+
+  const btn = document.querySelector('#adminContent .btn-solid[onclick*="launchNewEvent"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Launching…'; }
+
+  try {
+    const allGuests = [...(adminCachedData?.appr || []), ...(adminCachedData?.pend || [])];
+
+    if (mode === 'clear') {
+      if (allGuests.length) {
+        const ids = allGuests.map(g => g.id);
+        const { error } = await sb.from('guests').delete().in('id', ids);
+        if (error) throw error;
+      }
+    } else if (mode === 'june') {
+      const juneIds = new Set(
+        Object.entries(postEventData.responses)
+          .filter(([, r]) => r.juneInterest === true)
+          .map(([id]) => id)
+      );
+      const toDelete = allGuests.filter(g => !juneIds.has(g.id)).map(g => g.id);
+      if (toDelete.length) {
+        const { error } = await sb.from('guests').delete().in('id', toDelete);
+        if (error) throw error;
+      }
+      if (juneIds.size) {
+        const { error } = await sb.from('guests').update({ status: 'pending' }).in('id', [...juneIds]);
+        if (error) throw error;
+      }
+    } else {
+      if (allGuests.length) {
+        const ids = allGuests.map(g => g.id);
+        const { error } = await sb.from('guests').update({ status: 'pending' }).in('id', ids);
+        if (error) throw error;
+      }
+    }
+
+    CONFIG.eventDate    = dt;
+    CONFIG.eventDateISO = iso;
+    if (loc) CONFIG.eventLocation = loc;
+    CONFIG.capacity     = cap;
+    CONFIG.eventPhase   = 'pre';
+    CONFIG.eventAddress = '';
+    CONFIG.announcementText = '';
+
+    const configUpdates = [
+      { key: 'eventDate',        value: CONFIG.eventDate },
+      { key: 'eventDateISO',     value: CONFIG.eventDateISO },
+      { key: 'eventLocation',    value: CONFIG.eventLocation },
+      { key: 'capacity',         value: String(CONFIG.capacity) },
+      { key: 'eventPhase',       value: 'pre' },
+      { key: 'eventAddress',     value: '' },
+      { key: 'announcementText', value: '' },
+      { key: 'post_event_data',  value: JSON.stringify({ blastSent: false, blastMessage: '', responses: {} }) },
+    ];
+    const { error: cfgErr } = await sb.from('config').upsert(configUpdates, { onConflict: 'key' });
+    if (cfgErr) throw cfgErr;
+
+    postEventData = { blastSent: false, blastMessage: '', responses: {} };
+    adminCachedData = null;
+
+    document.getElementById('heroMeta').innerHTML = `${esc(CONFIG.eventDate)}&ensp;·&ensp;${esc(CONFIG.eventLocation)}`;
+    startCountdown();
+    alert('New event launched! The site is now in Pre-Event mode for ' + dt + '.');
+    renderAdmin();
+  } catch (err) {
+    alert('Error launching event: ' + (err.message || err));
+    if (btn) { btn.disabled = false; btn.textContent = 'Launch New Event'; }
+  }
 }
 
 function exportPostEventCSV() {
