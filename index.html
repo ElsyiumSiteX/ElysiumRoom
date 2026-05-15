@@ -3269,7 +3269,9 @@ async function submitPin(target) {
     localStorage.setItem('elysium_admin', '1');
   }
   showSessionBar(data.name, data.photos);
-  await loadSocialData();
+  if (target === 'roster') renderRoster();
+  else if (target === 'account') renderAccount();
+  try { await loadSocialData(); } catch(e) {}
   updateFireBadge();
   checkUnreadChat();
   showFireToast();
@@ -3278,9 +3280,7 @@ async function submitPin(target) {
   setTimeout(checkPostEventOverlay, 1200);
   setTimeout(checkAwardBanners, 2400);
   setTimeout(checkBroadcast, 600);
-
-  if (target === 'roster') renderRoster();
-  else if (target === 'account') renderAccount();
+  applyRosterIndicators();
 }
 
 // ══ RSVP FORM ══════════════════════════════════════════════════════
