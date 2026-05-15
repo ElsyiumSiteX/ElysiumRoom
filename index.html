@@ -2860,8 +2860,9 @@ async function renderRoster(forceRefresh) {
   }
 
   // Use cached data for quick tab switches (unless force-refreshed)
+  // Guard against the PIN gate being in el — only skip re-fetch when the roster is actually rendered
   const cacheAge = Date.now() - _rosterCacheTime;
-  if (!forceRefresh && allGuests.length > 0 && cacheAge < ROSTER_CACHE_TTL && el.innerHTML) {
+  if (!forceRefresh && allGuests.length > 0 && cacheAge < ROSTER_CACHE_TTL && document.getElementById('guestGrid')) {
     applyRosterIndicators();
     return;
   }
@@ -3242,7 +3243,15 @@ async function submitPin(target) {
   }
 
   // Check personal PIN in Supabase
-  const { data, error } = await sb.from('guests').select('*').eq('pin', pin).single();
+  let data, error;
+  try {
+    ({ data, error } = await sb.from('guests').select('*').eq('pin', pin).single());
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Enter'; }
+    document.querySelectorAll('.pin-digit').forEach(d => d.disabled = false);
+    msgEl.innerHTML = `<div class="msg msg-error">Connection error — please try again.</div>`;
+    return;
+  }
   if (error || !data) {
     pinFailCount++;
     if (pinFailCount >= 5) {
