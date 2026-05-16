@@ -4297,6 +4297,8 @@ function buildAdminHTML(el) {
               ${esc(g.name)}
               <span style="color:var(--gold-dim);font-size:.8rem"> · ${esc(g.role||'')}</span>
               <span style="color:var(--muted);font-size:.72rem"> · PIN: ${esc(g.pin)}</span>
+              ${g.phone ? `<div class="p-meta" style="margin-top:.2rem;">📱 ${esc(g.phone)} &ensp;<a href="sms:${esc(g.phone)}" class="admin-sms-link">Text ↗</a></div>` : ''}
+              ${g.referred_by ? `<div class="p-meta" style="margin-top:.1rem;">Referred by: <span style="color:var(--cream)">${esc(g.referred_by)}</span></div>` : ''}
               ${socialLine}
               ${priorLine}
             </div>
