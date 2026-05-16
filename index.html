@@ -3392,7 +3392,7 @@ async function renderRsvp() {
       <div class="age-wrap">
         <select id="rAge" class="age-select">
           <option value="">— select —</option>
-          ${Array.from({length:13},(_,i)=>`<option value="${i+18}">${i+18}</option>`).join('')}
+          ${Array.from({length:18},(_,i)=>`<option value="${i+18}">${i+18}</option>`).join('')}
         </select>
       </div>
     </div>
@@ -3770,7 +3770,7 @@ async function renderAccount() {
       <div class="age-wrap">
         <select id="eAge" class="age-select">
           <option value="">— select —</option>
-          ${Array.from({length:13},(_,i)=>`<option value="${i+18}" ${g.age==i+18?'selected':''}>${i+18}</option>`).join('')}
+          ${Array.from({length:18},(_,i)=>`<option value="${i+18}" ${g.age==i+18?'selected':''}>${i+18}</option>`).join('')}
         </select>
       </div>
     </div>
@@ -4359,13 +4359,14 @@ function buildAdminHTML(el) {
       // Demographics
       const ages = apprList.filter(g => g.age).map(g => g.age);
       const avgAge = ages.length ? Math.round(ages.reduce((s,a) => s+a, 0) / ages.length) : null;
-      const ageRanges = {'18-20':0,'21-23':0,'24-25':0,'26-27':0,'28-30':0};
+      const ageRanges = {'18-20':0,'21-23':0,'24-25':0,'26-27':0,'28-30':0,'31-35':0};
       for (const a of ages) {
         if (a <= 20) ageRanges['18-20']++;
         else if (a <= 23) ageRanges['21-23']++;
         else if (a <= 25) ageRanges['24-25']++;
         else if (a <= 27) ageRanges['26-27']++;
-        else ageRanges['28-30']++;
+        else if (a <= 30) ageRanges['28-30']++;
+        else ageRanges['31-35']++;
       }
       const maxAgeCount = Math.max(...Object.values(ageRanges), 1);
 
