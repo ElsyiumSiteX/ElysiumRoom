@@ -326,7 +326,15 @@
     .chat-avatar-ph { width: 26px; height: 26px; border-radius: 50%; background: var(--black-raise); border: 1px solid var(--border-dim); display: flex; align-items: center; justify-content: center; font-family: 'Cinzel', serif; font-size: 0.55rem; letter-spacing: 0.05em; color: var(--muted); flex-shrink: 0; margin-top: 0.1rem; }
     .chat-msg-content { flex: 1; min-width: 0; }
     .chat-empty { font-family: 'Cormorant', serif; font-size: 1.1rem; font-style: italic; color: rgba(180,168,148,0.5); text-align: center; padding: 4rem 2rem; }
-    .chat-input-wrap { border-top: 1px solid var(--border); padding-top: 1.5rem; display: flex; gap: 0.8rem; align-items: flex-end; }
+    .chat-input-wrap { border-top: 1px solid var(--border); padding-top: 1.5rem; display: flex; flex-direction: column; gap: 0; }
+    .chat-input-row { display: flex; gap: 0.8rem; align-items: flex-end; }
+    .chat-attach { font-size: 1.15rem; padding: 0.85rem 0.75rem; background: none; border: 1px solid var(--border); color: var(--muted2); cursor: pointer; transition: all .3s; flex-shrink: 0; line-height: 1; }
+    .chat-attach:hover { border-color: var(--gold-dim); color: var(--gold-light); }
+    .chat-img-preview-wrap { display: none; align-items: center; gap: 0.6rem; padding-bottom: 0.75rem; }
+    .chat-img-preview { height: 64px; width: 64px; object-fit: cover; border: 1px solid var(--border-dim); }
+    .chat-img-clear { background: none; border: none; color: var(--muted2); cursor: pointer; font-size: 1rem; padding: 0.2rem 0.4rem; transition: color .2s; }
+    .chat-img-clear:hover { color: #cc7070; }
+    .chat-msg-img { max-width: 280px; max-height: 280px; display: block; margin-top: 0.5rem; border: 1px solid var(--border-dim); cursor: pointer; }
     .chat-input { flex: 1; font-family: 'Cormorant', serif; font-size: 1.1rem; font-weight: 300; font-style: italic; letter-spacing: 0.04em; background: var(--black-card); border: 1px solid var(--border); padding: 1rem 1.2rem; color: var(--cream); outline: none; resize: none; transition: border-color .3s, box-shadow .3s; min-height: 52px; max-height: 140px; -webkit-appearance: none; }
     .chat-input:focus { border-color: var(--gold-dim); box-shadow: 0 0 0 1px rgba(200,168,75,0.12), 0 0 28px var(--gold-glow2); }
     .chat-send { font-family: 'Cinzel', serif; font-size: 0.78rem; font-weight: 400; letter-spacing: .28em; text-transform: uppercase; padding: 1rem 1.8rem; border: 1px solid var(--gold-dim); background: transparent; color: var(--gold-light); cursor: pointer; transition: all .3s; white-space: nowrap; flex-shrink: 0; }
@@ -2489,7 +2497,8 @@ function editProfile() {
 }
 
 // ══ CHAT ════════════════════════════════════════════════════════════
-let chatChannel   = null;
+let chatChannel      = null;
+let pendingChatImage = null;
 let configChannel = null;
 
 function subscribeConfigChanges() {
@@ -2548,10 +2557,18 @@ async function renderChat() {
     <div class="chat-wrap">
       <div class="chat-messages" id="chatMessages"><div class="chat-empty">Loading…</div></div>
       <div class="chat-input-wrap">
-        <textarea class="chat-input" id="chatInput" placeholder="Say something…" rows="1"
-          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"
-          oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
-        <button class="chat-send" onclick="sendMessage()">Send</button>
+        <div class="chat-img-preview-wrap" id="chatImgPreviewWrap">
+          <img class="chat-img-preview" id="chatImgPreview" src="" alt="">
+          <button class="chat-img-clear" onclick="clearChatImage()">✕</button>
+        </div>
+        <div class="chat-input-row">
+          <input type="file" id="chatImageInput" accept="image/*" style="display:none" onchange="stageChatImage(this.files[0]);this.value=''">
+          <button class="chat-attach" onclick="document.getElementById('chatImageInput').click()" title="Attach image">🖼</button>
+          <textarea class="chat-input" id="chatInput" placeholder="Say something…" rows="1"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"
+            oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+          <button class="chat-send" onclick="sendMessage()">Send</button>
+        </div>
       </div>
     </div>`;
 
@@ -2608,7 +2625,8 @@ function msgHtml(m, guestMap) {
           <span class="chat-msg-time">${time}</span>
           ${canDel ? `<button class="chat-msg-del" onclick="deleteMessage('${m.id}')">✕</button>` : ''}
         </div>
-        <div class="chat-msg-body">${esc(m.content).replace(/\n/g,'<br>')}</div>
+        ${m.content ? `<div class="chat-msg-body">${esc(m.content).replace(/\n/g,'<br>')}</div>` : ''}
+        ${m.image_url ? `<img class="chat-msg-img" src="${esc(m.image_url)}" alt="" loading="lazy" onclick="window.open(this.src,'_blank')">` : ''}
       </div>
     </div>
   </div>`;
@@ -2617,17 +2635,31 @@ function msgHtml(m, guestMap) {
 async function sendMessage() {
   const input = document.getElementById('chatInput');
   const content = input.value.trim();
-  if (!content || !currentGuest || isPreview) return;
+  if ((!content && !pendingChatImage) || !currentGuest || isPreview) return;
   // Re-verify approved status before sending
   const { data: gCheck } = await sb.from('guests').select('status').eq('id', currentGuest.id).single();
   if (!gCheck || gCheck.status !== 'approved') return;
   const btn = document.querySelector('.chat-send');
   btn.disabled = true; btn.textContent = 'Sending…';
+
+  let image_url = null;
+  if (pendingChatImage) {
+    image_url = await uploadChatImage(pendingChatImage);
+    if (!image_url) {
+      btn.disabled = false; btn.textContent = 'Send';
+      btn.insertAdjacentHTML('afterend', '<span class="chat-send-err" style="color:var(--rose);font-size:0.75rem;margin-left:0.5rem;">Upload failed — try again</span>');
+      setTimeout(() => document.querySelector('.chat-send-err')?.remove(), 3000);
+      return;
+    }
+    clearChatImage();
+  }
+
   input.value = ''; input.style.height = 'auto';
   const { error } = await sb.from('messages').insert({
     guest_id:   currentGuest.id,
     guest_name: currentGuest.name,
-    content,
+    content:    content || '',
+    image_url,
   });
   btn.disabled = false; btn.textContent = 'Send';
   if (error) { input.value = content; btn.insertAdjacentHTML('afterend', '<span class="chat-send-err" style="color:var(--rose);font-size:0.75rem;margin-left:0.5rem;">Failed — try again</span>'); setTimeout(() => document.querySelector('.chat-send-err')?.remove(), 3000); }
@@ -2636,6 +2668,52 @@ async function sendMessage() {
 async function deleteMessage(id) {
   const { error } = await sb.from('messages').delete().eq('id', id);
   if (error) { const t=document.createElement('div');t.className='msg msg-error';t.style.cssText='position:fixed;bottom:5rem;left:50%;transform:translateX(-50%);z-index:9999;padding:0.6rem 1.2rem;';t.textContent='Could not delete message.';document.body.appendChild(t);setTimeout(()=>t.remove(),3000); }
+}
+
+function stageChatImage(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  pendingChatImage = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wrap = document.getElementById('chatImgPreviewWrap');
+    const img  = document.getElementById('chatImgPreview');
+    if (wrap && img) { img.src = e.target.result; wrap.style.display = 'flex'; }
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearChatImage() {
+  pendingChatImage = null;
+  const wrap = document.getElementById('chatImgPreviewWrap');
+  const img  = document.getElementById('chatImgPreview');
+  if (wrap) wrap.style.display = 'none';
+  if (img)  img.src = '';
+}
+
+async function uploadChatImage(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const image = new Image();
+      image.onload = () => {
+        const max = 1200; let w = image.width, h = image.height;
+        if (w > max || h > max) { if (w > h) { h = Math.round(h * max / w); w = max; } else { w = Math.round(w * max / h); h = max; } }
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        c.getContext('2d').drawImage(image, 0, 0, w, h);
+        c.toBlob(async blob => {
+          const path = `${currentGuest.id}/${Date.now()}.jpg`;
+          const { error } = await sb.storage.from('chat-images').upload(path, blob, { contentType: 'image/jpeg' });
+          if (error) { resolve(null); return; }
+          const { data } = sb.storage.from('chat-images').getPublicUrl(path);
+          resolve(data.publicUrl);
+        }, 'image/jpeg', 0.75);
+      };
+      image.onerror = () => resolve(null);
+      image.src = e.target.result;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
 }
 
 // ══ INFO / FAQ ══════════════════════════════════════════════════════
