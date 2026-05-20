@@ -320,6 +320,7 @@
     .chat-msg-mine { background: rgba(200,168,75,0.03); padding: 1.2rem 1rem; border-bottom: 1px solid var(--border-dim); margin: 0 -1rem; }
     .chat-msg-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 0.4rem; }
     .chat-msg-name { font-family: 'Cinzel', serif; font-size: 0.7rem; font-weight: 400; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold); }
+    .chat-msg-name[style*="cursor:pointer"]:hover { opacity: 0.75; }
     .chat-msg-name.mine { color: var(--gold-bright); }
     .chat-msg-time { font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.16em; color: var(--muted2); }
     .chat-msg-del { font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.12em; background: none; border: none; color: var(--muted2); cursor: pointer; margin-left: auto; transition: color .2s; padding: 0.2rem 0.4rem; }
@@ -327,6 +328,7 @@
     .chat-msg-body { font-family: 'Cormorant', serif; font-size: 1.2rem; font-weight: 300; font-style: italic; color: var(--cream); line-height: 1.65; opacity: 0.96; }
     .chat-msg-row { display: flex; gap: 0.75rem; align-items: flex-start; }
     .chat-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex-shrink: 0; margin-top: 0.1rem; border: 1px solid var(--border-dim); }
+    .chat-avatar[style*="cursor:pointer"]:hover, .chat-avatar-ph[style*="cursor:pointer"]:hover { opacity: 0.75; }
     .chat-avatar-ph { width: 26px; height: 26px; border-radius: 50%; background: var(--black-raise); border: 1px solid var(--border-dim); display: flex; align-items: center; justify-content: center; font-family: 'Cinzel', serif; font-size: 0.55rem; letter-spacing: 0.05em; color: var(--muted); flex-shrink: 0; margin-top: 0.1rem; }
     .chat-msg-content { flex: 1; min-width: 0; }
     .chat-empty { font-family: 'Cormorant', serif; font-size: 1.1rem; font-style: italic; color: rgba(180,168,148,0.5); text-align: center; padding: 4rem 2rem; }
@@ -2251,7 +2253,7 @@ function vibeFilterBarHTML() {
     ${socialBtns.length ? `<span class="vibe-filter-sep"></span>` : ''}
     ${socialBtns.map(v => `<button class="vibe-filter-btn${activeVibeFilter===v.key?' vf-'+v.key:''}" onclick="setVibeFilter('${v.key}')">${v.sym}</button>`).join('')}
     ${activeVibeFilter ? `<button class="vibe-filter-clear" onclick="setVibeFilter(null)">✕ clear</button>` : ''}
-    ${activeVibeFilter ? `<span class="vibe-filter-count">${filtered.length} of ${allGuests.length}</span>` : ''}
+    ${activeVibeFilter && adminIn ? `<span class="vibe-filter-count">${filtered.length} of ${allGuests.length}</span>` : ''}
   </div>`;
 }
 
@@ -2618,15 +2620,17 @@ function msgHtml(m, guestMap) {
   const canDel = mine || adminIn;
   const guest = guestMap ? guestMap.get(m.guest_id) : allGuests.find(g => g.id === m.guest_id);
   const photo = guest?.photos?.[0] || null;
+  const canViewProfile = !!guest;
+  const profileClick = canViewProfile ? `onclick="openModal('${m.guest_id}')" style="cursor:pointer"` : '';
   const avatar = photo
-    ? `<img class="chat-avatar" src="${esc(photo)}" alt="" loading="lazy" />`
-    : `<div class="chat-avatar-ph">${esc((m.guest_name||'?').charAt(0).toUpperCase())}</div>`;
+    ? `<img class="chat-avatar" src="${esc(photo)}" alt="" loading="lazy" ${profileClick}/>`
+    : `<div class="chat-avatar-ph" ${profileClick}>${esc((m.guest_name||'?').charAt(0).toUpperCase())}</div>`;
   return `<div class="chat-msg${mine?' chat-msg-mine':''}" id="msg-${m.id}">
     <div class="chat-msg-row">
       ${avatar}
       <div class="chat-msg-content">
         <div class="chat-msg-header">
-          <span class="chat-msg-name${mine?' mine':''}">${esc(m.guest_name)}</span>
+          <span class="chat-msg-name${mine?' mine':''}" ${profileClick}>${esc(m.guest_name)}</span>
           <span class="chat-msg-time">${time}</span>
           ${canDel ? `<button class="chat-msg-del" onclick="deleteMessage('${m.id}')">✕</button>` : ''}
         </div>
