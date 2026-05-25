@@ -4074,6 +4074,15 @@ async function renderAdmin() {
 }
 
 function buildAdminHTML(el) {
+  // Capture any in-progress settings form values before innerHTML wipes them.
+  // Also works around Safari's datetime-local HTML-attribute rendering bug.
+  const _settingsIds = ['sName','sHostName','sCap','sDate','sDateISO','sLoc','sGuestPin'];
+  const _savedSettings = {};
+  for (const fid of _settingsIds) {
+    const fe = document.getElementById(fid);
+    if (fe) _savedSettings[fid] = fe.value;
+  }
+
   const { pend: pendList, appr: apprList, wl: wlList } = adminCachedData;
   // Set of IDs that are actually approved — used to keep all mutual counts
   // consistent with what guests themselves see in their profile connections.
@@ -4986,6 +4995,20 @@ function buildAdminHTML(el) {
     </div>
     ${tabGuests}${tabDoor}${tabAnnounce}${tabPostEvent}${tabSettings}
   `;
+
+  // Restore captured settings form values (preserves unsaved edits across rebuilds
+  // and also explicitly sets datetime-local value via JS, fixing the Safari/mobile
+  // bug where the HTML value attribute is ignored for datetime-local inputs).
+  const _sDateISOEl = document.getElementById('sDateISO');
+  if (_sDateISOEl) {
+    _sDateISOEl.value = 'sDateISO' in _savedSettings
+      ? _savedSettings['sDateISO']
+      : (CONFIG.eventDateISO || '');
+  }
+  for (const fid of ['sName','sHostName','sCap','sDate','sLoc','sGuestPin']) {
+    const fe = document.getElementById(fid);
+    if (fe && fid in _savedSettings) fe.value = _savedSettings[fid];
+  }
 }
 
 async function adminLogin() {
@@ -5644,7 +5667,7 @@ async function saveSettings() {
   const dt  = document.getElementById('sDate').value.trim();
   const lc  = document.getElementById('sLoc').value.trim();
   const gp  = document.getElementById('sGuestPin').value.trim();
-  const iso = document.getElementById('sDateISO').value;
+  const iso = document.getElementById('sDateISO').value.trim();
   const wlEnabled    = document.getElementById('sWaitlistEnabled').checked;
   const plEnabled    = document.getElementById('sPledgeEnabled').checked;
   const ptEnabled    = document.getElementById('sProTipEnabled').checked;
