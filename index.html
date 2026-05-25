@@ -2390,7 +2390,9 @@ async function init() {
           localStorage.removeItem(SESSION_KEY);
         }
       }
-    } catch {}
+    } catch {
+      localStorage.removeItem(SESSION_KEY);
+    }
   }
   // Session version check — force re-login if admin bumped the version
   if ((currentGuest || isPreview) && CONFIG.sessionVersion) {
@@ -2398,6 +2400,11 @@ async function init() {
     if (localVer !== CONFIG.sessionVersion) {
       logout();
     }
+  }
+  // Clear stale admin flag if no valid session was restored
+  if (!currentGuest && !isPreview) {
+    adminIn = false;
+    localStorage.removeItem('elysium_admin');
   }
 
   subscribeConfigChanges();
@@ -2895,6 +2902,7 @@ function toggleInfoAcc(i) {
 
 // ══ ROSTER ═════════════════════════════════════════════════════════
 let _rosterCacheTime = 0;
+let _rosterRenderSeq = 0;
 const ROSTER_CACHE_TTL = 15000; // 15s — avoids re-fetching on quick tab switches
 
 // ══ ATTENDANCE PLEDGE ("I WILL BE THERE!") ════════════════════════
@@ -2938,6 +2946,7 @@ async function saveEventAddress() {
 
 async function renderRoster(forceRefresh) {
   const el = document.getElementById('rosterContent');
+  const seq = ++_rosterRenderSeq;
 
   if (!currentGuest && !isPreview && !adminIn) {
     el.innerHTML = renderPinGate('roster');
@@ -2995,6 +3004,7 @@ async function renderRoster(forceRefresh) {
     sb.from('guests').select('*', {count:'exact',head:true}).eq('status','pending'),
     sb.from('guests').select('*', {count:'exact',head:true}).eq('status','waitlisted'),
   ]);
+  if (seq !== _rosterRenderSeq) return;
   const { data: guests, error } = guestRes;
   if (error) { document.getElementById('guestGrid').innerHTML = `<div class="empty-state">Could not load roster.</div>`; return; }
 
@@ -3256,13 +3266,22 @@ function renderPinGate(target) {
       <h2 class="form-title">Enter PIN</h2>
       <p class="form-sub">Use your personal RSVP PIN or the guest preview code.</p>
       <div id="pinMsg"></div>
-      <div class="pin-input-wrap" id="pinInputs">
-        ${[0,1,2,3,4,5].map(i => `<input class="pin-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]" id="pd${i}" oninput="pinNext(${i},'${target}')" onkeydown="pinBack(event,${i},'${target}')" />`).join('')}
+      <div class="pin-input-wrap" id="pinInputs" onpaste="handlePinPaste(event,'${target}')">
+        ${[0,1,2,3,4,5].map(i => `<input class="pin-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]" id="pd${i}" ${i===0?'autofocus':''} autocomplete="${i===0?'one-time-code':'off'}" oninput="pinNext(${i},'${target}')" onkeydown="pinBack(event,${i},'${target}')" />`).join('')}
       </div>
       <div class="btn-row" style="margin-top:1.5rem;">
         <button class="btn btn-solid" onclick="submitPin('${target}')">Enter</button>
       </div>
     </div>`;
+}
+
+function handlePinPaste(e, target) {
+  const text = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+  if (!text) return;
+  e.preventDefault();
+  text.split('').forEach((d, i) => { const f = document.getElementById('pd' + i); if (f) f.value = d; });
+  document.getElementById('pd' + Math.min(text.length - 1, 5))?.focus();
+  if (text.length >= 6) submitPin(target);
 }
 
 function pinNext(i, target='roster') {
@@ -3300,9 +3319,10 @@ function _startPinLockCountdown(msgEl) {
 }
 
 async function submitPin(target) {
+  const btn = document.querySelector('#pinInputs + .btn-row .btn-solid') || document.querySelector('.btn-solid[onclick*="submitPin"]');
+  if (btn?.disabled) return;
   const pin = getEnteredPin();
   const msgEl = document.getElementById('pinMsg');
-  const btn = document.querySelector('#pinInputs + .btn-row .btn-solid') || document.querySelector('.btn-solid[onclick*="submitPin"]');
 
   // Lockout check
   if (pinLockUntil > Date.now()) {
