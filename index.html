@@ -2858,6 +2858,10 @@ function renderInfo() {
       html: `<div class="info-acc-pad info-body"><p>If you RSVP, please attend. Cancel early if plans change.</p><p>No-shows may affect future invites.</p></div>`
     },
     {
+      title: 'Why do you do this?',
+      html: `<div class="info-acc-pad info-body"><p>An event like this was always a fantasy of mine in college and so I decided to make it a reality.</p><p>I continue doing it about 3 times a year when I have the energy and desire because people keep asking me to continue hosting.</p><p style="color:var(--text-dim)">No guarantee I'll continue doing it in the future — but 9/10 guys that attend love their experience and return to try it again.</p><p>I'm a full and whole person — sex is honestly a small part of my life and I don't want to be known as "the orgy guy" — but I am happy to provide the organization and space for this unique and exceptional experience.</p></div>`
+    },
+    {
       title: 'Contributions',
       html: `<div class="info-acc-pad info-body"><p>Event is free. Tips help cover hosting costs.</p><p style="color:var(--gold-dim)">Suggested: $10–20</p></div>`
     },
@@ -5188,7 +5192,7 @@ let annSlots     = [null, null, null, null, null, null]; // pending uploads; nul
 let infoImgSlots  = {}; // { sectionIndex: base64 | '' (cleared) | null (unchanged) }
 let rsvpSubmitting = false;
 const SESSION_KEY = 'elysium_session';
-const INFO_SECTION_TITLES = ['Time & Entry','The Vibe','Core Rules','Group Play','Pacing','Hygiene','What to Wear/Bring','Sexual Health','Guests','RSVP','Contributions'];
+const INFO_SECTION_TITLES = ['Time & Entry','The Vibe','Core Rules','Group Play','Pacing','Hygiene','What to Wear/Bring','Sexual Health','Guests','RSVP','Why do you do this?','Contributions'];
 
 function triggerAnnSlot(i) { document.getElementById('annFile'+i).click(); }
 
