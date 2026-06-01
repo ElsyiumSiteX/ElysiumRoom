@@ -398,8 +398,7 @@
     .info-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.9rem 0 0.2rem; }
     .info-chip { font-family: 'Cinzel', serif; font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--cream); border: 1px solid var(--border-dim); padding: 0.35rem 0.75rem; opacity: 0.85; }
 
-    .breeding-note { display:inline-block; font-family:'Cinzel',serif; font-size:0.64rem; letter-spacing:0.28em; text-transform:uppercase; background:linear-gradient(90deg,#ff6eb4,#ff3da0,#ff82c3,#ff3da0,#ff6eb4); background-size:200% auto; -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; animation:breedingShimmer 3s linear infinite; margin-top:1.1rem; }
-    @keyframes breedingShimmer { 0%{background-position:0% center} 100%{background-position:200% center} }
+
 
     /* ── INFO RULE CARDS ── */
     .info-rules { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.8rem; }
@@ -2760,10 +2759,6 @@ function renderInfo() {
         </div>`
     },
     {
-      title: 'The Vibe',
-      html: `<div class="info-acc-pad info-body"><p>Relaxed. Conversational. Low-volume.</p><p>Think spa energy, not party energy.</p></div>`
-    },
-    {
       title: 'Core Rules',
       html: `
         <div class="info-acc-pad">
@@ -2777,11 +2772,12 @@ function renderInfo() {
         </div>`
     },
     {
-      title: 'Group Play / Vibe',
+      title: 'The Vibe',
       html: `
         <div class="info-acc-pad">
           <div class="info-body" style="margin-bottom:.9rem">
-            <p>This is not a cum dump or gangbang. Nothing hardcore happens here. It's not a free for all.</p>
+            <p>Relaxed. Conversational. Low-volume. Think spa energy, not party energy.</p>
+            <p style="margin-top:.7rem">This is not a cum dump or gangbang. Nothing hardcore happens here. It's not a free for all.</p>
             <p style="margin-top:.7rem">You find and pair with 1–2 <span style="font-style:italic;opacity:.7">(haha maybe more)</span> at a time that you have clear mutual interest in. Best thing you can do is let yourself really buy in and learn to read / deliver a soft rejection and bid for attention.</p>
           </div>
           <div class="info-chips">
@@ -2790,7 +2786,6 @@ function renderInfo() {
             <span class="info-chip">Move around</span>
             <span class="info-chip">Step back</span>
           </div>
-          <div style="text-align:center;margin-top:1.2rem;"><span class="breeding-note">breeding encouraged</span></div>
           <blockquote style="margin:1.6rem 0 .4rem;padding:1.2rem 1.4rem;border-left:3px solid var(--gold-dim);background:none;">
             <p style="font-family:'Cormorant Garamond','Playfair Display',Georgia,serif;font-style:italic;font-size:1.08rem;line-height:1.55;color:var(--text-soft,#e0d6c8);">"In cruising, the look is not merely an invitation — it is a whole conversation compressed into a moment, a question and its answer delivered simultaneously."</p>
             <footer style="margin-top:.8rem;font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-dim);opacity:.75;">— William Leap, <span style="font-style:italic;letter-spacing:.08em;text-transform:none;">Public Sex / Gay Space</span> (1999)</footer>
