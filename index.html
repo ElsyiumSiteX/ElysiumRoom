@@ -4713,13 +4713,13 @@ function buildAdminHTML(el) {
     <div style="display:flex;flex-direction:column;gap:1.2rem;margin-bottom:3rem;">
       ${INFO_SECTION_TITLES.map((title, i) => {
         const src = (CONFIG.infoImages||{})[i] || null;
-        const src2 = i === 5 ? ((CONFIG.infoImages||{})['5b'] || null) : null;
+        const src2 = i === 4 ? ((CONFIG.infoImages||{})['4b'] || null) : null;
         let secondSlot = '';
-        if (i === 5) {
+        if (i === 4) {
           const s2inner = src2
-            ? '<img class="ann-grid-preview" src="' + esc(src2) + '" alt="" onclick="openLightbox(this.src)" style="object-fit:cover;width:100%;height:100%;" /><button class="slot-remove" onclick="clearInfoSlot(\'5b\')">✕</button>'
-            : '<div class="ann-grid-slot-inner" onclick="triggerInfoSlot(\'5b\')"><div class="slot-icon" style="font-size:1rem">✦</div></div>';
-          secondSlot = '<div class="ann-grid-slot" id="infoImgSlot5b" style="width:80px;height:56px;flex-shrink:0;">' + s2inner + '<input type="file" id="infoFile5b" accept="image/*" style="display:none" onchange="loadInfoSlot(\'5b\',event)" /></div>';
+            ? '<img class="ann-grid-preview" src="' + esc(src2) + '" alt="" onclick="openLightbox(this.src)" style="object-fit:cover;width:100%;height:100%;" /><button class="slot-remove" onclick="clearInfoSlot(\'4b\')">✕</button>'
+            : '<div class="ann-grid-slot-inner" onclick="triggerInfoSlot(\'4b\')"><div class="slot-icon" style="font-size:1rem">✦</div></div>';
+          secondSlot = '<div class="ann-grid-slot" id="infoImgSlot4b" style="width:80px;height:56px;flex-shrink:0;">' + s2inner + '<input type="file" id="infoFile4b" accept="image/*" style="display:none" onchange="loadInfoSlot(\'4b\',event)" /></div>';
         }
         return `<div style="display:flex;align-items:center;gap:1rem;">
           <div style="font-family:'Cinzel',serif;font-size:0.68rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);width:7rem;flex-shrink:0;">${title}</div>
@@ -5187,7 +5187,7 @@ let annSlots     = [null, null, null, null, null, null]; // pending uploads; nul
 let infoImgSlots  = {}; // { sectionIndex: base64 | '' (cleared) | null (unchanged) }
 let rsvpSubmitting = false;
 const SESSION_KEY = 'elysium_session';
-const INFO_SECTION_TITLES = ['Time & Entry','The Vibe','Core Rules','Group Play','Pacing','Hygiene','What to Wear/Bring','Sexual Health','Guests','RSVP','Why do you do this?','Contributions'];
+const INFO_SECTION_TITLES = ['Time & Entry','Core Rules','The Vibe','Pacing','Hygiene','What to Wear/Bring','Sexual Health','Guests','RSVP','Why do you do this?','Contributions'];
 
 function triggerAnnSlot(i) { document.getElementById('annFile'+i).click(); }
 
