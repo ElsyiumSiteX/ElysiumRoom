@@ -1460,7 +1460,10 @@ let adminRevertOpen = new Set();
 let adminExpandOpen = new Set();
 let adminSearchQ    = '';
 let adminSortBy     = 'date';
-let adminFilterFlag = false; // toggle: show only flagged guests
+let adminFilterFlag        = false; // toggle: show only flagged guests
+let adminFilterUnconfirmed = false; // toggle: show only guests who haven't confirmed RSVP
+let adminFilterRecruiter   = false; // toggle: show only star recruiters
+let adminFilterRole        = '';    // role string to filter by, or '' for all
 let postEventData   = { blastSent: false, blastMessage: '', responses: {} };
 // responses shape: { [guestId]: { review: string, juneInterest: bool, phone: string, submittedAt: ISO } }
 let currentModalGuestId = null;
@@ -2887,7 +2890,7 @@ function renderInfo() {
     },
     {
       title: 'Contributions',
-      html: `<div class="info-acc-pad info-body"><p>Event is free. Tips help cover hosting costs.</p><p style="color:var(--gold-dim)">Suggested: $10–20</p><p>This is a lot of work — donating is <span style="color:#ff69b4;font-weight:600;">highly encouraged</span>.</p></div>`
+      html: `<div class="info-acc-pad info-body"><p>Event is free. Tips help cover hosting costs.</p><p style="color:var(--gold-dim)">Suggested: $10–20</p><p>This is a lot of work — donating is <span style="color:#ff69b4;font-weight:600;">highly encouraged</span>.</p><p style="margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--border-dim);color:var(--text-dim);font-size:0.95rem;">I also welcome 1–5 guests who'd like to donate 20–30 minutes of their time right before the event starts to help complete a few brief set-up tasks. HMU if you're interested! This is always a huge help — a few extra hands let us add some special touches to the venue for the night.</p></div>`
     },
   ];
 
@@ -4236,6 +4239,8 @@ function buildAdminHTML(el) {
     const filteredPend = searchQ ? pendList.filter(g=>(g.name||'').toLowerCase().includes(searchQ)) : pendList;
     let filteredAppr = searchQ ? apprList.filter(g=>(g.name||'').toLowerCase().includes(searchQ)) : [...apprList];
     if (adminFilterFlag) filteredAppr = filteredAppr.filter(g => !!adminData.flagged[g.id]);
+    if (adminFilterRecruiter) filteredAppr = filteredAppr.filter(g => (CONFIG.recruiters||[]).includes(g.id));
+    if (adminFilterRole) filteredAppr = filteredAppr.filter(g => (g.role||'').toLowerCase() === adminFilterRole.toLowerCase());
     const _confirmIds = new Set(
       apprList.filter(g => (confirmResponses[g.id]||0) >= CONFIG.confirmRound && CONFIG.confirmRound > 0).map(g => g.id)
     );
@@ -4244,6 +4249,7 @@ function buildAdminHTML(el) {
     const _blastLabel = CONFIG.confirmRound > 0
       ? `Round ${CONFIG.confirmRound} · ${_cCount} of ${apprList.length} confirmed`
       : 'Not yet sent';
+    if (adminFilterUnconfirmed && CONFIG.confirmRound > 0) filteredAppr = filteredAppr.filter(g => !_confirmIds.has(g.id));
     if (adminSortBy === 'name') filteredAppr.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
     else if (adminSortBy === 'fires') filteredAppr.sort((a,b)=>{
       const fa = _fireReceivedCount[a.id] || 0;
@@ -4287,6 +4293,9 @@ function buildAdminHTML(el) {
         <option value="arrived" ${adminSortBy==='arrived'?'selected':''}>Arrived first</option>
       </select>
       <button class="admin-chip${adminFilterFlag?' active':''}" onclick="toggleAdminFlagFilter()" title="Show only flagged guests">⚑ Flagged${adminFilterFlag && Object.keys(adminData.flagged).filter(id=>adminData.flagged[id]).length ? ` (${Object.keys(adminData.flagged).filter(id=>adminData.flagged[id]).length})` : ''}</button>
+      ${CONFIG.confirmRound > 0 ? `<button class="admin-chip${adminFilterUnconfirmed?' active':''}" onclick="toggleAdminUnconfirmedFilter()" title="Show only guests who haven't confirmed their RSVP">? Not RSVP'd${adminFilterUnconfirmed ? ` (${apprList.filter(g=>!_confirmIds.has(g.id)).length})` : ` · ${_pCount}`}</button>` : ''}
+      ${(CONFIG.recruiters||[]).length ? `<button class="admin-chip${adminFilterRecruiter?' active':''}" onclick="toggleAdminRecruiterFilter()" title="Show only star recruiters">★ Recruiters${adminFilterRecruiter ? ` (${(CONFIG.recruiters||[]).filter(id=>apprList.some(g=>g.id===id)).length})` : ''}</button>` : ''}
+      ${(() => { const _roles = [...new Set(apprList.map(g=>g.role).filter(Boolean))].sort(); return _roles.length ? `<select class="admin-sort-select" onchange="setAdminRoleFilter(this.value)" title="Filter by position/role"><option value="" ${adminFilterRole===''?'selected':''}>All Positions</option>${_roles.map(r=>`<option value="${esc(r)}" ${adminFilterRole===r?'selected':''}>${esc(r)}</option>`).join('')}</select>` : ''; })()}
       <button class="admin-export-btn" onclick="exportGuestCSV()">↓ CSV</button>
       <button class="admin-export-btn" onclick="purgeGhostFireData()" title="Remove fire/save entries for guests no longer in the database" style="color:rgba(224,80,80,0.7);border-color:rgba(224,80,80,0.25);">✕ Ghost Data</button>
     </div>
@@ -4400,7 +4409,7 @@ function buildAdminHTML(el) {
     <hr class="div" />
 
     <div class="admin-section-header admin-collapse-hdr" onclick="toggleAdminSection('confirmed')">
-      <div class="section-label" style="margin:0;">Confirmed — ${filteredAppr.length}${(searchQ||adminFilterFlag)&&filteredAppr.length!==apprList.length?` <span style="font-size:.8em;color:var(--muted)">of ${apprList.length}</span>`:''}</div>
+      <div class="section-label" style="margin:0;">Confirmed — ${filteredAppr.length}${(searchQ||adminFilterFlag||adminFilterUnconfirmed||adminFilterRecruiter||adminFilterRole)&&filteredAppr.length!==apprList.length?` <span style="font-size:.8em;color:var(--muted)">of ${apprList.length}</span>`:''}</div>
       <span class="admin-collapse-chevron${adminSections.confirmed?' open':''}">▾</span>
     </div>
     ${adminSections.confirmed ? `
@@ -5689,6 +5698,21 @@ function exportJuneInterestedCSV() {
 
 function toggleAdminFlagFilter() {
   adminFilterFlag = !adminFilterFlag;
+  if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
+}
+
+function toggleAdminUnconfirmedFilter() {
+  adminFilterUnconfirmed = !adminFilterUnconfirmed;
+  if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
+}
+
+function toggleAdminRecruiterFilter() {
+  adminFilterRecruiter = !adminFilterRecruiter;
+  if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
+}
+
+function setAdminRoleFilter(val) {
+  adminFilterRole = val || '';
   if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
 }
 
