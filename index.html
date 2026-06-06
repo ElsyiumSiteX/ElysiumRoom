@@ -2107,18 +2107,10 @@ async function renderReceivedPushNotes(container) {
 }
 
 // ══ DOOR CHECK-IN ══════════════════════════════════════════════════
-async function loadCheckins() {
-  const { data } = await sb.from('config').select('value').eq('key','door_checkins').single();
-  if (data?.value) { try { doorCheckins = JSON.parse(data.value); } catch(e) { doorCheckins = {}; } }
-}
-
-async function saveCheckins() {
-  await sb.from('config').upsert({ key:'door_checkins', value:JSON.stringify(doorCheckins) }, { onConflict:'key' });
-}
-
 async function toggleCheckin(id) {
-  if (doorCheckins[id]) { delete doorCheckins[id]; } else { doorCheckins[id] = new Date().toISOString(); }
-  await saveCheckins();
+  const ts = doorCheckins[id] ? null : new Date().toISOString();
+  if (ts) { doorCheckins[id] = ts; } else { delete doorCheckins[id]; }
+  await sb.from('guests').update({ checked_in_at: ts }).eq('id', id);
   const row = document.querySelector(`.door-guest-row[data-id="${id}"]`);
   const btn = document.querySelector(`.door-checkin-btn[data-id="${id}"]`);
   if (row && btn) {
@@ -2202,7 +2194,7 @@ function doorToggleArrived() {
 async function resetCheckins() {
   if (!window.confirm('Reset all check-ins for this event?')) return;
   doorCheckins = {};
-  await saveCheckins();
+  await sb.from('guests').update({ checked_in_at: null }).eq('status', 'approved');
   if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
 }
 
@@ -4116,6 +4108,12 @@ async function renderAdmin() {
     return;
   }
   adminCachedData = { pend: pendRes.data||[], appr: apprRes.data||[], wl: wlRes.data||[] };
+
+  // Rebuild doorCheckins from the checked_in_at column on each guest row.
+  doorCheckins = {};
+  for (const g of adminCachedData.appr) {
+    if (g.checked_in_at) doorCheckins[g.id] = g.checked_in_at;
+  }
 
   await Promise.all([loadAdminData(), loadSocialData()]);
   buildAdminHTML(el);
