@@ -2758,6 +2758,10 @@ async function uploadChatImage(file) {
 
 // ══ INFO / FAQ ══════════════════════════════════════════════════════
 function renderInfo() {
+  if (!currentGuest && !isPreview && !adminIn) {
+    document.getElementById('infoContent').innerHTML = renderPinGate('info');
+    return;
+  }
   const sections = [
     {
       title: 'Time &amp; Entry',
@@ -3388,7 +3392,7 @@ async function submitPin(target) {
     localStorage.setItem(SESSION_KEY, JSON.stringify({pin}));
     if (CONFIG.sessionVersion) localStorage.setItem('elysium_session_ver', CONFIG.sessionVersion);
     showSessionBar('Preview Guest');
-    renderRoster(); return;
+    if (target === 'info') renderInfo(); else renderRoster(); return;
   }
 
   // Check personal PIN in Supabase
@@ -3428,6 +3432,7 @@ async function submitPin(target) {
   }
   showSessionBar(data.name, data.photos);
   if (target === 'roster') renderRoster();
+  else if (target === 'info') renderInfo();
   else if (target === 'account') renderAccount();
   try { await loadSocialData(); } catch(e) {}
   updateFireBadge();
