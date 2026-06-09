@@ -2561,6 +2561,7 @@ function subscribeConfigChanges() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'config', filter: 'key=eq.sessionVersion' }, payload => {
       const newVer = payload.new?.value || '';
       if (newVer && newVer !== localStorage.getItem('elysium_session_ver')) {
+        CONFIG.sessionVersion = newVer;
         if (currentGuest || isPreview) logout();
       }
     })
