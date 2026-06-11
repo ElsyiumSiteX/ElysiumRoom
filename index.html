@@ -1054,6 +1054,16 @@
     .pe-thankyou-icon { font-size: 2rem; margin-bottom: 1rem; }
     .pe-thankyou-text { font-family: 'Cormorant', serif; font-size: 1.3rem; font-style: italic; color: var(--cream); }
     @media (max-width: 480px) { .pe-overlay-box { padding: 2.2rem 1.6rem 2rem; } }
+    .pe-ratings { border-top: 1px solid var(--border-dim); padding-top: 1.2rem; }
+    .pe-scale-item { margin-bottom: 1.4rem; }
+    .pe-scale-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.55rem; }
+    .pe-scale-label { font-family: 'Cinzel', serif; font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+    .pe-scale-val { font-family: 'Cormorant', serif; font-size: 1.2rem; color: var(--gold-light); min-width: 1.2rem; text-align: right; }
+    .pe-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 2px; background: var(--border-dim); outline: none; cursor: pointer; margin-bottom: 0.3rem; }
+    .pe-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); border: 2px solid var(--bg); box-shadow: 0 0 10px var(--gold-glow); cursor: pointer; }
+    .pe-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--gold); border: 2px solid var(--bg); box-shadow: 0 0 10px var(--gold-glow); cursor: pointer; }
+    .pe-scale-marks { display: flex; justify-content: space-between; }
+    .pe-scale-marks span { font-family: 'Cinzel', serif; font-size: 0.58rem; color: var(--border-dim); }
 
     /* ── DEMOGRAPHICS PANEL ── */
     .demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1px; background: var(--border-dim); border: 1px solid var(--border-dim); margin-bottom: 2.5rem; }
@@ -1219,7 +1229,6 @@
 </div>
 
 <nav id="mainNav">
-  <button onclick="showView('venue',this)">Venue</button>
   <button class="active" onclick="showView('roster',this)">Roster</button>
   <button onclick="showView('rsvp',this)">RSVP</button>
   <button onclick="showView('info',this)">Info</button>
@@ -1341,8 +1350,26 @@
       </div>
     </div>
     <div class="form-group" id="pePhoneGroup" style="display:none">
-      <label>Phone number <span style="opacity:.45;font-size:.8em">(so we can reach you)</span></label>
-      <input type="tel" id="pePhoneInput" placeholder="(555) 555-5555" />
+      <label>Contact info <span style="opacity:.45;font-size:.8em">(Snapchat, Instagram, phone, WhatsApp)</span></label>
+      <input type="text" id="pePhoneInput" placeholder="e.g. @username, +1 555 555-5555" />
+    </div>
+    <div class="form-group pe-ratings">
+      <label style="margin-bottom:1.1rem;display:block;">Rate your experience</label>
+      <div class="pe-scale-item">
+        <div class="pe-scale-header"><span class="pe-scale-label">Attraction of the guys</span><span class="pe-scale-val" id="peGuysVal">3</span></div>
+        <input type="range" id="peScaleGuys" min="1" max="5" step="1" value="3" class="pe-slider" oninput="updateSliderLabel(this,'peGuysVal')" />
+        <div class="pe-scale-marks"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+      </div>
+      <div class="pe-scale-item">
+        <div class="pe-scale-header"><span class="pe-scale-label">The venue</span><span class="pe-scale-val" id="peVenueVal">3</span></div>
+        <input type="range" id="peScaleVenue" min="1" max="5" step="1" value="3" class="pe-slider" oninput="updateSliderLabel(this,'peVenueVal')" />
+        <div class="pe-scale-marks"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+      </div>
+      <div class="pe-scale-item">
+        <div class="pe-scale-header"><span class="pe-scale-label">Organization &amp; communication</span><span class="pe-scale-val" id="peOrgVal">3</span></div>
+        <input type="range" id="peScaleOrg" min="1" max="5" step="1" value="3" class="pe-slider" oninput="updateSliderLabel(this,'peOrgVal')" />
+        <div class="pe-scale-marks"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+      </div>
     </div>
     <div class="confirm-actions" style="margin-top:1.5rem;">
       <button class="confirm-btn-primary ready" id="peSubmitBtn" onclick="submitPostEventFeedback()">Submit Feedback</button>
@@ -4973,7 +5000,10 @@ function buildAdminHTML(el) {
     const juneYes = responses.filter(([,r]) => r.juneInterest === true).length;
     const juneNo  = responses.filter(([,r]) => r.juneInterest === false).length;
     const withReview = responses.filter(([,r]) => r.review).length;
-    const withPhone = responses.filter(([,r]) => r.phone).length;
+    const withContact = responses.filter(([,r]) => r.contact || r.phone).length;
+    const avgGuys  = responses.length ? (responses.reduce((s,[,r])=>s+(r.ratings?.guys||0),0)/responses.length).toFixed(1) : '—';
+    const avgVenue = responses.length ? (responses.reduce((s,[,r])=>s+(r.ratings?.venue||0),0)/responses.length).toFixed(1) : '—';
+    const avgOrg   = responses.length ? (responses.reduce((s,[,r])=>s+(r.ratings?.org||0),0)/responses.length).toFixed(1) : '—';
 
     if (!postEventData.blastSent) {
       return `
@@ -5019,9 +5049,27 @@ function buildAdminHTML(el) {
           <div class="insight-sub">written feedback</div>
         </div>
         <div class="insight-cell">
-          <div class="insight-val" style="color:var(--neon-blue);">${withPhone}</div>
-          <div class="insight-lbl">Phone #s</div>
-          <div class="insight-sub">collected</div>
+          <div class="insight-val" style="color:var(--neon-blue);">${withContact}</div>
+          <div class="insight-lbl">Contact</div>
+          <div class="insight-sub">info collected</div>
+        </div>
+      </div>
+
+      <div class="insights-grid" style="margin-bottom:2rem;">
+        <div class="insight-cell">
+          <div class="insight-val" style="color:var(--gold-light);">${avgGuys}</div>
+          <div class="insight-lbl">Guys</div>
+          <div class="insight-sub">avg rating /5</div>
+        </div>
+        <div class="insight-cell">
+          <div class="insight-val" style="color:var(--gold-light);">${avgVenue}</div>
+          <div class="insight-lbl">Venue</div>
+          <div class="insight-sub">avg rating /5</div>
+        </div>
+        <div class="insight-cell">
+          <div class="insight-val" style="color:var(--gold-light);">${avgOrg}</div>
+          <div class="insight-lbl">Organization</div>
+          <div class="insight-sub">avg rating /5</div>
         </div>
       </div>
 
@@ -5034,7 +5082,8 @@ function buildAdminHTML(el) {
               <div class="pe-response-badges">
                 ${r.juneInterest === true ? '<span class="pe-badge pe-badge-yes">June: Yes</span>' :
                   r.juneInterest === false ? '<span class="pe-badge pe-badge-no">June: No</span>' : ''}
-                ${r.phone ? `<span class="pe-badge pe-badge-phone">${esc(r.phone)}</span>` : ''}
+                ${(r.contact||r.phone) ? `<span class="pe-badge pe-badge-phone">${esc(r.contact||r.phone)}</span>` : ''}
+                ${r.ratings ? `<span class="pe-badge" style="color:var(--gold-dim);border-color:rgba(200,168,75,.25);">★ ${r.ratings.guys}·${r.ratings.venue}·${r.ratings.org}</span>` : ''}
               </div>
             </div>
             ${r.review ? `<div class="pe-review-text">${esc(r.review).replace(/\n/g,'<br>')}</div>` : ''}
@@ -5508,24 +5557,33 @@ function checkPostEventOverlay() {
   lockScroll();
 }
 
+function updateSliderLabel(input, labelId) {
+  const el = document.getElementById(labelId);
+  if (el) el.textContent = input.value;
+}
+
 async function submitPostEventFeedback() {
   const btn = document.getElementById('peSubmitBtn');
   btn.textContent = 'Submitting…'; btn.style.opacity = '0.6';
 
-  const review = document.getElementById('peReviewInput').value.trim();
-  const phone  = document.getElementById('pePhoneInput')?.value.trim() || '';
+  const review  = document.getElementById('peReviewInput').value.trim();
+  const contact = document.getElementById('pePhoneInput')?.value.trim() || '';
+  const ratingGuys  = parseInt(document.getElementById('peScaleGuys')?.value  || '3');
+  const ratingVenue = parseInt(document.getElementById('peScaleVenue')?.value || '3');
+  const ratingOrg   = parseInt(document.getElementById('peScaleOrg')?.value   || '3');
 
   postEventData.responses[currentGuest.id] = {
     review: review,
     juneInterest: _peJuneInterest,
-    phone: phone || currentGuest.phone || '',
+    contact: contact || currentGuest.phone || '',
+    ratings: { guys: ratingGuys, venue: ratingVenue, org: ratingOrg },
     submittedAt: new Date().toISOString(),
   };
 
-  // If guest provided a new phone number, update their profile too
-  if (phone && !currentGuest.phone) {
-    await sb.from('guests').update({ phone: phone }).eq('id', currentGuest.id);
-    currentGuest.phone = phone;
+  // If guest provided contact info and had no phone on file, update profile
+  if (contact && !currentGuest.phone) {
+    await sb.from('guests').update({ phone: contact }).eq('id', currentGuest.id);
+    currentGuest.phone = contact;
   }
 
   const { error } = await sb.from('config').upsert(
@@ -5671,13 +5729,16 @@ function exportPostEventCSV() {
   if (!adminCachedData) return;
   const nameMap = {};
   adminCachedData.appr.forEach(g => { nameMap[g.id] = g.name; });
-  const rows = [['Name', 'Review', 'June Interest', 'Phone', 'Submitted']];
+  const rows = [['Name', 'Review', 'June Interest', 'Contact', 'Guys Rating', 'Venue Rating', 'Org Rating', 'Submitted']];
   for (const [gid, r] of Object.entries(postEventData.responses)) {
     rows.push([
       nameMap[gid] || gid,
       (r.review || '').replace(/\n/g, ' '),
       r.juneInterest === true ? 'Yes' : r.juneInterest === false ? 'No' : 'N/A',
-      r.phone || '',
+      r.contact || r.phone || '',
+      r.ratings?.guys || '',
+      r.ratings?.venue || '',
+      r.ratings?.org || '',
       r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '',
     ]);
   }
@@ -5694,12 +5755,12 @@ function exportJuneInterestedCSV() {
   const nameMap = {};
   const phoneMap = {};
   adminCachedData.appr.forEach(g => { nameMap[g.id] = g.name; phoneMap[g.id] = g.phone || ''; });
-  const rows = [['Name', 'Phone', 'Response Date']];
+  const rows = [['Name', 'Contact', 'Response Date']];
   for (const [gid, r] of Object.entries(postEventData.responses)) {
     if (r.juneInterest !== true) continue;
     rows.push([
       nameMap[gid] || gid,
-      r.phone || phoneMap[gid] || '',
+      r.contact || r.phone || phoneMap[gid] || '',
       r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '',
     ]);
   }
