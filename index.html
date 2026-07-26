@@ -3556,18 +3556,17 @@ async function renderRsvp() {
   const approvedCount = (approvedNames?.length || 0) - (hostExists ? 1 : 0);
   const atCapacity = approvedCount >= CONFIG.capacity;
   if (atCapacity && !CONFIG.waitlistEnabled) {
-    el.innerHTML = `<div class="full-overlay"><div class="full-title">At Capacity</div><div class="full-sub">All ${CONFIG.capacity} places have been reserved.</div></div>`;
+    el.innerHTML = `<div class="full-overlay"><div class="full-title">At Capacity</div><div class="full-sub">All places have been reserved.</div></div>`;
     return;
   }
 
   const rsvpIsWaitlist = atCapacity && CONFIG.waitlistEnabled;
-  const rem = rsvpIsWaitlist ? 0 : CONFIG.capacity - approvedCount;
 
   el.innerHTML = `
     <h2 class="form-title">${rsvpIsWaitlist ? 'Join the Waitlist' : 'Reserve Your Place'}</h2>
     ${rsvpIsWaitlist
-      ? `<div class="waitlist-notice">All ${CONFIG.capacity} places are reserved. Add your details below and you'll be contacted if a spot opens up. It happens all the time! Maybe you'll get squeezed in anyways!<br><br><em>Even if the waitlist seems large, still submit — it's not necessarily first come, first served. You never know.</em></div>`
-      : `<p class="form-sub">${rem} of ${CONFIG.capacity} places remaining</p>`
+      ? `<div class="waitlist-notice">All places are reserved. Add your details below and you'll be contacted if a spot opens up. It happens all the time! Maybe you'll get squeezed in anyways!<br><br><em>Even if the waitlist seems large, still submit — it's not necessarily first come, first served. You never know.</em></div>`
+      : `<p class="form-sub">Reserve your place below.</p>`
     }
     <div id="formMsg"></div>
 
