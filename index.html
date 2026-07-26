@@ -559,8 +559,9 @@
     .fire-toast-text { font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cream); line-height: 1.45; }
     .fire-toast-dismiss { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 0.1rem; flex-shrink: 0; transition: color 0.2s; }
     .fire-toast-dismiss:hover { color: var(--cream); }
-    .session-avatar { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--gold); background: var(--black) center/cover no-repeat; cursor: pointer; flex-shrink: 0; transition: border-color 0.2s, box-shadow 0.2s; }
+    .session-avatar { position: relative; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--gold); background: var(--black) center/cover no-repeat; cursor: pointer; flex-shrink: 0; transition: border-color 0.2s, box-shadow 0.2s; }
     .session-avatar:hover { border-color: var(--gold-dim); box-shadow: 0 0 8px rgba(200,168,75,0.35); }
+    .session-avatar.has-pushnote::after { content: ''; position: absolute; top: -1px; right: -1px; width: 9px; height: 9px; border-radius: 50%; background: var(--gold); border: 1.5px solid var(--black); box-shadow: 0 0 8px rgba(200,168,75,0.8); }
     .session-name { font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold-dim); cursor: pointer; transition: color 0.2s; }
     .session-name:hover { color: var(--gold); }
     .session-btn { font-family: 'Cinzel', serif; font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase; background: none; border: none; color: var(--muted); cursor: pointer; transition: color 0.2s; padding: 0.2rem 0; }
@@ -656,6 +657,7 @@
     .card-indicator { position:absolute; top:0.5rem; right:0.5rem; z-index:4; font-size:0.9rem; line-height:1; pointer-events:none; }
     .ci-fire  { filter:drop-shadow(0 0 5px rgba(224,80,80,0.9)); }
     .ci-saved { filter:drop-shadow(0 0 4px rgba(200,168,75,0.8)); }
+    .pushnote-dot { position:absolute; top:0.5rem; left:0.5rem; z-index:5; width:10px; height:10px; border-radius:50%; background:var(--gold); border:1.5px solid rgba(6,5,4,0.9); box-shadow:0 0 8px rgba(200,168,75,0.85); pointer-events:none; }
     .roster-card.mutual-fire-card { box-shadow:0 0 0 1px rgba(224,80,80,0.3), 0 0 28px rgba(224,80,80,0.1); }
     .roster-card.host-card { box-shadow:0 0 0 1px rgba(176,96,255,0.75), 0 0 28px rgba(176,96,255,0.32), 0 0 72px rgba(176,96,255,0.15), 0 0 120px rgba(176,96,255,0.07); border-color:rgba(176,96,255,0.6) !important; border-top-color:rgba(176,96,255,0.9) !important; }
     .roster-card.host-card img { filter:brightness(0.88) contrast(1.1) saturate(0.95) hue-rotate(-5deg) !important; }
@@ -735,6 +737,8 @@
     .pushnote-card-sender:hover { color:var(--cream); }
     .pushnote-card-time { font-family:'Cormorant',serif; font-size:0.72rem; font-style:italic; color:var(--muted2); margin-left:auto; }
     .pushnote-card-body { font-family:'Cormorant',serif; font-size:1.05rem; font-style:italic; color:rgba(220,210,195,0.88); line-height:1.55; white-space:pre-wrap; word-break:break-word; }
+    .pushnote-from-sender { margin-bottom:1.4rem; }
+    .pushnote-from-sender-title { font-family:'Cinzel',serif; font-size:0.65rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--neon-purple); margin-bottom:0.6rem; }
 
     /* ── ATTENDANCE CONFIRMATION OVERLAY ── */
     #confirmOverlay { position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:9800; display:none; align-items:center; justify-content:center; padding:1.5rem; backdrop-filter:blur(3px); }
@@ -1636,6 +1640,58 @@ function getNotesForMe() {
     .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 }
 
+function timeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  const days = Math.floor(hrs / 24);
+  return days + 'd ago';
+}
+
+// ── Push note read-tracking (drives the gold notification dot) ──
+function _loadPushNotesSeen() {
+  try { return JSON.parse(localStorage.getItem('elysium_pushnotes_seen') || '{}'); } catch(e) { return {}; }
+}
+
+function hasUnreadPushNote(senderId) {
+  if (!currentGuest) return false;
+  const note = pushNotes[currentGuest.id]?.[senderId];
+  if (!note) return false;
+  const seenAt = _loadPushNotesSeen()[senderId];
+  return !seenAt || new Date(note.updated_at) > new Date(seenAt);
+}
+
+function hasAnyUnreadPushNotes() {
+  return getNotesForMe().some(n => hasUnreadPushNote(n.senderId));
+}
+
+function markPushNoteSeen(senderId) {
+  if (!currentGuest || !pushNotes[currentGuest.id]?.[senderId]) return;
+  const seen = _loadPushNotesSeen();
+  seen[senderId] = pushNotes[currentGuest.id][senderId].updated_at;
+  localStorage.setItem('elysium_pushnotes_seen', JSON.stringify(seen));
+}
+
+function updatePushNoteBadge() {
+  document.getElementById('sessionAvatar')?.classList.toggle('has-pushnote', hasAnyUnreadPushNotes());
+}
+
+function pushNoteFromSenderHTML(senderId) {
+  const note = currentGuest ? pushNotes[currentGuest.id]?.[senderId] : null;
+  if (!note) return '';
+  return `
+    <div class="pushnote-from-sender">
+      <div class="pushnote-from-sender-title">Push Note from ${esc(note.sender_name)}</div>
+      <div class="pushnote-card">
+        <div class="pushnote-card-body">${esc(note.content).replace(/\n/g,'<br>')}</div>
+        <div class="pushnote-card-time" style="margin-top:0.6rem;">${timeAgo(note.updated_at)}</div>
+      </div>
+    </div>`;
+}
+
 // ══ ATTENDANCE CONFIRMATION ═════════════════════════════════════════
 function checkConfirmOverlay() {
   if (!currentGuest || isPreview) return;
@@ -1965,6 +2021,7 @@ function modalInteractHTML(id) {
   const mutual = isMutualFire(id);
   const saved  = isSaved(id);
   return `
+    ${pushNoteFromSenderHTML(id)}
     ${mutual ? `<div class="mutual-reveal">💕 haha: y'all should like fuck 💦</div>` : ''}
     <div class="modal-interact-btns">
       <button class="modal-fire-btn${fired?' fired':''}${mutual?' mutual':''}" onclick="toggleFire('${esc(id)}')">
@@ -2052,6 +2109,13 @@ function applyRosterIndicators() {
       ind.textContent = mutual ? '🔥' : '★';
       card.appendChild(ind);
     }
+    card.querySelector('.pushnote-dot')?.remove();
+    if (hasUnreadPushNote(gid)) {
+      const dot = document.createElement('div');
+      dot.className = 'pushnote-dot';
+      dot.title = 'Sent you a push note';
+      card.appendChild(dot);
+    }
   });
 }
 
@@ -2108,17 +2172,6 @@ async function renderReceivedPushNotes(container) {
   // Only show notes from senders still in the DB
   const valid = notes.filter(n => sMap[n.senderId]);
   if (!valid.length) return;
-
-  function timeAgo(iso) {
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'just now';
-    if (mins < 60) return mins + 'm ago';
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return hrs + 'h ago';
-    const days = Math.floor(hrs / 24);
-    return days + 'd ago';
-  }
 
   let html = `<div class="pushnotes-received">
     <div class="pushnotes-received-title">Push Notes</div>
@@ -2448,6 +2501,7 @@ async function init() {
           showSessionBar(g.name, g.photos);
           updateFireBadge();
           checkUnreadChat();
+          updatePushNoteBadge();
           showFireToast();
           checkConfirmOverlay();
           checkRecruiterBanner();
@@ -2613,6 +2667,8 @@ function subscribeConfigChanges() {
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'config', filter: 'key=eq.push_notes' }, payload => {
       if (payload.new?.value) { try { pushNotes = JSON.parse(payload.new.value) || {}; } catch(e) {} }
+      updatePushNoteBadge();
+      applyRosterIndicators();
     })
     .subscribe();
 }
@@ -3344,6 +3400,11 @@ async function openModal(id, animClass) {
     </div>`;
 
   document.getElementById('modalInner').scrollTop = 0;
+  if (currentGuest && !isPreview && currentGuest.id !== id && pushNotes[currentGuest.id]?.[id]) {
+    markPushNoteSeen(id);
+    updatePushNoteBadge();
+    applyRosterIndicators();
+  }
   const mutual = currentGuest && !isPreview && currentGuest.id !== id && isMutualFire(id);
   document.getElementById('modalBox').classList.toggle('mutual-glow', !!mutual);
   document.getElementById('modalBackdrop').classList.add('open');
@@ -3526,6 +3587,7 @@ async function submitPin(target) {
   try { await loadSocialData(); } catch(e) {}
   updateFireBadge();
   checkUnreadChat();
+  updatePushNoteBadge();
   showFireToast();
   checkConfirmOverlay();
   checkRecruiterBanner();
@@ -3843,6 +3905,7 @@ async function submitRsvp() {
   await loadSocialData();
   updateFireBadge();
   checkUnreadChat();
+  updatePushNoteBadge();
   showFireToast();
   checkConfirmOverlay();
   checkRecruiterBanner();
@@ -4056,6 +4119,9 @@ async function renderAccount() {
 
   renderConnections(el);
   renderReceivedPushNotes(el);
+  getNotesForMe().forEach(n => markPushNoteSeen(n.senderId));
+  updatePushNoteBadge();
+  applyRosterIndicators();
 }
 
 function toggleVibeEdit(v, btn) {
