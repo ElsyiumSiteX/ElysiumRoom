@@ -1205,6 +1205,7 @@
     sessionVersion:     '',
     venueDescription:   '',
     venueImages:        [],
+    playPositionsImages: [],
     lubeVotes:          {},
     eventAddress:       '',
   };
@@ -2354,7 +2355,7 @@ function setVibeFilter(vibe) {
 
 // ══ INIT ═══════════════════════════════════════════════════════════
 async function loadConfig() {
-  const CONFIG_KEYS = ['capacity','waitlistEnabled','pledgeEnabled','proTipEnabled','confirmRound','announcementImages','infoImages','recruiters','venueImages','lube_votes','eventDateISO','eventPhase','eventName','eventDate','eventLocation','adminPassword','guestPreviewPin','requireApproval','announcementText','hostName','broadcastMsg','broadcastId','sessionVersion','venueDescription','eventAddress'];
+  const CONFIG_KEYS = ['capacity','waitlistEnabled','pledgeEnabled','proTipEnabled','confirmRound','announcementImages','infoImages','recruiters','venueImages','playPositionsImages','lube_votes','eventDateISO','eventPhase','eventName','eventDate','eventLocation','adminPassword','guestPreviewPin','requireApproval','announcementText','hostName','broadcastMsg','broadcastId','sessionVersion','venueDescription','eventAddress'];
   const { data, error } = await sb.from('config').select('key, value').in('key', CONFIG_KEYS);
   if (!error && data) {
     data.forEach(row => {
@@ -2374,6 +2375,9 @@ async function loadConfig() {
       }
       else if (row.key === 'venueImages') {
         try { CONFIG.venueImages = JSON.parse(row.value) || []; } catch(e) { CONFIG.venueImages = []; }
+      }
+      else if (row.key === 'playPositionsImages') {
+        try { CONFIG.playPositionsImages = JSON.parse(row.value) || []; } catch(e) { CONFIG.playPositionsImages = []; }
       }
       else if (row.key === 'lube_votes') {
         try { CONFIG.lubeVotes = JSON.parse(row.value) || {}; } catch(e) { CONFIG.lubeVotes = {}; }
@@ -2929,6 +2933,15 @@ function renderInfo() {
     {
       title: 'Contributions',
       html: `<div class="info-acc-pad info-body"><p>Event is free. Tips help cover hosting costs.</p><p style="color:var(--gold-dim)">Suggested: $10–20</p><p>This is a lot of work — donating is <span style="color:#ff69b4;font-weight:600;">highly encouraged</span>.</p><p style="margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--border-dim);color:var(--text-dim);font-size:0.95rem;">I also welcome 1–5 guests who'd like to donate 20–30 minutes of their time right before the event starts to help complete a few brief set-up tasks. HMU if you're interested! This is always a huge help — a few extra hands let us add some special touches to the venue for the night.</p></div>`
+    },
+    {
+      title: 'Play Positions for Curious Beginners',
+      html: `<div class="info-acc-pad info-body">
+        <p>New to this? Here are a few approachable positions and combos worth knowing before your first time.</p>
+        ${(CONFIG.playPositionsImages||[]).filter(Boolean).length
+          ? `<div class="venue-photos" style="margin-top:1.1rem;">${(CONFIG.playPositionsImages||[]).filter(Boolean).map(src => `<img src="${esc(src)}" alt="" onclick="openLightbox(this.src)" />`).join('')}</div>`
+          : `<p style="margin-top:.8rem;color:var(--muted);font-style:italic;">No photos yet.</p>`}
+      </div>`
     },
   ];
 
@@ -4885,6 +4898,30 @@ function buildAdminHTML(el) {
     <div style="display:flex;gap:1rem;margin-bottom:3rem;">
       <button class="btn btn-solid" id="venueSaveBtn" onclick="saveVenue()">Save Venue</button>
     </div>
+    <hr class="div" />
+    <div class="section-label" style="margin-top:2rem;">Play Positions for Curious Beginners</div>
+    <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">Shown in the info dropdown of the same name. Photos and GIFs both supported.</p>
+    <div class="form-group">
+      <label>Photos <span style="opacity:.45;font-size:.8em">(up to 10 · images or GIFs)</span></label>
+      <div class="ann-grid" id="ppGrid">
+        ${[0,1,2,3,4,5,6,7,8,9].map(i => {
+          const src = (CONFIG.playPositionsImages||[])[i] || null;
+          return `<div class="ann-grid-slot" id="ppSlot${i}">
+            ${src
+              ? `<img class="ann-grid-preview" src="${esc(src)}" alt="" onclick="openLightbox(this.src)" />
+                 <button class="slot-remove" onclick="clearPPSlot(${i})">✕</button>`
+              : `<div class="ann-grid-slot-inner" onclick="triggerPPSlot(${i})">
+                   <div class="slot-icon" style="font-size:1.2rem">✦</div>
+                   <div class="slot-label">Add photo</div>
+                 </div>`}
+            <input type="file" id="ppFile${i}" accept="image/*" style="display:none" onchange="loadPPSlot(${i},event)" />
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div style="display:flex;gap:1rem;margin-bottom:3rem;">
+      <button class="btn btn-solid" id="ppSaveBtn" onclick="savePlayPositions()">Save Play Positions Photos</button>
+    </div>
   ` : '';
 
   const tabDoor = adminTab === 'door' ? (() => {
@@ -6046,6 +6083,95 @@ async function saveVenue() {
   const flash = document.createElement('div');
   flash.className = 'msg msg-success'; flash.style.cssText = 'margin-bottom:1rem;';
   flash.textContent = 'Venue saved.';
+  btn.parentNode.insertBefore(flash, btn);
+  setTimeout(() => flash.remove(), 3000);
+}
+
+// ══ PLAY POSITIONS FOR CURIOUS BEGINNERS ══════════════════════════
+let playPosImgSlots = [null, null, null, null, null, null, null, null, null, null];
+
+function triggerPPSlot(i) { document.getElementById('ppFile'+i).click(); }
+
+function loadPPSlot(i, e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const finish = (dataUrl) => {
+    playPosImgSlots[i] = dataUrl;
+    const slot = document.getElementById('ppSlot'+i);
+    slot.querySelector('.ann-grid-slot-inner')?.remove();
+    slot.querySelector('.ann-grid-preview')?.remove();
+    slot.querySelector('.slot-remove')?.remove();
+    const preview = document.createElement('img');
+    preview.className = 'ann-grid-preview'; preview.src = dataUrl;
+    preview.onclick = () => openLightbox(dataUrl);
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'slot-remove'; removeBtn.textContent = '✕';
+    removeBtn.onclick = () => clearPPSlot(i);
+    slot.appendChild(preview); slot.appendChild(removeBtn);
+  };
+
+  const reader = new FileReader();
+  if (file.type === 'image/gif') {
+    // GIFs are stored as-is (no canvas re-encode) so animation is preserved.
+    reader.onload = ev => finish(ev.target.result);
+    reader.onerror = () => alert('Could not read that file.');
+    reader.readAsDataURL(file);
+    return;
+  }
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 1200; let w = img.width, h = img.height;
+      if (w > max || h > max) { if (w > h) { h = Math.round(h * max / w); w = max; } else { w = Math.round(w * max / h); h = max; } }
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      finish(c.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => alert('Could not load that image.');
+    img.src = ev.target.result;
+  };
+  reader.onerror = () => alert('Could not read that file.');
+  reader.readAsDataURL(file);
+}
+
+function clearPPSlot(i) {
+  playPosImgSlots[i] = '';
+  const slot = document.getElementById('ppSlot'+i);
+  slot.querySelector('.ann-grid-preview')?.remove();
+  slot.querySelector('.slot-remove')?.remove();
+  const inner = document.createElement('div');
+  inner.className = 'ann-grid-slot-inner';
+  inner.onclick = () => triggerPPSlot(i);
+  inner.innerHTML = `<div class="slot-icon" style="font-size:1.2rem">✦</div><div class="slot-label">Add photo</div>`;
+  slot.appendChild(inner);
+}
+
+async function savePlayPositions() {
+  const images = (CONFIG.playPositionsImages || []).slice();
+  playPosImgSlots.forEach((v, i) => { if (v !== null) images[i] = v; });
+  while (images.length && !images[images.length-1]) images.pop();
+
+  CONFIG.playPositionsImages = images;
+
+  const btn = document.getElementById('ppSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const { error } = await sb.from('config').upsert(
+    [{ key: 'playPositionsImages', value: JSON.stringify(images) }],
+    { onConflict: 'key' }
+  );
+
+  btn.disabled = false; btn.textContent = 'Save Play Positions Photos';
+  playPosImgSlots = [null, null, null, null, null, null, null, null, null, null];
+
+  if (error) { alert('Save failed: ' + error.message); return; }
+
+  renderInfo();
+
+  const flash = document.createElement('div');
+  flash.className = 'msg msg-success'; flash.style.cssText = 'margin-bottom:1rem;';
+  flash.textContent = 'Play positions photos saved.';
   btn.parentNode.insertBefore(flash, btn);
   setTimeout(() => flash.remove(), 3000);
 }
