@@ -190,6 +190,12 @@
     .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 2px; }
 
     .roster-card { background: var(--black-card); border: 1px solid var(--border-dim); overflow: hidden; position: relative; aspect-ratio: 3/4; cursor: pointer; transition: transform 0.4s cubic-bezier(0.4,0,0.2,1), box-shadow 0.4s, border-color 0.4s; animation: fadeUp 0.6s ease both; }
+    .roster-card.roster-card-highlight { animation: rosterHighlightPulse 1.8s ease-out; }
+    @keyframes rosterHighlightPulse {
+      0%   { box-shadow: 0 0 0 2px var(--gold), 0 0 40px rgba(200,168,75,0.55); }
+      70%  { box-shadow: 0 0 0 2px var(--gold), 0 0 40px rgba(200,168,75,0.55); }
+      100% { box-shadow: none; }
+    }
     .roster-card:nth-child(3n)   { border-top-color: rgba(91,200,245,0.2); }
     .roster-card:nth-child(3n+1) { border-top-color: rgba(195,168,232,0.2); }
     .roster-card:nth-child(3n+2) { border-top-color: rgba(200,168,75,0.2); }
@@ -314,7 +320,11 @@
 
     /* ── CHAT ── */
     .chat-wrap { display: flex; flex-direction: column; height: calc(100vh - 260px); min-height: 420px; max-width: 780px; margin: 0 auto; }
-    .chat-messages { flex: 1; overflow-y: auto; padding: 1.5rem 0; display: flex; flex-direction: column; gap: 0; scrollbar-width: thin; scrollbar-color: var(--border-dim) transparent; }
+    .chat-messages-outer { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .chat-messages { flex: 1; min-height: 0; overflow-y: auto; padding: 1.5rem 0; display: flex; flex-direction: column; gap: 0; scrollbar-width: thin; scrollbar-color: var(--border-dim) transparent; }
+    .chat-jump-btn { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: none; align-items: center; gap: 0.5rem; font-family: 'Cinzel', serif; font-size: 0.66rem; font-weight: 400; letter-spacing: 0.18em; text-transform: uppercase; padding: 0.6rem 1.2rem; background: var(--black-card); border: 1px solid var(--gold-dim); color: var(--gold-light); cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 5; animation: fadeUp 0.25s ease both; }
+    .chat-jump-btn:hover { border-color: var(--gold); box-shadow: 0 0 28px var(--gold-glow); }
+    .chat-jump-btn .chat-jump-count { background: var(--gold-dim); color: #1a1408; border-radius: 999px; font-size: 0.62rem; padding: 0.1rem 0.5rem; min-width: 1.2rem; text-align: center; }
     .chat-msg { padding: 1.2rem 0; border-bottom: 1px solid var(--border-dim); animation: fadeUp 0.25s ease both; }
     .chat-msg:last-child { border-bottom: none; }
     .chat-msg-mine { background: rgba(200,168,75,0.03); padding: 1.2rem 1rem; border-bottom: 1px solid var(--border-dim); margin: 0 -1rem; }
@@ -1129,6 +1139,10 @@
     .venue-photos { display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-bottom:2rem; }
     .venue-photos img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; cursor:zoom-in; }
     .venue-photos img:first-child:nth-last-child(1) { grid-column:1/-1; aspect-ratio:16/9; }
+    .venue-parking { margin-top: 1rem; padding-top: 2rem; border-top: 1px solid var(--border-dim); }
+    .venue-parking-heading { font-family:'Cinzel',serif; font-size:0.78rem; font-weight:400; letter-spacing:0.28em; text-transform:uppercase; color:var(--gold-dim); margin-bottom:1.2rem; }
+    .venue-parking .venue-photos { grid-template-columns: 1fr; }
+    .venue-parking .venue-photos img { aspect-ratio: 16/9; }
     .pp-gallery { display:grid; grid-template-columns:1fr 1fr; gap:.9rem; margin-top:1.1rem; }
     .pp-item img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; cursor:zoom-in; }
     .pp-caption { font-family:'Cormorant',serif; font-size:.82rem; font-style:italic; color:var(--muted); text-align:center; margin-top:.35rem; }
@@ -1212,6 +1226,8 @@
     sessionVersion:     '',
     venueDescription:   '',
     venueImages:        [],
+    parkingText:        '',
+    parkingImage:       '',
     playPositionsImages: [],
     playPositionsCaptions: [],
     playPositionsOverview: '',
@@ -1497,7 +1513,7 @@ function _rebuildFireIndex() {
 }
 let adminTab        = 'guests';
 let adminCachedData = null;
-let adminSections   = { pending: true, waitlist: false, confirmed: false, confirmBlast: false, analytics: false, pledges: false };
+let adminSections   = { pending: true, waitlist: false, confirmed: false, confirmBlast: false, analytics: false, pledges: false, matchedPairs: false };
 let adminRevertOpen = new Set();
 let adminExpandOpen = new Set();
 let adminSearchQ    = '';
@@ -1509,6 +1525,7 @@ let adminFilterRole        = '';    // role string to filter by, or '' for all
 let postEventData   = { blastSent: false, blastMessage: '', responses: {} };
 // responses shape: { [guestId]: { review: string, juneInterest: bool, phone: string, submittedAt: ISO } }
 let currentModalGuestId = null;
+let _modalOriginView = null;
 let _touchX = 0, _touchY = 0;
 
 // ══ SOCIAL ═════════════════════════════════════════════════════════
@@ -2413,7 +2430,7 @@ function setVibeFilter(vibe) {
 
 // ══ INIT ═══════════════════════════════════════════════════════════
 async function loadConfig() {
-  const CONFIG_KEYS = ['capacity','waitlistEnabled','pledgeEnabled','proTipEnabled','confirmRound','announcementImages','infoImages','recruiters','venueImages','playPositionsImages','playPositionsCaptions','playPositionsOverview','lube_votes','eventDateISO','eventPhase','eventName','eventDate','eventLocation','adminPassword','guestPreviewPin','requireApproval','announcementText','hostName','broadcastMsg','broadcastId','sessionVersion','venueDescription','eventAddress'];
+  const CONFIG_KEYS = ['capacity','waitlistEnabled','pledgeEnabled','proTipEnabled','confirmRound','announcementImages','infoImages','recruiters','venueImages','playPositionsImages','playPositionsCaptions','playPositionsOverview','lube_votes','eventDateISO','eventPhase','eventName','eventDate','eventLocation','adminPassword','guestPreviewPin','requireApproval','announcementText','hostName','broadcastMsg','broadcastId','sessionVersion','venueDescription','eventAddress','parkingText','parkingImage'];
   const { data, error } = await sb.from('config').select('key, value').in('key', CONFIG_KEYS);
   if (!error && data) {
     data.forEach(row => {
@@ -2611,6 +2628,7 @@ function logout() {
   photoSlots = [null, null, null]; selectedVibes = []; selectedPrep = null;
   localStorage.removeItem(SESSION_KEY);
   if (chatChannel) { sb.removeChannel(chatChannel); chatChannel = null; }
+  _chatMsgsCache = null; _chatCacheTime = 0;
   hideSessionBar();
   renderRoster();
   renderRsvp();
@@ -2622,6 +2640,7 @@ function loginFromPreview() {
   photoSlots = [null, null, null]; selectedVibes = []; selectedPrep = null;
   localStorage.removeItem(SESSION_KEY);
   if (chatChannel) { sb.removeChannel(chatChannel); chatChannel = null; }
+  _chatMsgsCache = null; _chatCacheTime = 0;
   hideSessionBar();
   renderRoster();
   renderRsvp();
@@ -2636,6 +2655,9 @@ function editProfile() {
 let chatChannel      = null;
 let pendingChatImage = null;
 let configChannel = null;
+let _chatMsgsCache = null;
+let _chatCacheTime = 0;
+const CHAT_CACHE_TTL = 10000; // 10s — realtime subscription keeps this fresh in between
 
 function subscribeConfigChanges() {
   if (configChannel) return;
@@ -2693,7 +2715,10 @@ async function renderChat() {
 
   el.innerHTML = `
     <div class="chat-wrap">
-      <div class="chat-messages" id="chatMessages"><div class="chat-empty">Loading…</div></div>
+      <div class="chat-messages-outer">
+        <div class="chat-messages" id="chatMessages" onscroll="onChatScroll()"><div class="chat-empty">Loading…</div></div>
+        <button class="chat-jump-btn" id="chatJumpBtn" onclick="scrollChatToBottom(true)">↓ <span id="chatJumpLabel">New message</span></button>
+      </div>
       <div class="chat-input-wrap">
         <div class="chat-img-preview-wrap" id="chatImgPreviewWrap">
           <img class="chat-img-preview" id="chatImgPreview" src="" alt="">
@@ -2710,39 +2735,108 @@ async function renderChat() {
       </div>
     </div>`;
 
-  // Load history
-  const { data: msgs } = await sb.from('messages').select('*').order('created_at', { ascending: true }).limit(200);
-  renderMessages(msgs || []);
+  // Load history — cached briefly so switching tabs back and forth doesn't
+  // re-fetch the same 200 rows every time (the realtime subscription below
+  // keeps the cache current in between).
+  const cacheAge = Date.now() - _chatCacheTime;
+  if (_chatMsgsCache && cacheAge < CHAT_CACHE_TTL) {
+    renderMessages(_chatMsgsCache);
+  } else {
+    const { data: msgs } = await sb.from('messages').select('*').order('created_at', { ascending: true }).limit(200);
+    _chatMsgsCache = msgs || [];
+    _chatCacheTime = Date.now();
+    renderMessages(_chatMsgsCache);
+  }
 
-  // Realtime subscription
-  if (chatChannel) sb.removeChannel(chatChannel);
-  chatChannel = sb.channel('public:messages')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-      appendMessage(payload.new);
-      if (!document.getElementById('view-chat')?.classList.contains('active')) showChatBadge();
-    })
-    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
-      document.getElementById('msg-' + payload.old.id)?.remove();
-    })
-    .subscribe();
+  // Realtime subscription — kept open for the whole session (not torn down and
+  // recreated on every tab switch) so the cache above stays fresh and unread
+  // badges keep working while the user is on another tab.
+  if (!chatChannel) {
+    chatChannel = sb.channel('public:messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+        _chatMsgsCache = _chatMsgsCache ? [..._chatMsgsCache, payload.new] : [payload.new];
+        appendMessage(payload.new);
+        if (!document.getElementById('view-chat')?.classList.contains('active')) showChatBadge();
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
+        if (_chatMsgsCache) _chatMsgsCache = _chatMsgsCache.filter(m => m.id !== payload.old.id);
+        document.getElementById('msg-' + payload.old.id)?.remove();
+      })
+      .subscribe();
+  }
 }
+
+let _chatAtBottom = true;
+let _chatUnreadCount = 0;
 
 function renderMessages(msgs) {
   const el = document.getElementById('chatMessages');
   if (!el) return;
-  if (!msgs.length) { el.innerHTML = `<div class="chat-empty">No messages yet. Say hello.</div>`; return; }
-  const guestMap = new Map(allGuests.map(g => [g.id, g]));
-  el.innerHTML = msgs.map(m => msgHtml(m, guestMap)).join('');
+  if (!msgs.length) { el.innerHTML = `<div class="chat-empty">No messages yet. Say hello.</div>`; }
+  else {
+    const guestMap = new Map(allGuests.map(g => [g.id, g]));
+    el.innerHTML = msgs.map(m => msgHtml(m, guestMap)).join('');
+    _watchChatImages(el);
+  }
+  _chatAtBottom = true;
+  _chatUnreadCount = 0;
+  hideChatJumpBtn();
   el.scrollTop = el.scrollHeight;
+}
+
+// Images loading after the initial paint push scrollHeight taller — keep pinned
+// to the bottom while the user is still there, without fighting a manual scroll-up.
+function _watchChatImages(container) {
+  container.querySelectorAll('img').forEach(img => {
+    if (img.complete) return;
+    img.addEventListener('load', () => { if (_chatAtBottom) container.scrollTop = container.scrollHeight; }, { once: true });
+  });
+}
+
+function onChatScroll() {
+  const el = document.getElementById('chatMessages');
+  if (!el) return;
+  const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  _chatAtBottom = nearBottom;
+  if (nearBottom) { _chatUnreadCount = 0; hideChatJumpBtn(); }
+}
+
+function scrollChatToBottom(smooth) {
+  const el = document.getElementById('chatMessages');
+  if (!el) return;
+  el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  _chatAtBottom = true;
+  _chatUnreadCount = 0;
+  hideChatJumpBtn();
+}
+
+function showChatJumpBtn() {
+  const btn = document.getElementById('chatJumpBtn');
+  if (!btn) return;
+  const label = document.getElementById('chatJumpLabel');
+  if (label) label.textContent = _chatUnreadCount > 1 ? `${_chatUnreadCount} new messages` : 'New message';
+  btn.style.display = 'flex';
+}
+
+function hideChatJumpBtn() {
+  const btn = document.getElementById('chatJumpBtn');
+  if (btn) btn.style.display = 'none';
 }
 
 function appendMessage(m) {
   const el = document.getElementById('chatMessages');
   if (!el) return;
-  const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+  const wasAtBottom = _chatAtBottom;
   el.querySelector('.chat-empty')?.remove();
   el.insertAdjacentHTML('beforeend', msgHtml(m));
-  if (nearBottom) el.scrollTop = el.scrollHeight;
+  if (el.lastElementChild) _watchChatImages(el.lastElementChild);
+  const mine = currentGuest && m.guest_id === currentGuest.id;
+  if (wasAtBottom || mine) {
+    scrollChatToBottom();
+  } else {
+    _chatUnreadCount++;
+    showChatJumpBtn();
+  }
 }
 
 function msgHtml(m, guestMap) {
@@ -3346,6 +3440,11 @@ function modalNav(dir) {
 
 async function openModal(id, animClass) {
   _pendingModalId = id;
+  // Remember where the modal was opened from (only on a fresh open, not modalNav
+  // prev/next) so "Return to Roster" can actually navigate there from chat, etc.
+  if (!document.getElementById('modalBackdrop').classList.contains('open')) {
+    _modalOriginView = document.querySelector('.view.active')?.id.replace('view-', '') || null;
+  }
   // Use cached roster data when available — avoids DB fetch on every swipe
   let g = allGuests.find(x => x.id === id) || null;
   if (!g) {
@@ -3396,7 +3495,7 @@ async function openModal(id, animClass) {
       ).join('')}</div>`;
     })()}
     <div class="modal-return-row">
-      <button class="modal-return-btn" onclick="closeModalDirect()">← Return to Roster</button>
+      <button class="modal-return-btn" onclick="closeModalToRoster()">← Return to Roster</button>
     </div>`;
 
   document.getElementById('modalInner').scrollTop = 0;
@@ -3418,6 +3517,32 @@ function closeModalDirect() {
   document.getElementById('modalBox').classList.remove('mutual-glow');
   currentModalGuestId = null;
   unlockScroll();
+}
+
+// "Return to Roster" from the profile modal — when opened from chat, connections,
+// or push-note cards, actually jump to the Roster tab and highlight the guest's
+// card instead of just closing back to whatever view was already showing.
+function closeModalToRoster() {
+  const id = currentModalGuestId;
+  const originView = _modalOriginView;
+  closeModalDirect();
+  if (originView && originView !== 'roster') {
+    showView('roster', document.querySelector(`[onclick="showView('roster',this)"]`));
+    highlightRosterGuest(id);
+  }
+}
+
+function highlightRosterGuest(id, tries) {
+  if (!id) return;
+  tries = tries || 0;
+  const card = document.querySelector(`.roster-card[data-guest-id="${id}"]`);
+  if (card) {
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.add('roster-card-highlight');
+    setTimeout(() => card.classList.remove('roster-card-highlight'), 1800);
+  } else if (tries < 20) {
+    setTimeout(() => highlightRosterGuest(id, tries + 1), 100);
+  }
 }
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeModalDirect(); closeLightbox(); }
@@ -4843,8 +4968,11 @@ function buildAdminHTML(el) {
           <span class="hot-name" style="flex:none">${esc(nameMap[b]||'?')}</span>
         </div>`;
       }).join('');
-      return `<div class="section-label" style="margin-bottom:1rem;margin-top:1.4rem;">Matched Pairs</div>
-      <div class="hot-guests-list">${pairRows}</div>`;
+      return `<div class="admin-section-header admin-collapse-hdr" style="margin-top:1.4rem;" onclick="toggleAdminSection('matchedPairs')">
+        <div class="section-label" style="margin:0;">Matched Pairs — ${mutualPairsSeen.size}</div>
+        <span class="admin-collapse-chevron${adminSections.matchedPairs?' open':''}">▾</span>
+      </div>
+      ${adminSections.matchedPairs ? `<div class="hot-guests-list">${pairRows}</div>` : ''}`;
     })() : ''}
     ${coldGuests.length ? `
     <div class="section-label" style="margin-bottom:1rem;margin-top:1.4rem;">Coldest Guests</div>
@@ -4981,6 +5109,30 @@ function buildAdminHTML(el) {
     </div>
     <div style="display:flex;gap:1rem;margin-bottom:3rem;">
       <button class="btn btn-solid" id="venueSaveBtn" onclick="saveVenue()">Save Venue</button>
+    </div>
+    <div class="section-label" style="margin-top:2rem;">Venue — Parking</div>
+    <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">Shown at the bottom of the Venue page. Describe where to park and add one photo.</p>
+    <div class="form-group">
+      <label>Parking Info</label>
+      <textarea id="parkingTextInput" rows="4" placeholder="Where to park, any permits or restrictions, walking distance…">${esc(CONFIG.parkingText||'')}</textarea>
+    </div>
+    <div class="form-group">
+      <label>Photo</label>
+      <div class="ann-grid" id="parkingGrid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));max-width:320px;">
+        <div class="ann-grid-slot" id="parkingSlot">
+          ${CONFIG.parkingImage
+            ? `<img class="ann-grid-preview" src="${esc(CONFIG.parkingImage)}" alt="" onclick="openLightbox(this.src)" />
+               <button class="slot-remove" onclick="clearParkingSlot()">✕</button>`
+            : `<div class="ann-grid-slot-inner" onclick="triggerParkingSlot()">
+                 <div class="slot-icon" style="font-size:1.2rem">✦</div>
+                 <div class="slot-label">Add photo</div>
+               </div>`}
+          <input type="file" id="parkingFile" accept="image/*" style="display:none" onchange="loadParkingSlot(event)" />
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:1rem;margin-bottom:3rem;">
+      <button class="btn btn-solid" id="parkingSaveBtn" onclick="saveParking()">Save Parking</button>
     </div>
     <hr class="div" />
     <div class="section-label" style="margin-top:2rem;">Play Positions for Curious Beginners</div>
@@ -6096,12 +6248,20 @@ function renderVenue() {
   const el = document.getElementById('venueContent');
   const desc = CONFIG.venueDescription || '';
   const imgs = (CONFIG.venueImages || []).filter(Boolean);
+  const parkingText = CONFIG.parkingText || '';
+  const parkingImage = CONFIG.parkingImage || '';
   el.innerHTML = `
     <button class="venue-back" onclick="showView('info',document.querySelector('[onclick=\\'showView(\\'info\\',this)\\']'))">← Back to Info</button>
     <div class="venue-heading">The Venue</div>
     <div class="venue-sub">Where it all happens</div>
     ${desc ? `<div class="venue-desc">${esc(desc).replace(/\n/g,'<br>')}</div>` : `<div class="venue-desc" style="color:var(--muted);font-style:italic;">No venue description yet.</div>`}
     ${imgs.length ? `<div class="venue-photos">${imgs.map(src => `<img src="${esc(src)}" alt="" onclick="openLightbox(this.src)" />`).join('')}</div>` : ''}
+    ${(parkingText || parkingImage) ? `
+    <div class="venue-parking">
+      <div class="venue-parking-heading">Parking</div>
+      ${parkingText ? `<div class="venue-desc">${esc(parkingText).replace(/\n/g,'<br>')}</div>` : ''}
+      ${parkingImage ? `<div class="venue-photos"><img src="${esc(parkingImage)}" alt="" onclick="openLightbox(this.src)" /></div>` : ''}
+    </div>` : ''}
   `;
 }
 
@@ -6175,6 +6335,81 @@ async function saveVenue() {
   const flash = document.createElement('div');
   flash.className = 'msg msg-success'; flash.style.cssText = 'margin-bottom:1rem;';
   flash.textContent = 'Venue saved.';
+  btn.parentNode.insertBefore(flash, btn);
+  setTimeout(() => flash.remove(), 3000);
+}
+
+// ══ VENUE — PARKING ════════════════════════════════════════════════
+let parkingImgSlot = null; // null = unchanged, '' = cleared, dataURL = new photo
+
+function triggerParkingSlot() { document.getElementById('parkingFile').click(); }
+
+function loadParkingSlot(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 1200; let w = img.width, h = img.height;
+      if (w > max || h > max) { if (w > h) { h = Math.round(h * max / w); w = max; } else { w = Math.round(w * max / h); h = max; } }
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      parkingImgSlot = c.toDataURL('image/jpeg', 0.82);
+      const slot = document.getElementById('parkingSlot');
+      slot.querySelector('.ann-grid-slot-inner')?.remove();
+      slot.querySelector('.ann-grid-preview')?.remove();
+      slot.querySelector('.slot-remove')?.remove();
+      const preview = document.createElement('img');
+      preview.className = 'ann-grid-preview'; preview.src = parkingImgSlot;
+      preview.onclick = () => openLightbox(parkingImgSlot);
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'slot-remove'; removeBtn.textContent = '✕';
+      removeBtn.onclick = () => clearParkingSlot();
+      slot.appendChild(preview); slot.appendChild(removeBtn);
+    };
+    img.onerror = () => alert('Could not load that image.');
+    img.src = ev.target.result;
+  };
+  reader.onerror = () => alert('Could not read that file.');
+  reader.readAsDataURL(file);
+}
+
+function clearParkingSlot() {
+  parkingImgSlot = '';
+  const slot = document.getElementById('parkingSlot');
+  slot.querySelector('.ann-grid-preview')?.remove();
+  slot.querySelector('.slot-remove')?.remove();
+  const inner = document.createElement('div');
+  inner.className = 'ann-grid-slot-inner';
+  inner.onclick = () => triggerParkingSlot();
+  inner.innerHTML = `<div class="slot-icon" style="font-size:1.2rem">✦</div><div class="slot-label">Add photo</div>`;
+  slot.appendChild(inner);
+}
+
+async function saveParking() {
+  const text = document.getElementById('parkingTextInput').value.trim();
+  const image = parkingImgSlot !== null ? parkingImgSlot : (CONFIG.parkingImage || '');
+
+  CONFIG.parkingText = text;
+  CONFIG.parkingImage = image;
+
+  const btn = document.getElementById('parkingSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const { error } = await sb.from('config').upsert([
+    { key: 'parkingText', value: text },
+    { key: 'parkingImage', value: image },
+  ], { onConflict: 'key' });
+
+  btn.disabled = false; btn.textContent = 'Save Parking';
+  parkingImgSlot = null;
+
+  if (error) { alert('Save failed: ' + error.message); return; }
+
+  const flash = document.createElement('div');
+  flash.className = 'msg msg-success'; flash.style.cssText = 'margin-bottom:1rem;';
+  flash.textContent = 'Parking info saved.';
   btn.parentNode.insertBefore(flash, btn);
   setTimeout(() => flash.remove(), 3000);
 }
