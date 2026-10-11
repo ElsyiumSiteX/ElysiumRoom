@@ -673,7 +673,9 @@
     .ci-saved { filter:drop-shadow(0 0 4px rgba(200,168,75,0.8)); }
     .pushnote-dot { position:absolute; top:0.5rem; left:0.5rem; z-index:5; width:10px; height:10px; border-radius:50%; background:var(--gold); border:1.5px solid rgba(6,5,4,0.9); box-shadow:0 0 8px rgba(200,168,75,0.85); pointer-events:none; }
     .roster-card.mutual-fire-card { box-shadow:0 0 0 1px rgba(224,80,80,0.3), 0 0 28px rgba(224,80,80,0.1); }
-    .roster-card.host-card { box-shadow:0 0 0 1px rgba(176,96,255,0.75), 0 0 28px rgba(176,96,255,0.32), 0 0 72px rgba(176,96,255,0.15), 0 0 120px rgba(176,96,255,0.07); border-color:rgba(176,96,255,0.6) !important; border-top-color:rgba(176,96,255,0.9) !important; }
+    .roster-card.host-card { box-shadow:0 0 0 1px rgba(176,96,255,0.75), 0 0 28px rgba(176,96,255,0.32), 0 0 72px rgba(176,96,255,0.15), 0 0 120px rgba(176,96,255,0.07); border-color:rgba(176,96,255,0.6) !important; border-top-color:rgba(176,96,255,0.9) !important; z-index:1; animation:fadeUp 0.6s ease both, hostGlow 3.2s ease-in-out 0.6s infinite; }
+    @keyframes hostGlow { 0%,100% { box-shadow:0 0 0 1px rgba(176,96,255,0.75), 0 0 28px rgba(176,96,255,0.32), 0 0 72px rgba(176,96,255,0.15), 0 0 120px rgba(176,96,255,0.07); } 50% { box-shadow:0 0 0 1px rgba(196,120,255,0.95), 0 0 40px rgba(176,96,255,0.5), 0 0 96px rgba(176,96,255,0.24), 0 0 150px rgba(176,96,255,0.12); } }
+    @media (hover:hover) { .roster-card.host-card:hover { z-index:3; } }
     .roster-card.host-card img { filter:brightness(0.88) contrast(1.1) saturate(0.95) hue-rotate(-5deg) !important; }
     @media (hover:hover) { .roster-card.host-card:hover { box-shadow:0 24px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(176,96,255,0.95), 0 0 56px rgba(176,96,255,0.42), 0 0 100px rgba(176,96,255,0.18) !important; } }
     .host-badge { position:absolute; top:0; left:0; right:0; font-family:'Cinzel',serif; font-size:0.55rem; letter-spacing:0.32em; text-transform:uppercase; color:rgba(200,160,255,0.95); background:linear-gradient(to bottom, rgba(8,6,4,0.82) 0%, rgba(8,6,4,0) 100%); padding:0.55rem 0.5rem 1.2rem; z-index:3; text-align:center; pointer-events:none; text-shadow:0 0 12px rgba(176,96,255,0.7); }
@@ -2402,7 +2404,7 @@ function rosterCardsHTML(list) {
     const photos = g.photos || [];
     const primary = photos[0] || null;
     const vibes = g.vibes || [];
-    const isHost = CONFIG.hostName && g.name.trim().toLowerCase() === CONFIG.hostName.trim().toLowerCase();
+    const isHost = isHostName(g.name);
     return `
     <div class="roster-card${isHost?' host-card':''}" data-guest-id="${g.id}" onclick="openModal('${g.id}')" style="animation-delay:${Math.min(i*0.05, 0.6)}s">
       ${isHost ? `<div class="host-badge">Host</div>` : ''}
@@ -2495,6 +2497,10 @@ function startCountdown() {
   startCountdown._interval = setInterval(tick, 60000);
 }
 
+function isHostName(name) {
+  return !!(CONFIG.hostName && name && name.trim().toLowerCase() === CONFIG.hostName.trim().toLowerCase());
+}
+
 async function init() {
   await loadConfig();
 
@@ -2518,6 +2524,8 @@ async function init() {
         if (g) {
           currentGuest = { id: g.id, name: g.name, pin: g.pin, phone: g.phone || null };
           localStorage.setItem(SESSION_KEY, JSON.stringify(currentGuest));
+          // Sync: restored host session keeps admin access
+          if (isHostName(g.name)) { adminIn = true; localStorage.setItem('elysium_admin', '1'); }
           if (CONFIG.sessionVersion) localStorage.setItem('elysium_session_ver', CONFIG.sessionVersion);
           showSessionBar(g.name, g.photos);
           updateFireBadge();
@@ -2622,7 +2630,7 @@ function hideSessionBar() {
 
 function logout() {
   // Revoke admin if it was granted via host login
-  if (currentGuest && CONFIG.hostName && currentGuest.name.trim().toLowerCase() === CONFIG.hostName.trim().toLowerCase()) {
+  if (currentGuest && isHostName(currentGuest.name)) {
     adminIn = false;
     adminCachedData = null;
     localStorage.removeItem('elysium_admin');
@@ -3711,7 +3719,7 @@ async function submitPin(target) {
   localStorage.setItem(SESSION_KEY, JSON.stringify({id:data.id, name:data.name, pin}));
   if (CONFIG.sessionVersion) localStorage.setItem('elysium_session_ver', CONFIG.sessionVersion);
   // Sync: host PIN login also grants admin access
-  if (CONFIG.hostName && data.name.trim().toLowerCase() === CONFIG.hostName.trim().toLowerCase()) {
+  if (isHostName(data.name)) {
     adminIn = true;
     localStorage.setItem('elysium_admin', '1');
   }
@@ -5450,12 +5458,31 @@ async function adminLogin() {
   adminIn = true;
   localStorage.setItem('elysium_admin', '1');
   renderAdmin();
+  // Sync: admin login also signs in as the host guest
+  if (CONFIG.hostName && !isPreview && !isHostName(currentGuest?.name)) {
+    const { data: hosts } = await sb.from('guests').select('id,name,pin,photos,phone').ilike('name', CONFIG.hostName.trim()).limit(1);
+    const h = hosts?.[0];
+    if (h && isHostName(h.name)) {
+      currentGuest = { id: h.id, name: h.name, pin: h.pin, phone: h.phone || null };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(currentGuest));
+      if (CONFIG.sessionVersion) localStorage.setItem('elysium_session_ver', CONFIG.sessionVersion);
+      showSessionBar(h.name, h.photos);
+      try { await loadSocialData(); } catch(e) {}
+      updateFireBadge();
+      checkUnreadChat();
+      updatePushNoteBadge();
+      renderRoster();
+      renderRsvp();
+    }
+  }
 }
 
 function adminLogout() {
   adminIn = false;
   adminCachedData = null;
   localStorage.removeItem('elysium_admin');
+  // Sync: leaving admin also signs out the host guest session
+  if (isHostName(currentGuest?.name)) logout();
   renderAdmin();
 }
 
