@@ -108,15 +108,15 @@
     .evening-tip { font-family: 'Cormorant', serif; font-style: italic; font-size: 0.82rem; color: var(--muted); opacity: 0.6; margin-top: 1.1rem; letter-spacing: 0.04em; }
     .hero-frequency { font-family: 'Cinzel', serif; font-size: 0.68rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--muted); opacity: 0.65; margin-top: 1.6rem; }
     .hero-frequency .season-active {
-      color: #4caf80; opacity: 1; position: relative; display: inline-block;
+      color: #e8843c; opacity: 1; position: relative; display: inline-block;
       font-size: 1.35em; letter-spacing: 0.38em; font-weight: 700;
-      text-shadow: 0 0 10px rgba(76,175,128,0.5), 0 0 28px rgba(76,175,128,0.25), 0 0 50px rgba(76,175,128,0.1);
+      text-shadow: 0 0 10px rgba(232,132,60,0.5), 0 0 28px rgba(232,132,60,0.25), 0 0 50px rgba(232,132,60,0.1);
       padding: 0.15em 0.6em; margin: 0 0.15em;
-      border-top: 1px solid rgba(76,175,128,0.3); border-bottom: 1px solid rgba(76,175,128,0.3);
-      background: linear-gradient(to bottom, rgba(76,175,128,0.06) 0%, transparent 40%, transparent 60%, rgba(76,175,128,0.06) 100%);
+      border-top: 1px solid rgba(232,132,60,0.3); border-bottom: 1px solid rgba(232,132,60,0.3);
+      background: linear-gradient(to bottom, rgba(232,132,60,0.06) 0%, transparent 40%, transparent 60%, rgba(232,132,60,0.06) 100%);
     }
-    .hero-frequency .season-active::before { content: '✦ ❧'; margin-right: 0.4em; font-size: 0.65em; opacity: 0.6; font-weight: 400; }
-    .hero-frequency .season-active::after  { content: '❧ ✦'; margin-left: 0.4em; font-size: 0.65em; opacity: 0.6; font-weight: 400; }
+    .hero-frequency .season-active::before { content: '✦ 🍂'; margin-right: 0.4em; font-size: 0.65em; opacity: 0.6; font-weight: 400; }
+    .hero-frequency .season-active::after  { content: '🍁 ✦'; margin-left: 0.4em; font-size: 0.65em; opacity: 0.6; font-weight: 400; }
 
     /* ── NAV ── */
     nav {
@@ -157,7 +157,11 @@
     .cap-header { display: flex; justify-content: space-between; margin-bottom: 1rem; }
     .cap-label { font-family: 'Cinzel', serif; font-size: 0.72rem; font-weight: 400; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); }
     .cap-count { font-family: 'Cormorant', serif; font-size: 1rem; letter-spacing: 0.1em; color: var(--gold-dim); }
-    .cap-track { height: 3px; background: rgba(255,255,255,0.04); }
+    .cap-track { height: 6px; background: rgba(200,168,75,0.08); border: 1px solid rgba(200,168,75,0.18); border-radius: 3px; overflow: hidden; }
+    .cap-fill { border-radius: 3px; }
+    .cap-status { font-family: 'Cormorant', serif; font-style: italic; font-size: 1rem; letter-spacing: 0.06em; color: var(--gold-light); }
+    .cap-status.warn { color: #d88050; }
+    .cap-status.full { color: #c05050; }
     .cap-fill { height: 100%; background: linear-gradient(to right, var(--gold-dim), var(--gold), var(--gold-bright)); box-shadow: 0 0 10px var(--gold-glow), 0 0 20px rgba(200,168,75,0.12); transition: width 1s cubic-bezier(0.4,0,0.2,1), background 0.6s, box-shadow 0.6s; }
     .cap-fill.warn { background: linear-gradient(to right, #b86030, #d88050); animation: capPulse 2.5s ease-in-out infinite; }
     .cap-fill.full { background: linear-gradient(to right, #7a2828, #b03838); animation: capPulse 2s ease-in-out infinite; }
@@ -1253,7 +1257,7 @@
     <div class="countdown-unit"><div class="countdown-num" id="cdHours">00</div><div class="countdown-label">Hours</div></div>
   </div>
   <div class="evening-tip" id="proTipBanner" style="display:none">pro tip: avoid jacking off after 5pm day of</div>
-  <div class="hero-frequency"><span style="display:block;margin-bottom:0.45rem;opacity:0.55;font-size:0.62rem;letter-spacing:0.32em;">hosted seasonally</span>Winter &middot; Spring &middot; <span class="season-active">Summer</span> &middot; Autumn</div>
+  <div class="hero-frequency"><span style="display:block;margin-bottom:0.45rem;opacity:0.55;font-size:0.62rem;letter-spacing:0.32em;">hosted seasonally</span>Winter &middot; Spring &middot; Summer &middot; <span class="season-active">Autumn</span></div>
 </div>
 
 <nav id="mainNav">
@@ -3278,6 +3282,7 @@ async function renderRoster(forceRefresh) {
       ${CONFIG.waitlistEnabled ? `<span id="statW"></span>` : `<span id="statP"></span><span id="statR"></span>`}
     </div>
     ${CONFIG.eventPhase !== 'closed' ? `<div class="cap-wrap">
+      <div class="cap-header"><span class="cap-label">Space Remaining</span><span class="cap-status" id="capStatus"></span></div>
       <div class="cap-track"><div class="cap-fill" id="capFill" style="width:0%"></div></div>
     </div>` : ''}
     <div id="lubePollWrap"></div>
@@ -3317,6 +3322,11 @@ async function renderRoster(forceRefresh) {
   if (fill) {
     fill.style.width = pct + '%';
     fill.className = 'cap-fill' + (pct >= 100 ? ' full' : pct >= 80 ? ' warn' : '');
+    const status = document.getElementById('capStatus');
+    if (status) {
+      status.textContent = pct >= 100 ? 'Full' : pct >= 90 ? 'Last few places' : pct >= 80 ? 'Almost full' : pct >= 50 ? 'Filling up' : 'Plenty of room';
+      status.className = 'cap-status' + (pct >= 100 ? ' full' : pct >= 80 ? ' warn' : '');
+    }
   }
 
   // EVENT FULL banner
