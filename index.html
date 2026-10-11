@@ -573,6 +573,25 @@
     .fire-toast-text { font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cream); line-height: 1.45; }
     .fire-toast-dismiss { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 0.1rem; flex-shrink: 0; transition: color 0.2s; }
     .fire-toast-dismiss:hover { color: var(--cream); }
+
+    /* APP TOAST — styled, on-brand replacement for native alert() */
+    .toast-stack { position: fixed; bottom: 5.5rem; right: 1.5rem; z-index: 260; display: flex; flex-direction: column; gap: 0.6rem; align-items: flex-end; pointer-events: none; max-width: calc(100vw - 2rem); }
+    .app-toast { pointer-events: auto; background: var(--black-card); border: 1px solid var(--border); border-left: 2px solid var(--gold); padding: 0.7rem 0.95rem 0.7rem 1rem; display: flex; align-items: flex-start; gap: 0.6rem; max-width: 320px; box-shadow: 0 10px 34px rgba(0,0,0,0.55); animation: fireToastIn 0.35s ease; }
+    .app-toast.leaving { animation: toastOut 0.3s ease forwards; }
+    @keyframes toastOut { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(8px); } }
+    .app-toast-icon { font-size: 0.85rem; line-height: 1.4; flex-shrink: 0; color: var(--gold-light); }
+    .app-toast-text { font-family: 'Cinzel', serif; font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cream); line-height: 1.5; word-break: break-word; }
+    .app-toast-dismiss { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 0.1rem; flex-shrink: 0; transition: color 0.2s; margin-left: 0.2rem; }
+    .app-toast-dismiss:hover { color: var(--cream); }
+    .app-toast-error   { border-left-color: var(--vibe-up); }
+    .app-toast-error   .app-toast-icon { color: var(--vibe-up); }
+    .app-toast-success { border-left-color: var(--gold-light); }
+    .app-toast-info    { border-left-color: var(--neon-blue); }
+    .app-toast-info    .app-toast-icon { color: var(--neon-blue); }
+    @media (max-width: 600px) {
+      .toast-stack { bottom: 5rem; right: 0.75rem; left: 0.75rem; align-items: stretch; max-width: none; }
+      .app-toast { max-width: none; }
+    }
     .session-avatar { position: relative; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--gold); background: var(--black) center/cover no-repeat; cursor: pointer; flex-shrink: 0; transition: border-color 0.2s, box-shadow 0.2s; }
     .session-avatar:hover { border-color: var(--gold-dim); box-shadow: 0 0 8px rgba(200,168,75,0.35); }
     .session-avatar.has-pushnote::after { content: ''; position: absolute; top: -1px; right: -1px; width: 9px; height: 9px; border-radius: 50%; background: var(--gold); border: 1.5px solid var(--black); box-shadow: 0 0 8px rgba(200,168,75,0.8); }
@@ -1473,6 +1492,44 @@ const _debouncedAdminSearch = debounce(q => filterGuests(q), 150);
 // Safe HTML escape
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+// ══ TOAST ══════════════════════════════════════════════════════════
+// Styled, non-blocking notices — the on-brand replacement for alert().
+// type: 'error' (default) | 'success' | 'info'. Message is rendered with
+// textContent so interpolated error strings can never inject markup.
+function showToast(msg, type = 'error', ms = 5000) {
+  let stack = document.getElementById('toastStack');
+  if (!stack) {
+    stack = document.createElement('div');
+    stack.id = 'toastStack';
+    stack.className = 'toast-stack';
+    document.body.appendChild(stack);
+  }
+  const icons = { error: '⚠', success: '✓', info: '✦' };
+  const kind = icons[type] ? type : 'error';
+  const toast = document.createElement('div');
+  toast.className = 'app-toast app-toast-' + kind;
+  toast.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+  toast.innerHTML = '<span class="app-toast-icon"></span><span class="app-toast-text"></span>'
+    + '<button class="app-toast-dismiss" aria-label="Dismiss">✕</button>';
+  toast.querySelector('.app-toast-icon').textContent = icons[kind];
+  toast.querySelector('.app-toast-text').textContent = String(msg == null ? '' : msg);
+  const remove = () => {
+    if (toast._gone) return; toast._gone = true;
+    toast.classList.add('leaving');
+    setTimeout(() => toast.remove(), 300);
+  };
+  toast.querySelector('.app-toast-dismiss').onclick = remove;
+  stack.appendChild(toast);
+  if (ms > 0) setTimeout(remove, Math.max(2500, ms));
+  return toast;
+}
+
+// Lightweight observability for otherwise-silent catch blocks. These guard
+// benign fallbacks (localStorage disabled, cached-JSON parse), so they must
+// stay quiet for guests — but they should no longer be invisible to anyone
+// inspecting the console while debugging.
+function logErr(context, e) { try { console.warn('[elysium] ' + context, e); } catch(_) {} }
+
 // Admin Supabase Auth email — set the password for this user in your
 // Supabase dashboard: Authentication → Users → Create user
 const ADMIN_EMAIL = 'admin@elysiumroom.local';
@@ -1554,8 +1611,8 @@ async function loadSocialData() {
       socialData.saved = p.saved || {};
       for (const id in socialData.fires) socialData.fires[id] = [...new Set(socialData.fires[id])];
       for (const id in socialData.saved) socialData.saved[id] = [...new Set(socialData.saved[id])];
-      try { localStorage.setItem('elysium_social_cache', socialRes.data.value); } catch(e) {}
-    } catch(e) {}
+      try { localStorage.setItem('elysium_social_cache', socialRes.data.value); } catch(e) { logErr("caught", e); }
+    } catch(e) { logErr("caught", e); }
   } else {
     // Fall back to cached social data if DB returned nothing (network hiccup, cold start, etc.)
     try {
@@ -1567,16 +1624,16 @@ async function loadSocialData() {
         for (const id in socialData.fires) socialData.fires[id] = [...new Set(socialData.fires[id])];
         for (const id in socialData.saved) socialData.saved[id] = [...new Set(socialData.saved[id])];
       }
-    } catch(e) {}
+    } catch(e) { logErr("caught", e); }
   }
   if (wlMsgRes.data?.value) {
-    try { wlMessages = JSON.parse(wlMsgRes.data.value) || {}; } catch(e) {}
+    try { wlMessages = JSON.parse(wlMsgRes.data.value) || {}; } catch(e) { logErr("caught", e); }
   }
   if (confirmRes.data?.value) {
-    try { confirmResponses = JSON.parse(confirmRes.data.value) || {}; } catch(e) {}
+    try { confirmResponses = JSON.parse(confirmRes.data.value) || {}; } catch(e) { logErr("caught", e); }
   }
   if (wlOrderRes.data?.value) {
-    try { wlOrder = JSON.parse(wlOrderRes.data.value) || []; } catch(e) {}
+    try { wlOrder = JSON.parse(wlOrderRes.data.value) || []; } catch(e) { logErr("caught", e); }
   }
   if (peRes.data?.value) {
     try {
@@ -1584,13 +1641,13 @@ async function loadSocialData() {
       postEventData.blastSent = pe.blastSent || false;
       postEventData.blastMessage = pe.blastMessage || '';
       postEventData.responses = pe.responses || {};
-    } catch(e) {}
+    } catch(e) { logErr("caught", e); }
   }
   if (pledgeRes.data?.value) {
-    try { attendancePledges = JSON.parse(pledgeRes.data.value) || {}; } catch(e) {}
+    try { attendancePledges = JSON.parse(pledgeRes.data.value) || {}; } catch(e) { logErr("caught", e); }
   }
   if (pushNoteRes.data?.value) {
-    try { pushNotes = JSON.parse(pushNoteRes.data.value) || {}; } catch(e) {}
+    try { pushNotes = JSON.parse(pushNoteRes.data.value) || {}; } catch(e) { logErr("caught", e); }
   }
   _rebuildFireIndex();
 }
@@ -1612,7 +1669,7 @@ async function savePushNotes() {
           }
         }
       }
-    } catch(e) {}
+    } catch(e) { logErr("caught", e); }
   }
   const { error } = await sb.from('config').upsert({ key:'push_notes', value:JSON.stringify(pushNotes) }, { onConflict:'key' });
   return error || null;
@@ -1631,7 +1688,7 @@ async function sendPushNote(receiverId, content) {
   const err = await savePushNotes();
   if (err) {
     delete pushNotes[receiverId][currentGuest.id];
-    alert('Could not send note — please try again.');
+    showToast('Could not send note — please try again.');
   }
   return !err;
 }
@@ -1647,7 +1704,7 @@ async function deletePushNote(receiverId) {
   if (err) {
     if (!pushNotes[receiverId]) pushNotes[receiverId] = {};
     if (prev) pushNotes[receiverId][currentGuest.id] = prev;
-    alert('Could not delete note — please try again.');
+    showToast('Could not delete note — please try again.');
   }
   return !err;
 }
@@ -1752,7 +1809,7 @@ async function submitConfirmAttendance() {
   btn.textContent = 'Confirming…'; btn.style.opacity = '0.6';
   confirmResponses[currentGuest.id] = CONFIG.confirmRound;
   const { error } = await sb.from('config').upsert({ key: 'confirm_responses', value: JSON.stringify(confirmResponses) }, { onConflict: 'key' });
-  if (error) { btn.textContent = 'Confirm Attendance'; btn.style.opacity = ''; alert('Could not save — please try again.'); return; }
+  if (error) { btn.textContent = 'Confirm Attendance'; btn.style.opacity = ''; showToast('Could not save — please try again.'); return; }
   document.getElementById('confirmOverlay').classList.remove('open');
   unlockScroll();
 }
@@ -1760,7 +1817,7 @@ async function submitConfirmAttendance() {
 async function sendConfirmBlast() {
   const newRound = CONFIG.confirmRound + 1;
   const { error } = await sb.from('config').upsert({ key: 'confirmRound', value: String(newRound) }, { onConflict: 'key' });
-  if (error) { alert('Could not send — try again.'); return; }
+  if (error) { showToast('Could not send — try again.'); return; }
   CONFIG.confirmRound = newRound;
   if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
 }
@@ -1773,7 +1830,7 @@ async function saveWlPersonalMessage(id) {
   wlMessages[id] = msg || undefined;
   if (!msg) delete wlMessages[id];
   const { error } = await sb.from('config').upsert({ key: 'wl_messages', value: JSON.stringify(wlMessages) }, { onConflict: 'key' });
-  if (error) { alert('Could not save — try again.'); return; }
+  if (error) { showToast('Could not save — try again.'); return; }
   if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
 }
 
@@ -1819,11 +1876,11 @@ async function saveSocialData() {
       // Merge: keep remote data for all other owners, only we own our own row
       for (const k in (remote.fires || {})) { if (k !== currentGuest?.id) socialData.fires[k] = remote.fires[k]; }
       for (const k in (remote.saved || {})) { if (k !== currentGuest?.id) socialData.saved[k] = remote.saved[k]; }
-    } catch(e) {}
+    } catch(e) { logErr("caught", e); }
   }
   const serialized = JSON.stringify(socialData);
   const { error } = await sb.from('config').upsert({ key:'social', value:serialized }, { onConflict:'key' });
-  if (!error) { try { localStorage.setItem('elysium_social_cache', serialized); } catch(e) {} }
+  if (!error) { try { localStorage.setItem('elysium_social_cache', serialized); } catch(e) { logErr("caught", e); } }
   _rebuildFireIndex();
   return error || null;
 }
@@ -1832,7 +1889,7 @@ async function saveSocialData() {
 // Fixes count discrepancies between admin view and user profile connections.
 async function purgeGhostFireData() {
   const { data: allGuests } = await sb.from('guests').select('id');
-  if (!allGuests) { alert('Could not load guests — try again.'); return; }
+  if (!allGuests) { showToast('Could not load guests — try again.'); return; }
   const liveIds = new Set(allGuests.map(g => g.id));
   let removed = 0;
   for (const key of ['fires', 'saved']) {
@@ -1847,15 +1904,15 @@ async function purgeGhostFireData() {
       removed += before - socialData[key][ownerId].length;
     }
   }
-  if (removed === 0) { alert('No ghost data found — everything looks clean.'); return; }
+  if (removed === 0) { showToast('No ghost data found — everything looks clean.', 'info'); return; }
   // Write directly instead of saveSocialData() — its merge logic would
   // re-import the ghost entries we just removed from the remote copy.
   const serialized = JSON.stringify(socialData);
   const { error: err } = await sb.from('config').upsert({ key:'social', value:serialized }, { onConflict:'key' });
-  if (!err) { try { localStorage.setItem('elysium_social_cache', serialized); } catch(e) {} }
+  if (!err) { try { localStorage.setItem('elysium_social_cache', serialized); } catch(e) { logErr("caught", e); } }
   _rebuildFireIndex();
-  if (err) { alert('Could not save — try again.'); return; }
-  alert(`Cleaned ${removed} ghost entr${removed===1?'y':'ies'} from fire/save data.`);
+  if (err) { showToast('Could not save — try again.'); return; }
+  showToast(`Cleaned ${removed} ghost entr${removed===1?'y':'ies'} from fire/save data.`, 'success');
   if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
 }
 
@@ -2018,7 +2075,7 @@ async function toggleFire(id) {
   socialData.fires[currentGuest.id] = list.includes(id) ? list.filter(x=>x!==id) : [...list, id];
   refreshModalInteract(id); applyRosterIndicators(); // optimistic
   const err = await saveSocialData();
-  if (err) { socialData.fires[currentGuest.id] = prev; refreshModalInteract(id); applyRosterIndicators(); alert('Could not save — please try again.'); }
+  if (err) { socialData.fires[currentGuest.id] = prev; refreshModalInteract(id); applyRosterIndicators(); showToast('Could not save — please try again.'); }
 }
 
 async function toggleSave(id) {
@@ -2028,7 +2085,7 @@ async function toggleSave(id) {
   socialData.saved[currentGuest.id] = list.includes(id) ? list.filter(x=>x!==id) : [...list, id];
   refreshModalInteract(id); applyRosterIndicators(); // optimistic
   const err = await saveSocialData();
-  if (err) { socialData.saved[currentGuest.id] = prev; refreshModalInteract(id); applyRosterIndicators(); alert('Could not save — please try again.'); }
+  if (err) { socialData.saved[currentGuest.id] = prev; refreshModalInteract(id); applyRosterIndicators(); showToast('Could not save — please try again.'); }
 }
 
 function refreshModalInteract(id) {
@@ -2327,7 +2384,7 @@ async function loadAdminData() {
       adminData.notes       = parsed.notes       || {};
       adminData.flagged     = parsed.flagged     || {};
       adminData.priorEvents = parsed.priorEvents || {};
-    } catch(e) {}
+    } catch(e) { logErr("caught", e); }
   }
 }
 
@@ -2700,7 +2757,7 @@ function subscribeConfigChanges() {
       loadSocialData().then(() => { updateFireBadge(); applyRosterIndicators(); });
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'config', filter: 'key=eq.push_notes' }, payload => {
-      if (payload.new?.value) { try { pushNotes = JSON.parse(payload.new.value) || {}; } catch(e) {} }
+      if (payload.new?.value) { try { pushNotes = JSON.parse(payload.new.value) || {}; } catch(e) { logErr("caught", e); } }
       updatePushNoteBadge();
       applyRosterIndicators();
     })
@@ -3194,7 +3251,7 @@ async function declinePledgeDelete() {
   const { error } = await sb.from('guests').delete().eq('id', currentGuest.id);
   if (error) {
     if (btn) { btn.disabled = false; btn.textContent = 'No — Delete My Account'; }
-    alert('Delete failed. Try again.');
+    showToast('Delete failed. Try again.');
     return;
   }
   closePledgeNoticesDirectly();
@@ -3217,7 +3274,7 @@ async function confirmPledge() {
   if (error) {
     delete attendancePledges[currentGuest.id];
     if (wrap) wrap.innerHTML = '<button class="pledge-btn" onclick="pledgeAttendance()">I WILL BE THERE!</button>';
-    alert('Could not save — please try again.');
+    showToast('Could not save — please try again.');
   }
 }
 
@@ -3233,7 +3290,7 @@ async function saveEventAddress() {
     { key: 'eventAddress', value: addr }
   ], { onConflict: 'key' });
   btn.disabled = false; btn.textContent = 'Save Address';
-  if (error) { alert('Save failed: ' + error.message); return; }
+  if (error) { showToast('Save failed: ' + error.message); return; }
   const flash = document.createElement('div');
   flash.className = 'msg msg-success';
   flash.style.cssText = 'margin-bottom:1rem;';
@@ -3727,7 +3784,7 @@ async function submitPin(target) {
   if (target === 'roster') renderRoster();
   else if (target === 'info') renderInfo();
   else if (target === 'account') renderAccount();
-  try { await loadSocialData(); } catch(e) {}
+  try { await loadSocialData(); } catch(e) { logErr("caught", e); }
   updateFireBadge();
   checkUnreadChat();
   updatePushNoteBadge();
@@ -3933,7 +3990,7 @@ function toggleVibe(v, btn) {
 function handleSlot(i, input) { const f=input.files[0]; if(f) processSlot(i,f); }
 
 function processSlot(i, file) {
-  if (!file.type.startsWith('image/')) { alert('Please select an image file.'); return; }
+  if (!file.type.startsWith('image/')) { showToast('Please select an image file.'); return; }
   const reader = new FileReader();
   reader.onload = e => {
     const img = new Image();
@@ -3944,10 +4001,10 @@ function processSlot(i, file) {
       c.getContext('2d').drawImage(img,0,0,w,h);
       photoSlots[i]=c.toDataURL('image/jpeg',0.65); updateSlotUI(i);
     };
-    img.onerror = () => alert('Could not load that image. Try a different file.');
+    img.onerror = () => showToast('Could not load that image. Try a different file.');
     img.src=e.target.result;
   };
-  reader.onerror = () => alert('Could not read that file. Try again.');
+  reader.onerror = () => showToast('Could not read that file. Try again.');
   reader.readAsDataURL(file);
 }
 
@@ -4121,7 +4178,7 @@ async function renderAccount() {
           const ai = saved.indexOf(a); const bi = saved.indexOf(b);
           return (ai===-1?Infinity:ai) - (bi===-1?Infinity:bi);
         });
-      } catch(e) {}
+      } catch(e) { logErr("caught", e); }
     }
     wlPosition = ordered.indexOf(g.id) + 1 || null;
   }
@@ -4287,7 +4344,7 @@ async function deleteProfile() {
   const btn = document.querySelector('#deleteConfirm .btn-danger');
   btn.disabled = true; btn.textContent = 'Deleting…';
   const { error } = await sb.from('guests').delete().eq('id', currentGuest.id);
-  if (error) { btn.disabled = false; btn.textContent = 'Yes, Delete Everything'; alert('Delete failed. Try again.'); return; }
+  if (error) { btn.disabled = false; btn.textContent = 'Yes, Delete Everything'; showToast('Delete failed. Try again.'); return; }
   currentGuest = null; isPreview = false;
   localStorage.removeItem(SESSION_KEY);
   hideSessionBar();
@@ -4346,7 +4403,7 @@ async function approveAllPending() {
   if (!window.confirm(`Approve all ${count} pending guest${count > 1 ? 's' : ''}?`)) return;
   const ids = adminCachedData.pend.map(g => g.id);
   const { error } = await sb.from('guests').update({ status: 'approved' }).in('id', ids);
-  if (error) { alert('Bulk approve failed — please try again.'); return; }
+  if (error) { showToast('Bulk approve failed — please try again.'); return; }
   const toMove = adminCachedData.pend;
   adminCachedData.pend = [];
   adminCachedData.appr = [...adminCachedData.appr, ...toMove.map(g => ({ ...g, status: 'approved' }))]
@@ -5467,7 +5524,7 @@ async function adminLogin() {
       localStorage.setItem(SESSION_KEY, JSON.stringify(currentGuest));
       if (CONFIG.sessionVersion) localStorage.setItem('elysium_session_ver', CONFIG.sessionVersion);
       showSessionBar(h.name, h.photos);
-      try { await loadSocialData(); } catch(e) {}
+      try { await loadSocialData(); } catch(e) { logErr("caught", e); }
       updateFireBadge();
       checkUnreadChat();
       updatePushNoteBadge();
@@ -5509,7 +5566,7 @@ function _adminRebuild() {
 
 async function approveGuest(id) {
   const { error } = await sb.from('guests').update({status:'approved'}).eq('id',id);
-  if (error) { alert('Approve failed — please try again.'); return; }
+  if (error) { showToast('Approve failed — please try again.'); return; }
   if (adminCachedData) {
     const g = adminCachedData.pend.find(x => x.id === id);
     if (g) {
@@ -5523,7 +5580,7 @@ async function approveGuest(id) {
 
 async function rejectGuest(id) {
   const { error } = await sb.from('guests').delete().eq('id',id);
-  if (error) { alert('Reject failed — please try again.'); return; }
+  if (error) { showToast('Reject failed — please try again.'); return; }
   if (adminCachedData) adminCachedData.pend = adminCachedData.pend.filter(x => x.id !== id);
   _adminRebuild(); renderRoster(true);
 }
@@ -5542,7 +5599,7 @@ async function promoteFromWaitlist(id) {
   if (!g) return;
   if (!window.confirm(`Promote ${g.name} to Confirmed? This skips the approval queue.`)) return;
   const { error } = await sb.from('guests').update({status:'approved'}).eq('id',id);
-  if (error) { alert('Promotion failed — please try again.'); return; }
+  if (error) { showToast('Promotion failed — please try again.'); return; }
   if (adminCachedData) {
     adminCachedData.wl = adminCachedData.wl.filter(x => x.id !== id);
     adminCachedData.appr = [...adminCachedData.appr, {...g, status:'approved'}]
@@ -5571,7 +5628,7 @@ async function revertGuest(id, targetStatus) {
   const msgEl = document.getElementById('revertMsg-' + id);
   const msg = msgEl?.value.trim() || '';
   const { error } = await sb.from('guests').update({ status: targetStatus }).eq('id', id);
-  if (error) { alert('Could not revert — please try again.'); return; }
+  if (error) { showToast('Could not revert — please try again.'); return; }
   adminCachedData.appr = adminCachedData.appr.filter(x => x.id !== id);
   const updated = { ...g, status: targetStatus };
   if (targetStatus === 'waitlisted') {
@@ -5676,10 +5733,10 @@ function loadAnnSlot(i, e) {
       slot.appendChild(preview);
       slot.appendChild(removeBtn);
     };
-    img.onerror = () => alert('Could not load that image. Try a different file.');
+    img.onerror = () => showToast('Could not load that image. Try a different file.');
     img.src = ev.target.result;
   };
-  reader.onerror = () => alert('Could not read that file. Try again.');
+  reader.onerror = () => showToast('Could not read that file. Try again.');
   reader.readAsDataURL(file);
 }
 
@@ -5716,7 +5773,7 @@ async function saveAnnouncement() {
   btn.disabled = false; btn.textContent = 'Save Announcement';
   annSlots = [null, null, null, null, null, null];
 
-  if (error) { alert('Save failed: ' + error.message); return; }
+  if (error) { showToast('Save failed: ' + error.message); return; }
 
   const flash = document.createElement('div');
   flash.className = 'msg msg-success';
@@ -5756,10 +5813,10 @@ function loadInfoSlot(i, e) {
       slot.appendChild(preview);
       slot.appendChild(removeBtn);
     };
-    img.onerror = () => alert('Could not load that image. Try a different file.');
+    img.onerror = () => showToast('Could not load that image. Try a different file.');
     img.src = ev.target.result;
   };
-  reader.onerror = () => alert('Could not read that file. Try again.');
+  reader.onerror = () => showToast('Could not read that file. Try again.');
   reader.readAsDataURL(file);
 }
 
@@ -5794,7 +5851,7 @@ async function saveInfoImages() {
   btn.disabled = false; btn.textContent = 'Save Info Images';
   infoImgSlots = {};
 
-  if (error) { alert('Save failed: ' + error.message); return; }
+  if (error) { showToast('Save failed: ' + error.message); return; }
 
   renderInfo();
   const flash = document.createElement('div');
@@ -5933,7 +5990,7 @@ async function submitPostEventFeedback() {
   if (error) {
     delete postEventData.responses[currentGuest.id];
     btn.textContent = 'Submit Feedback'; btn.style.opacity = '';
-    alert('Could not save — please try again.');
+    showToast('Could not save — please try again.');
     return;
   }
 
@@ -5962,7 +6019,7 @@ async function sendPostEventBlast() {
   );
   if (error) {
     postEventData.blastSent = false;
-    alert('Could not send blast — try again.');
+    showToast('Could not send blast — try again.');
     return;
   }
   if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
@@ -5975,7 +6032,7 @@ async function resetPostEventBlast() {
     { key: 'post_event_data', value: JSON.stringify(postEventData) },
     { onConflict: 'key' }
   );
-  if (error) { alert('Could not reset — try again.'); return; }
+  if (error) { showToast('Could not reset — try again.'); return; }
   if (adminCachedData) buildAdminHTML(document.getElementById('adminContent'));
 }
 
@@ -5986,8 +6043,8 @@ async function launchNewEvent() {
   const cap = parseInt(document.getElementById('neCap').value, 10);
   const mode = document.getElementById('neGuestMode').value;
 
-  if (!dt || !iso) { alert('Please set both the event date and countdown target.'); return; }
-  if (isNaN(cap) || cap < 1) { alert('Capacity must be a positive number.'); return; }
+  if (!dt || !iso) { showToast('Please set both the event date and countdown target.'); return; }
+  if (isNaN(cap) || cap < 1) { showToast('Capacity must be a positive number.'); return; }
 
   const modeLabel = mode === 'june'  ? 'Keep June-interested guests (set to pending), remove others'
                   : mode === 'clear' ? 'Delete ALL guests'
@@ -6056,10 +6113,10 @@ async function launchNewEvent() {
 
     document.getElementById('heroMeta').innerHTML = `${esc(CONFIG.eventDate)}&ensp;·&ensp;${esc(CONFIG.eventLocation)}`;
     startCountdown();
-    alert('New event launched! The site is now in Pre-Event mode for ' + dt + '.');
+    showToast('New event launched! The site is now in Pre-Event mode for ' + dt + '.', 'success');
     renderAdmin();
   } catch (err) {
-    alert('Error launching event: ' + (err.message || err));
+    showToast('Error launching event: ' + (err.message || err));
     if (btn) { btn.disabled = false; btn.textContent = 'Launch New Event'; }
   }
 }
@@ -6157,10 +6214,10 @@ async function saveSettings() {
   const ptEnabled    = document.getElementById('sProTipEnabled').checked;
 
   if (gp && (gp.length !== 6 || !/^\d{6}$/.test(gp))) {
-    alert('Guest PIN must be exactly 6 digits (numbers only).'); return;
+    showToast('Guest PIN must be exactly 6 digits (numbers only).'); return;
   }
   if (document.getElementById('sCap').value.trim() && (isNaN(c) || c < 1)) {
-    alert('Capacity must be a positive number.'); return;
+    showToast('Capacity must be a positive number.'); return;
   }
 
   if (n)                           CONFIG.eventName        = n;
@@ -6196,7 +6253,7 @@ async function saveSettings() {
   btn.disabled = false; btn.textContent = 'Save Settings';
 
   if (error) {
-    alert('Save failed: ' + error.message); return;
+    showToast('Save failed: ' + error.message); return;
   }
 
   document.getElementById('heroMeta').innerHTML = `${esc(CONFIG.eventDate)}&ensp;·&ensp;${esc(CONFIG.eventLocation)}`;
@@ -6232,7 +6289,7 @@ function dismissBroadcast() {
 
 async function sendBroadcastPopup() {
   const msg = document.getElementById('broadcastMsgInput').value.trim();
-  if (!msg) { alert('Please write a message to broadcast.'); return; }
+  if (!msg) { showToast('Please write a message to broadcast.'); return; }
   const broadcastId = Date.now().toString(36);
   const btn = document.getElementById('broadcastSendBtn');
   btn.disabled = true; btn.textContent = 'Sending…';
@@ -6241,7 +6298,7 @@ async function sendBroadcastPopup() {
     { key: 'broadcastId', value: broadcastId },
   ], { onConflict: 'key' });
   btn.disabled = false; btn.textContent = 'Send Broadcast';
-  if (error) { alert('Failed to send: ' + error.message); return; }
+  if (error) { showToast('Failed to send: ' + error.message); return; }
   CONFIG.broadcastMsg = msg;
   CONFIG.broadcastId = broadcastId;
   document.getElementById('broadcastMsgInput').value = '';
@@ -6258,7 +6315,7 @@ async function clearBroadcastPopup() {
     { key: 'broadcastMsg', value: '' },
     { key: 'broadcastId', value: '' },
   ], { onConflict: 'key' });
-  if (error) { alert('Failed to clear: ' + error.message); return; }
+  if (error) { showToast('Failed to clear: ' + error.message); return; }
   CONFIG.broadcastMsg = ''; CONFIG.broadcastId = '';
   _adminRebuild();
 }
@@ -6268,7 +6325,7 @@ async function massLogoutAllGuests() {
   if (!window.confirm('Force all guests to re-login? Their PINs will not change — they just need to enter them again.')) return;
   const newVer = Date.now().toString(36);
   const { error } = await sb.from('config').upsert({ key: 'sessionVersion', value: newVer }, { onConflict: 'key' });
-  if (error) { alert('Failed: ' + error.message); return; }
+  if (error) { showToast('Failed: ' + error.message); return; }
   CONFIG.sessionVersion = newVer;
   const flash = document.createElement('div');
   flash.className = 'msg msg-success'; flash.style.cssText = 'margin-bottom:1rem;';
@@ -6328,10 +6385,10 @@ function loadVenueSlot(i, e) {
       removeBtn.onclick = () => clearVenueSlot(i);
       slot.appendChild(preview); slot.appendChild(removeBtn);
     };
-    img.onerror = () => alert('Could not load that image.');
+    img.onerror = () => showToast('Could not load that image.');
     img.src = ev.target.result;
   };
-  reader.onerror = () => alert('Could not read that file.');
+  reader.onerror = () => showToast('Could not read that file.');
   reader.readAsDataURL(file);
 }
 
@@ -6367,7 +6424,7 @@ async function saveVenue() {
   btn.disabled = false; btn.textContent = 'Save Venue';
   venueImgSlots = [null, null, null, null, null, null, null, null, null, null, null, null];
 
-  if (error) { alert('Save failed: ' + error.message); return; }
+  if (error) { showToast('Save failed: ' + error.message); return; }
 
   const flash = document.createElement('div');
   flash.className = 'msg msg-success'; flash.style.cssText = 'margin-bottom:1rem;';
@@ -6405,10 +6462,10 @@ function loadParkingSlot(e) {
       removeBtn.onclick = () => clearParkingSlot();
       slot.appendChild(preview); slot.appendChild(removeBtn);
     };
-    img.onerror = () => alert('Could not load that image.');
+    img.onerror = () => showToast('Could not load that image.');
     img.src = ev.target.result;
   };
-  reader.onerror = () => alert('Could not read that file.');
+  reader.onerror = () => showToast('Could not read that file.');
   reader.readAsDataURL(file);
 }
 
@@ -6442,7 +6499,7 @@ async function saveParking() {
   btn.disabled = false; btn.textContent = 'Save Parking';
   parkingImgSlot = null;
 
-  if (error) { alert('Save failed: ' + error.message); return; }
+  if (error) { showToast('Save failed: ' + error.message); return; }
 
   const flash = document.createElement('div');
   flash.className = 'msg msg-success'; flash.style.cssText = 'margin-bottom:1rem;';
@@ -6479,7 +6536,7 @@ function loadPPSlot(i, e) {
   if (file.type === 'image/gif') {
     // GIFs are stored as-is (no canvas re-encode) so animation is preserved.
     reader.onload = ev => finish(ev.target.result);
-    reader.onerror = () => alert('Could not read that file.');
+    reader.onerror = () => showToast('Could not read that file.');
     reader.readAsDataURL(file);
     return;
   }
@@ -6492,10 +6549,10 @@ function loadPPSlot(i, e) {
       c.getContext('2d').drawImage(img, 0, 0, w, h);
       finish(c.toDataURL('image/jpeg', 0.82));
     };
-    img.onerror = () => alert('Could not load that image.');
+    img.onerror = () => showToast('Could not load that image.');
     img.src = ev.target.result;
   };
-  reader.onerror = () => alert('Could not read that file.');
+  reader.onerror = () => showToast('Could not read that file.');
   reader.readAsDataURL(file);
 }
 
@@ -6537,7 +6594,7 @@ async function savePlayPositions() {
   btn.disabled = false; btn.textContent = 'Save Play Positions Photos';
   playPosImgSlots = [null, null, null, null, null, null, null, null, null, null];
 
-  if (error) { alert('Save failed: ' + error.message); return; }
+  if (error) { showToast('Save failed: ' + error.message); return; }
 
   renderInfo();
 
