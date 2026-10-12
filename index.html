@@ -1217,6 +1217,82 @@
       z-index: 3;
       opacity: 0.07;
     }
+
+    /* ── "IT'S A MATCH" MOMENT ── */
+    #matchCanvas { position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:1001; }
+    .match-overlay {
+      position:fixed; inset:0; z-index:1000; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; padding:2rem 1.5rem;
+      background:radial-gradient(circle at 50% 42%, rgba(224,80,80,0.14), rgba(6,5,4,0.92) 62%, rgba(6,5,4,0.98));
+      backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px);
+      opacity:0; animation:matchOverlayIn 0.5s ease forwards;
+    }
+    .match-overlay.closing { animation:matchOverlayOut 0.35s ease forwards; }
+    @keyframes matchOverlayIn  { from { opacity:0; } to { opacity:1; } }
+    @keyframes matchOverlayOut { from { opacity:1; } to { opacity:0; } }
+
+    .match-eyebrow {
+      font-family:'Cinzel',serif; font-size:0.7rem; letter-spacing:0.42em; text-transform:uppercase;
+      color:var(--gold-dim); margin-bottom:0.6rem; opacity:0; animation:fadeUp 0.6s ease 0.25s forwards;
+    }
+    .match-title {
+      font-family:'Cinzel',serif; font-weight:700; font-size:2.5rem; letter-spacing:0.04em; line-height:1;
+      text-align:center; margin-bottom:0.3rem;
+      background:linear-gradient(100deg, var(--gold) 20%, var(--gold-bright) 50%, var(--gold) 80%);
+      background-size:200% auto; -webkit-background-clip:text; background-clip:text;
+      -webkit-text-fill-color:transparent; color:var(--gold);
+      opacity:0; animation:matchTitleIn 0.7s cubic-bezier(0.2,0.8,0.2,1) 0.1s forwards, shimmer 3.2s linear 0.9s infinite;
+      filter:drop-shadow(0 0 22px rgba(224,80,80,0.22));
+    }
+    @keyframes matchTitleIn { from { opacity:0; transform:scale(0.78) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
+
+    .match-avatars { display:flex; align-items:center; justify-content:center; gap:0; margin:1.6rem 0 1.2rem; }
+    .match-ava {
+      width:104px; height:104px; border-radius:50%; overflow:hidden; position:relative;
+      border:2px solid rgba(224,80,80,0.55); background:var(--black-raise);
+      box-shadow:0 0 34px rgba(224,80,80,0.28), inset 0 0 18px rgba(0,0,0,0.5);
+    }
+    .match-ava img { width:100%; height:100%; object-fit:cover; display:block; }
+    .match-ava-fallback {
+      width:100%; height:100%; display:flex; align-items:center; justify-content:center;
+      font-family:'Cinzel',serif; font-size:2rem; color:var(--gold); background:linear-gradient(135deg,var(--black-raise),var(--black-card));
+    }
+    .match-ava.left  { transform:translateX(60px) scale(0.6); opacity:0; animation:matchAvaLeft  0.7s cubic-bezier(0.2,0.9,0.25,1) 0.2s forwards; z-index:2; }
+    .match-ava.right { transform:translateX(-60px) scale(0.6); opacity:0; animation:matchAvaRight 0.7s cubic-bezier(0.2,0.9,0.25,1) 0.2s forwards; z-index:1; }
+    @keyframes matchAvaLeft  { to { transform:translateX(18px) scale(1); opacity:1; } }
+    @keyframes matchAvaRight { to { transform:translateX(-18px) scale(1); opacity:1; } }
+    .match-spark {
+      position:relative; z-index:3; font-size:2.1rem; line-height:1; margin:0 -6px;
+      opacity:0; transform:scale(0); animation:matchSparkPop 0.5s cubic-bezier(0.2,1.4,0.4,1) 0.78s forwards, mutualPulse 2.2s ease-in-out 1.3s infinite;
+      filter:drop-shadow(0 0 14px rgba(224,80,80,0.6));
+    }
+    @keyframes matchSparkPop { to { opacity:1; transform:scale(1); } }
+
+    .match-names { font-family:'Cormorant',serif; font-style:italic; font-size:1.3rem; color:var(--cream); text-align:center; margin-bottom:0.35rem; opacity:0; animation:fadeUp 0.6s ease 0.6s forwards; }
+    .match-names b { font-style:normal; color:var(--gold-light); font-weight:600; }
+    .match-sub { font-family:'Cormorant',serif; font-style:italic; font-size:1rem; color:var(--muted); text-align:center; max-width:19rem; margin-bottom:1.9rem; opacity:0; animation:fadeUp 0.6s ease 0.72s forwards; }
+
+    .match-actions { display:flex; flex-direction:column; align-items:center; gap:0.7rem; width:100%; max-width:17rem; opacity:0; animation:fadeUp 0.6s ease 0.85s forwards; }
+    .match-cta {
+      width:100%; font-family:'Cinzel',serif; font-size:0.8rem; letter-spacing:0.24em; text-transform:uppercase;
+      padding:0.95rem 1.5rem; cursor:pointer; color:var(--black); border:none;
+      background:linear-gradient(135deg, var(--gold-bright), var(--gold)); transition:transform 0.2s, box-shadow 0.3s;
+      box-shadow:0 0 26px rgba(200,168,75,0.3);
+    }
+    .match-cta:hover { box-shadow:0 0 38px rgba(200,168,75,0.45); transform:translateY(-1px); }
+    .match-cta:active { transform:scale(0.98); }
+    .match-dismiss { font-family:'Cinzel',serif; font-size:0.66rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--muted2); background:none; border:none; cursor:pointer; padding:0.5rem; transition:color 0.2s; }
+    .match-dismiss:hover { color:var(--cream); }
+
+    @media (max-width:520px) {
+      .match-title { font-size:2.1rem; }
+      .match-ava { width:88px; height:88px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .match-overlay, .match-title, .match-eyebrow, .match-avatars, .match-ava.left, .match-ava.right,
+      .match-spark, .match-names, .match-sub, .match-actions { animation-duration:0.01ms !important; animation-delay:0s !important; }
+      .match-ava.left { transform:translateX(18px); } .match-ava.right { transform:translateX(-18px); }
+    }
   </style>
 </head>
 <body>
@@ -2072,10 +2148,107 @@ async function toggleFire(id) {
   if (!currentGuest || isPreview) return;
   const prev = [...(socialData.fires[currentGuest.id] || [])];
   const list = socialData.fires[currentGuest.id] || [];
-  socialData.fires[currentGuest.id] = list.includes(id) ? list.filter(x=>x!==id) : [...list, id];
+  const wasMutual = isMutualFire(id);
+  const adding = !list.includes(id);
+  socialData.fires[currentGuest.id] = adding ? [...list, id] : list.filter(x=>x!==id);
+  if (adding) buzz(12); // soft tactile tap on every fire sent
   refreshModalInteract(id); applyRosterIndicators(); // optimistic
   const err = await saveSocialData();
-  if (err) { socialData.fires[currentGuest.id] = prev; refreshModalInteract(id); applyRosterIndicators(); showToast('Could not save — please try again.'); }
+  if (err) { socialData.fires[currentGuest.id] = prev; refreshModalInteract(id); applyRosterIndicators(); showToast('Could not save — please try again.'); return; }
+  // If sending this fire just completed a mutual match, make it a moment.
+  if (adding && !wasMutual && isMutualFire(id)) celebrateMatch(id);
+}
+
+// ══ TACTILE + CELEBRATION ══════════════════════════════════════════
+function buzz(pattern) { try { navigator.vibrate && navigator.vibrate(pattern); } catch (_) {} }
+
+// Lightweight gold/ember particle burst on a transient full-screen canvas.
+function emberBurst(cx, cy, count = 46) {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let canvas = document.getElementById('matchCanvas');
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.id = 'matchCanvas';
+    document.body.appendChild(canvas);
+  }
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = window.innerWidth * dpr; canvas.height = window.innerHeight * dpr;
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+  const colors = ['#f0d898', '#e8cf88', '#c8a84b', '#e05050', '#ffffff'];
+  const parts = [];
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2, sp = 2.5 + Math.random() * 6.5;
+    parts.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2,
+      r: 1.5 + Math.random() * 3, life: 1, color: colors[(Math.random() * colors.length) | 0] });
+  }
+  const start = performance.now();
+  (function frame(now) {
+    const dt = Math.min((now - start) / 1000, 0.05);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+    for (const p of parts) {
+      if (p.life <= 0) continue;
+      alive = true;
+      p.vy += 14 * dt; p.vx *= 0.985; p.x += p.vx; p.y += p.vy; p.life -= 0.012;
+      ctx.globalAlpha = Math.max(p.life, 0);
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (alive) requestAnimationFrame(frame);
+    else canvas.remove();
+  })(start);
+}
+
+function _firstName(n) { return String(n || '').trim().split(/\s+/)[0] || 'Someone'; }
+function _avaHTML(g, cls) {
+  const photo = g && g.photos && g.photos[0] ? g.photos[0] : null;
+  const inner = photo
+    ? `<img src="${esc(photo)}" alt="" />`
+    : `<div class="match-ava-fallback">${esc(_firstName(g && g.name).charAt(0).toUpperCase() || '✦')}</div>`;
+  return `<div class="match-ava ${cls}">${inner}</div>`;
+}
+
+function celebrateMatch(id) {
+  const other = allGuests.find(x => x.id === id);
+  if (!other || !currentGuest) return;
+  // Only celebrate a given pair once per session.
+  const pairKey = 'elysium_match_' + [currentGuest.id, id].sort().join('_');
+  if (sessionStorage.getItem(pairKey)) return;
+  try { sessionStorage.setItem(pairKey, '1'); } catch (_) {}
+  document.getElementById('matchOverlay')?.remove();
+
+  const mine = _firstName(currentGuest.name), theirs = _firstName(other.name);
+  const overlay = document.createElement('div');
+  overlay.className = 'match-overlay'; overlay.id = 'matchOverlay';
+  overlay.innerHTML = `
+    <div class="match-eyebrow">The feeling's mutual</div>
+    <div class="match-title">It's a Match</div>
+    <div class="match-avatars">
+      ${_avaHTML(currentGuest, 'left')}
+      <span class="match-spark">🔥</span>
+      ${_avaHTML(other, 'right')}
+    </div>
+    <div class="match-names">You &amp; <b>${esc(theirs)}</b> lit each other up</div>
+    <div class="match-sub">The interest is out in the open now. Go make something of it.</div>
+    <div class="match-actions">
+      <button class="match-cta" id="matchGoChat">Say hi →</button>
+      <button class="match-dismiss" id="matchDismiss">Keep browsing</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  buzz([18, 40, 70]);
+  const close = (then) => {
+    overlay.classList.add('closing');
+    setTimeout(() => { overlay.remove(); if (then) then(); }, 340);
+  };
+  overlay.querySelector('#matchDismiss').onclick = () => close();
+  overlay.querySelector('#matchGoChat').onclick = () => close(() => {
+    closeModalDirect && closeModalDirect();
+    showView('chat');
+  });
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  // Ember burst from the center where the avatars meet.
+  setTimeout(() => emberBurst(window.innerWidth / 2, window.innerHeight * 0.42), 780);
 }
 
 async function toggleSave(id) {
