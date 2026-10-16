@@ -1020,6 +1020,10 @@
     .a-revert-actions { display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; }
     .a-expand-btn { background:none; border:1px solid var(--border-dim); color:var(--muted); font-size:0.65rem; padding:0.3rem 0.55rem; cursor:pointer; transition:color 0.2s,border-color 0.2s; flex-shrink:0; }
     .a-expand-btn:hover, .a-expand-btn.open { color:var(--gold-dim); border-color:rgba(200,168,75,0.35); }
+    .liked-by-toggle { cursor:pointer; transition:color 0.2s; }
+    .liked-by-toggle:hover, .liked-by-toggle.open { color:#e05050; }
+    .liked-by-chev { display:inline-block; transition:transform 0.2s; font-size:0.6rem; }
+    .liked-by-toggle.open .liked-by-chev { transform:rotate(90deg); }
     .a-detail-panel { margin-top:0.6rem; padding-top:0.75rem; border-top:1px solid var(--border-dim); width:100%; box-sizing:border-box; }
     .admin-bulk-btn { font-family:'Cinzel',serif; font-size:0.68rem; letter-spacing:0.16em; text-transform:uppercase; background:rgba(76,175,128,0.07); border:1px solid rgba(76,175,128,0.28); color:#4caf80; padding:0.38rem 0.9rem; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
     .admin-bulk-btn:hover { background:rgba(76,175,128,0.14); border-color:rgba(76,175,128,0.5); }
@@ -1559,13 +1563,16 @@ let pushNotes       = {}; // { receiverId: { senderId: { content, sender_name, u
 // social data change. Eliminates O(n²) scans in admin, awards, and badges.
 let _fireReceivedCount = {}; // { targetId: number }
 let _saveReceivedCount = {}; // { targetId: number }
+let _fireReceivedBy    = {}; // { targetId: [senderId, ...] }
 
 function _rebuildFireIndex() {
   _fireReceivedCount = {};
   _saveReceivedCount = {};
+  _fireReceivedBy    = {};
   for (const senderId in socialData.fires) {
     for (const targetId of (socialData.fires[senderId] || [])) {
       _fireReceivedCount[targetId] = (_fireReceivedCount[targetId] || 0) + 1;
+      (_fireReceivedBy[targetId] = _fireReceivedBy[targetId] || []).push(senderId);
     }
   }
   for (const senderId in socialData.saved) {
@@ -1579,6 +1586,7 @@ let adminCachedData = null;
 let adminSections   = { pending: true, waitlist: false, confirmed: false, confirmBlast: false, analytics: false, pledges: false, matchedPairs: false };
 let adminRevertOpen = new Set();
 let adminExpandOpen = new Set();
+let adminLikedByOpen = new Set();
 let adminSearchQ    = '';
 let adminSortBy     = 'date';
 let adminFilterFlag        = false; // toggle: show only flagged guests
@@ -2693,7 +2701,7 @@ function logout() {
     localStorage.removeItem('elysium_admin');
   }
   currentGuest = null; isPreview = false;
-  socialData = { fires: {}, saved: {} }; _fireReceivedCount = {}; _saveReceivedCount = {};
+  socialData = { fires: {}, saved: {} }; _fireReceivedCount = {}; _saveReceivedCount = {}; _fireReceivedBy = {};
   photoSlots = [null, null, null]; selectedVibes = []; selectedPrep = null;
   localStorage.removeItem(SESSION_KEY);
   if (chatChannel) { sb.removeChannel(chatChannel); chatChannel = null; }
@@ -4822,11 +4830,17 @@ function buildAdminHTML(el) {
           const mutuals    = (socialData.fires[g.id]||[]).filter(id=>approvedIds.has(id)&&(socialData.fires[id]||[]).includes(g.id)).length;
           const firedAtIds   = (socialData.fires[g.id]||[]).filter(id => nameById[id]);
           const firedAtNames = firedAtIds.map(id => nameById[id]);
+          const firedByIds   = (_fireReceivedBy[g.id]||[]).filter(id => nameById[id]);
+          const likedByOpen  = adminLikedByOpen.has(g.id);
+          const rcvdLabel    = firesRcvd
+            ? `<span class="liked-by-toggle${likedByOpen?' open':''}" onclick="event.stopPropagation();toggleLikedBy('${g.id}')" title="${likedByOpen?'Hide who fired at this guest':'Show who fired at this guest'}">🔥 ${firesRcvd} rcvd <span class="liked-by-chev">▸</span></span>`
+            : `🔥 ${firesRcvd} rcvd`;
           const socialLine = (firesRcvd||savesRcvd||firesGiven) ? `
             <div style="font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:0.12em;color:var(--muted);margin-top:0.2rem;">
-              🔥 ${firesRcvd} rcvd · ${firesGiven} sent${mutuals?` · <span style="color:#e05050">${mutuals} mutual</span>`:''}
+              ${rcvdLabel} · ${firesGiven} sent${mutuals?` · <span style="color:#e05050">${mutuals} mutual</span>`:''}
               ${savesRcvd ? `&ensp;★ ${savesRcvd} saved` : ''}
             </div>
+            ${likedByOpen && firedByIds.length ? `<div style="font-family:'Cormorant',serif;font-size:0.82rem;font-style:italic;color:rgba(235,225,205,0.45);margin-top:0.15rem;line-height:1.5;">Liked by: ${firedByIds.map(sid=>{const isMut=(socialData.fires[g.id]||[]).includes(sid);return `<span style="color:${isMut?'#e05050':'rgba(235,225,205,0.65)'}">${esc(nameById[sid])}</span>`;}).join('<span style="color:var(--border-dim)"> · </span>')}</div>` : ''}
             ${firedAtNames.length ? `<div style="font-family:'Cormorant',serif;font-size:0.82rem;font-style:italic;color:rgba(235,225,205,0.45);margin-top:0.15rem;line-height:1.5;">Fired: ${firedAtIds.map((tid,i)=>{const isMut=(socialData.fires[tid]||[]).includes(g.id);return `<span style="color:${isMut?'#e05050':'rgba(235,225,205,0.65)'}">${esc(nameById[tid])}</span>`;}).join('<span style="color:var(--border-dim)"> · </span>')}</div>` : ''}` : '';
           const priorCount = adminData.priorEvents[g.id] || 0;
           const priorLine = `<div class="prior-events-row">
@@ -5626,6 +5640,12 @@ async function promoteFromWaitlist(id) {
 function toggleGuestExpand(id) {
   if (adminExpandOpen.has(id)) adminExpandOpen.delete(id);
   else adminExpandOpen.add(id);
+  _adminRebuild();
+}
+
+function toggleLikedBy(id) {
+  if (adminLikedByOpen.has(id)) adminLikedByOpen.delete(id);
+  else adminLikedByOpen.add(id);
   _adminRebuild();
 }
 
