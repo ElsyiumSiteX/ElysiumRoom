@@ -1158,6 +1158,30 @@
     .broadcast-dismiss { font-family:'Cinzel',serif; font-size:0.64rem; letter-spacing:.2em; text-transform:uppercase; background:none; border:1px solid rgba(200,168,75,0.3); color:var(--gold-dim); padding:.6rem 1.6rem; cursor:pointer; transition:all .2s; }
     .broadcast-dismiss:hover { border-color:rgba(200,168,75,0.6); color:var(--gold); }
 
+    /* ── DAY OF INFO PAGE ── */
+    .dayof-btn-wrap { text-align:center; margin-bottom:2rem; }
+    .dayof-btn { font-family:'Cinzel',serif; font-size:0.78rem; letter-spacing:0.28em; text-transform:uppercase; color:var(--gold); background:linear-gradient(to bottom, rgba(200,168,75,0.08), rgba(200,168,75,0.02)); border:1px solid var(--gold-dim); padding:0.85rem 2.2rem; cursor:pointer; transition:all 0.2s; box-shadow:0 0 22px rgba(200,168,75,0.08); }
+    .dayof-btn:hover { color:var(--cream); border-color:var(--gold); box-shadow:0 0 30px rgba(200,168,75,0.2); }
+    .dayof-box { border:1px solid var(--gold-dim); background:linear-gradient(to bottom, rgba(200,168,75,0.06), var(--black-card)); padding:1.6rem 1.8rem; margin-bottom:2.5rem; }
+    .dayof-box-label { font-family:'Cinzel',serif; font-size:0.72rem; letter-spacing:0.3em; text-transform:uppercase; color:var(--gold-dim); margin-bottom:0.9rem; display:flex; justify-content:space-between; align-items:center; gap:1rem; }
+    .dayof-box-edit { font-family:'Cinzel',serif; font-size:0.62rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); background:none; border:1px solid var(--border-dim); padding:0.25rem 0.6rem; cursor:pointer; }
+    .dayof-box-edit:hover { color:var(--gold); border-color:var(--gold-dim); }
+    .dayof-box-addr { font-family:'Cormorant',serif; font-size:1.25rem; font-style:italic; color:var(--cream); margin-bottom:0.8rem; }
+    .dayof-box-text { font-family:'Cormorant',serif; font-size:1.12rem; font-weight:300; line-height:1.8; color:var(--cream); opacity:.96; white-space:pre-wrap; }
+    .dayof-box-empty { font-family:'Cormorant',serif; font-size:1.05rem; font-style:italic; color:var(--muted); }
+    .dayof-intro { font-family:'Cormorant',serif; font-size:1.2rem; font-weight:300; line-height:1.85; color:var(--cream); text-align:center; margin-bottom:2.5rem; }
+    .dayof-intro strong { font-weight:600; color:var(--gold); letter-spacing:0.04em; }
+    .dayof-section { padding:1.8rem 0; border-top:1px solid var(--border-dim); }
+    .dayof-heading { font-family:'Cinzel',serif; font-size:0.85rem; letter-spacing:0.26em; text-transform:uppercase; color:var(--gold); margin-bottom:1.1rem; }
+    .dayof-p { font-family:'Cormorant',serif; font-size:1.12rem; font-weight:300; line-height:1.8; color:var(--cream); opacity:.96; margin-bottom:0.9rem; }
+    .dayof-p strong { font-weight:600; color:var(--cream); }
+    .dayof-list { list-style:none; padding:0; margin:0 0 0.9rem; }
+    .dayof-list li { font-family:'Cormorant',serif; font-size:1.12rem; font-weight:300; line-height:1.75; color:var(--cream); padding-left:1.4rem; position:relative; margin-bottom:0.5rem; }
+    .dayof-list li::before { content:'✦'; position:absolute; left:0; color:var(--gold-dim); font-size:0.75rem; top:0.35rem; }
+    .dayof-list li strong { font-weight:600; }
+    .dayof-alert { color:#e05050; text-shadow:0 0 14px rgba(224,80,80,0.3); font-weight:600; }
+    .dayof-sign { font-family:'Cormorant',serif; font-size:1.4rem; font-style:italic; color:var(--gold); text-align:center; padding:2rem 0 1rem; }
+
     /* ── THE VENUE PAGE ── */
     .venue-wrap { max-width:640px; margin:0 auto; padding:2rem 1.5rem 4rem; }
     .venue-back { font-family:'Cinzel',serif; font-size:0.68rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); background:none; border:none; cursor:pointer; padding:0.3rem 0; margin-bottom:2rem; display:inline-flex; align-items:center; gap:0.4rem; transition:color 0.2s; }
@@ -1262,6 +1286,7 @@
     playPositionsOverview: '',
     lubeVotes:          {},
     eventAddress:       '',
+    dayOfText:          '',
   };
 </script>
 <!-- ════════════════════════════════════════════════════════════════ -->
@@ -1302,6 +1327,7 @@
   <div id="view-admin"  class="view"><div id="adminContent"></div></div>
   <div id="view-door"   class="view"><div id="doorContent"></div></div>
   <div id="view-venue"  class="view"><div class="venue-wrap" id="venueContent"></div></div>
+  <div id="view-dayof"  class="view"><div class="venue-wrap" id="dayofContent"></div></div>
 </main>
 
 <!-- LIGHTBOX -->
@@ -2501,7 +2527,7 @@ function setVibeFilter(vibe) {
 
 // ══ INIT ═══════════════════════════════════════════════════════════
 async function loadConfig() {
-  const CONFIG_KEYS = ['capacity','waitlistEnabled','pledgeEnabled','proTipEnabled','confirmRound','announcementImages','infoImages','recruiters','venueImages','playPositionsImages','playPositionsCaptions','playPositionsOverview','lube_votes','eventDateISO','eventPhase','eventName','eventDate','eventLocation','adminPassword','guestPreviewPin','requireApproval','announcementText','hostName','broadcastMsg','broadcastId','sessionVersion','venueDescription','eventAddress','parkingText','parkingImage'];
+  const CONFIG_KEYS = ['capacity','waitlistEnabled','pledgeEnabled','proTipEnabled','confirmRound','announcementImages','infoImages','recruiters','venueImages','playPositionsImages','playPositionsCaptions','playPositionsOverview','lube_votes','eventDateISO','eventPhase','eventName','eventDate','eventLocation','adminPassword','guestPreviewPin','requireApproval','announcementText','hostName','broadcastMsg','broadcastId','sessionVersion','venueDescription','eventAddress','parkingText','parkingImage','dayOfText'];
   const { data, error } = await sb.from('config').select('key, value').in('key', CONFIG_KEYS);
   if (!error && data) {
     data.forEach(row => {
@@ -2646,6 +2672,7 @@ function showView(name, btn) {
   if (name === 'admin')   renderAdmin();
   if (name === 'door')    renderDoor();
   if (name === 'venue')   renderVenue();
+  if (name === 'dayof')   renderDayOf();
 }
 
 // ══ SESSION BAR ════════════════════════════════════════════════════
@@ -3218,6 +3245,7 @@ function renderInfo() {
     </div>`).join('');
 
   document.getElementById('infoContent').innerHTML = `
+    ${dayOfBtnHTML('info')}
     <div class="info-intro">
       <div class="info-intro-tag">Elysium Room</div>
       <div class="info-intro-line">
@@ -3342,6 +3370,7 @@ async function renderRoster(forceRefresh) {
   const annDismissed = localStorage.getItem('elysium_ann_dismissed');
   const hasAnn = annContent && annDismissed !== annContent;
   el.innerHTML = `
+    ${dayOfBtnHTML('roster')}
     ${hasAnn ? `<div class="announce-banner" id="announceBanner">
       <div class="announce-header">
         <span>From the Host</span>
@@ -3763,7 +3792,7 @@ async function submitPin(target) {
     localStorage.setItem(SESSION_KEY, JSON.stringify({pin}));
     if (CONFIG.sessionVersion) localStorage.setItem('elysium_session_ver', CONFIG.sessionVersion);
     showSessionBar('Preview Guest');
-    if (target === 'info') renderInfo(); else renderRoster(); return;
+    if (target === 'info') renderInfo(); else if (target === 'dayof') renderDayOf(); else renderRoster(); return;
   }
 
   // Check personal PIN in Supabase
@@ -3804,6 +3833,7 @@ async function submitPin(target) {
   showSessionBar(data.name, data.photos);
   if (target === 'roster') renderRoster();
   else if (target === 'info') renderInfo();
+  else if (target === 'dayof') renderDayOf();
   else if (target === 'account') renderAccount();
   try { await loadSocialData(); } catch(e) { logErr("caught", e); }
   updateFireBadge();
@@ -5125,6 +5155,17 @@ function buildAdminHTML(el) {
       <button class="btn btn-solid" id="eventAddressSaveBtn" onclick="saveEventAddress()">Save Address</button>
     </div>
     <hr class="div" />
+    <div class="section-label" style="margin-top:2rem;" id="adminDayOfSection">Day Of Info Box</div>
+    <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">Shown in the box at the top of the Day Of Info page, under the address. Use it for last-minute notes — gate codes, timing changes, what to bring. Leave blank to hide.</p>
+    <div class="form-group">
+      <label>Day Of Note</label>
+      <textarea id="dayOfTextInput" rows="4" placeholder="e.g. Gate code is 1234. Doors open right at 7…">${esc(CONFIG.dayOfText||'')}</textarea>
+    </div>
+    <div style="display:flex;gap:1rem;margin-bottom:2.5rem;">
+      <button class="btn btn-solid" id="dayOfSaveBtn" onclick="saveDayOfText()">Save Day Of Note</button>
+      <button class="btn btn-ghost" onclick="showView('dayof')">Preview Page →</button>
+    </div>
+    <hr class="div" />
     <div class="section-label" style="margin-top:2rem;">Announcement</div>
     <p style="font-family:'Cormorant',serif;font-size:1rem;font-style:italic;color:var(--muted);margin-bottom:1.5rem;">Shown to all guests above the roster. Leave blank to hide.</p>
     <div class="form-group">
@@ -6127,6 +6168,7 @@ async function launchNewEvent() {
     CONFIG.eventPhase   = 'pre';
     CONFIG.eventAddress = '';
     CONFIG.announcementText = '';
+    CONFIG.dayOfText = '';
 
     const configUpdates = [
       { key: 'eventDate',        value: CONFIG.eventDate },
@@ -6136,6 +6178,7 @@ async function launchNewEvent() {
       { key: 'eventPhase',       value: 'pre' },
       { key: 'eventAddress',     value: '' },
       { key: 'announcementText', value: '' },
+      { key: 'dayOfText',        value: '' },
       { key: 'post_event_data',  value: JSON.stringify({ blastSent: false, blastMessage: '', responses: {} }) },
     ];
     const { error: cfgErr } = await sb.from('config').upsert(configUpdates, { onConflict: 'key' });
@@ -6366,6 +6409,123 @@ async function massLogoutAllGuests() {
   const container = document.querySelector('#adminContent .settings-grid');
   if (container) container.parentNode.insertBefore(flash, container);
   setTimeout(() => flash.remove(), 4000);
+}
+
+// ══ DAY OF INFO ════════════════════════════════════════════════════
+function dayOfBtnHTML(from) {
+  return `<div class="dayof-btn-wrap"><button class="dayof-btn" onclick="openDayOf('${from}')">Day Of Info</button></div>`;
+}
+
+let _dayOfFrom = 'info';
+function openDayOf(from) {
+  _dayOfFrom = from === 'roster' ? 'roster' : 'info';
+  showView('dayof');
+}
+
+function goToAdminDayOf() {
+  adminTab = 'announce';
+  showView('admin');
+  // Admin renders async — wait for the section to exist, then scroll to it
+  let tries = 0;
+  const go = () => {
+    const sec = document.getElementById('adminDayOfSection');
+    if (sec) { sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    if (++tries < 30) setTimeout(go, 100);
+  };
+  go();
+}
+
+function renderDayOf() {
+  const el = document.getElementById('dayofContent');
+  if (!currentGuest && !isPreview && !adminIn) {
+    el.innerHTML = renderPinGate('dayof');
+    return;
+  }
+  const backLabel = _dayOfFrom === 'roster' ? 'Roster' : 'Info';
+  const host = esc(CONFIG.hostName || 'Nico');
+  const note = CONFIG.dayOfText || '';
+  el.innerHTML = `
+    <button class="venue-back" onclick="showView('${_dayOfFrom}')">← Back to ${backLabel}</button>
+    <div class="venue-heading">Day Of Info</div>
+    <div class="venue-sub">Reread the rules — then come play</div>
+
+    <div class="dayof-box">
+      <div class="dayof-box-label">
+        <span>From the Host · Day Of</span>
+        ${adminIn ? `<button class="dayof-box-edit" onclick="goToAdminDayOf()">Edit in Admin</button>` : ''}
+      </div>
+      <div class="dayof-box-addr">${CONFIG.eventAddress ? esc(CONFIG.eventAddress) : '<span class="dayof-box-empty">Address goes live day of at 5pm</span>'}</div>
+      ${note ? `<div class="dayof-box-text">${esc(note)}</div>` : ''}
+    </div>
+
+    <div class="dayof-intro">
+      This is a night of <strong>Queer Masculine Energy, Pleasure, and Joy.</strong><br><br>
+      Help me make this an exquisite night by being <strong>kind, friendly, drama-free, emotionally intelligent</strong> — and above all, <strong>gentle.</strong><br><br>
+      Be passionate, be playful, be bold. But be gentle with yourself and with the men around you.
+    </div>
+
+    <div class="dayof-section">
+      <div class="dayof-heading">📍 Arrival &amp; Entry — Read This!</div>
+      <p class="dayof-p">The living room is a major play area, so <span class="dayof-alert">NO ONE enters or exits through the front door.</span></p>
+      <p class="dayof-p">When facing the house, you have two options:</p>
+      <ul class="dayof-list">
+        <li>Go around the <strong>RIGHT</strong> side of the house to the gate.</li>
+        <li>Or access the back gate from the alley, reached via the <strong>LEFT</strong> side of the house.</li>
+      </ul>
+      <p class="dayof-p">Both gates lead into the backyard. Enter through the back door, head downstairs, grab a bag and wristband, and undress!</p>
+    </div>
+
+    <div class="dayof-section">
+      <div class="dayof-heading">🚗 Respect the Space &amp; Neighborhood</div>
+      <p class="dayof-p">Please be discreet, quiet, and respectful of the property. Don't crowd the house with parked cars! Spread parking across the surrounding 2–3 blocks. Uber! Carpool! Help me out by being spatially aware and smart.</p>
+      <p class="dayof-p"><span class="dayof-alert">NO NUDITY OUTSIDE!</span> Not in the backyard, not in the alley, not even for a quick breath of fresh air. Keep the fun indoors.</p>
+    </div>
+
+    <div class="dayof-section">
+      <div class="dayof-heading">💦 A Few Things to Know</div>
+      <ul class="dayof-list">
+        <li><strong>Hydrate like crazy!</strong> Before and after. Bottoms, please arrive prepped.</li>
+        <li><strong>Showers:</strong> Need a quick rinse? Keep it under 3 minutes. No shower sex! Bring your own towel if you need one.</li>
+        <li><strong>Pack nothing!</strong> You'll get a bag for your clothes when you arrive. Leave unnecessary possessions in your car. Anything you bring inside should leave with you.</li>
+        <li><strong>Phones stay away!</strong> Completely out of the play areas. No exceptions.</li>
+        <li><strong>No smoking or combustion inside.</strong> Light vaping is fine. Just be considerate.</li>
+      </ul>
+    </div>
+
+    <div class="dayof-section">
+      <div class="dayof-heading">🍸 Alcohol</div>
+      <p class="dayof-p">I've experimented with supplying batch cocktails at past parties, but I think I and most others prefer keeping alcohol out of it.</p>
+      <p class="dayof-p">If you know yourself and want to arrive a little relaxed, that's fine. But <strong>no one visibly intoxicated will be permitted to enter or play.</strong> Everyone needs to be present, aware, and capable of giving and respecting consent.</p>
+    </div>
+
+    <div class="dayof-section">
+      <div class="dayof-heading">❤️ And Finally…</div>
+      <p class="dayof-p"><strong>You can leave at any time, for any reason.</strong> No explanation needed. You don't owe anyone your body or your participation.</p>
+      <p class="dayof-p">Come curious, confident, nervous, horny, whatever! Just be kind to yourself and everyone else.</p>
+      <p class="dayof-p">Let's have a beautiful fucking night.</p>
+      <div class="dayof-sign">– ${host} xoxo</div>
+    </div>
+  `;
+}
+
+async function saveDayOfText() {
+  const input = document.getElementById('dayOfTextInput');
+  if (!input) return;
+  const text = input.value.trim();
+  CONFIG.dayOfText = text;
+  const btn = document.getElementById('dayOfSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const { error } = await sb.from('config').upsert([
+    { key: 'dayOfText', value: text }
+  ], { onConflict: 'key' });
+  btn.disabled = false; btn.textContent = 'Save Day Of Note';
+  if (error) { showToast('Save failed: ' + error.message); return; }
+  const flash = document.createElement('div');
+  flash.className = 'msg msg-success';
+  flash.style.cssText = 'margin-bottom:1rem;';
+  flash.textContent = 'Day Of note saved.';
+  btn.parentNode.insertBefore(flash, btn);
+  setTimeout(() => flash.remove(), 3000);
 }
 
 // ══ THE VENUE ══════════════════════════════════════════════════════
