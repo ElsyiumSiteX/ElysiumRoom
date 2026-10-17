@@ -1574,6 +1574,7 @@ let selectedPrep  = null;
 let allGuests       = [];
 let activeVibeFilter = null;
 let adminData       = { notes: {}, flagged: {}, priorEvents: {} };
+let _adminDataLoaded = false;
 let pinFailCount  = 0;
 let pinLockUntil  = 0;
 let _pinLockTimer = null;
@@ -1629,7 +1630,7 @@ let _touchX = 0, _touchY = 0;
 async function loadSocialData() {
   // Batch all 5 config reads into a single round-trip
   const { data: cfgRows } = await sb.from('config').select('key,value')
-    .in('key', ['social','wl_messages','confirm_responses','wl_order','post_event_data','attendance_pledges','push_notes']);
+    .in('key', ['social','wl_messages','confirm_responses','wl_order','post_event_data','attendance_pledges','push_notes','prior_events']);
   const _cfg = Object.fromEntries((cfgRows||[]).map(r => [r.key, r.value]));
   const socialRes   = { data: _cfg.social             ? { value: _cfg.social }             : null };
   const wlMsgRes    = { data: _cfg.wl_messages        ? { value: _cfg.wl_messages }        : null };
@@ -1682,6 +1683,11 @@ async function loadSocialData() {
   }
   if (pushNoteRes.data?.value) {
     try { pushNotes = JSON.parse(pushNoteRes.data.value) || {}; } catch(e) { logErr("caught", e); }
+  }
+  // Public copy of prior-event counts so guests can see others' ✨ Elysium Veteran
+  // badge (admin_data itself holds private notes/flags and is only loaded by admins).
+  if (_cfg.prior_events && !_adminDataLoaded) {
+    try { adminData.priorEvents = JSON.parse(_cfg.prior_events) || {}; } catch(e) { logErr("caught", e); }
   }
   _rebuildFireIndex();
 }
@@ -2418,12 +2424,22 @@ async function loadAdminData() {
       adminData.notes       = parsed.notes       || {};
       adminData.flagged     = parsed.flagged     || {};
       adminData.priorEvents = parsed.priorEvents || {};
+      _adminDataLoaded = true;
     } catch(e) { logErr("caught", e); }
   }
+  // Keep the guest-visible copy in sync (also backfills it for existing data).
+  if (_adminDataLoaded) savePublicPriorEvents();
+}
+
+async function savePublicPriorEvents() {
+  await sb.from('config').upsert({ key: 'prior_events', value: JSON.stringify(adminData.priorEvents) }, { onConflict: 'key' });
 }
 
 async function saveAdminData() {
-  await sb.from('config').upsert({ key: 'admin_data', value: JSON.stringify(adminData) }, { onConflict: 'key' });
+  await Promise.all([
+    sb.from('config').upsert({ key: 'admin_data', value: JSON.stringify(adminData) }, { onConflict: 'key' }),
+    savePublicPriorEvents(),
+  ]);
 }
 
 async function toggleFlag(id) {
